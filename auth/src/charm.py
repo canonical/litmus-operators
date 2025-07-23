@@ -13,7 +13,7 @@ from litmus_auth import LitmusAuth
 logger = logging.getLogger(__name__)
 
 
-class LitmusAuthenticationCharm(CharmBase):
+class LitmusAuthCharm(CharmBase):
     """Charmed Operator for Litmus Authentication server."""
 
     def __init__(self, *args):
@@ -54,4 +54,4 @@ class LitmusAuthenticationCharm(CharmBase):
 if __name__ == "__main__":  # pragma: nocover
     from ops import main
 
-    main(LitmusAuthenticationCharm)  # noqa
+    main(LitmusAuthCharm)  # noqa

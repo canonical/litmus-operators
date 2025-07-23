@@ -12,6 +12,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
 #   UNIT TESTS
+    "ops[testing]",
     "pytest",
     "pytest-cov",
     "coverage[toml]",

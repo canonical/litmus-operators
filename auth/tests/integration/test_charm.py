@@ -11,9 +11,7 @@ logger = logging.getLogger(__name__)
 
 @pytest.mark.setup
 def test_deploy_litmus_auth_server(juju: Juju, charm: Path):
-    juju.deploy(
-        charm, AUTH_SERVER_APP, resources=AUTH_SERVER_RESOURCES, trust=True
-    )
+    juju.deploy(charm, AUTH_SERVER_APP, resources=AUTH_SERVER_RESOURCES, trust=True)
 
     # auth server will be blocked because of missing control plane integrations
     juju.wait(
