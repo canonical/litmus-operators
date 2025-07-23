@@ -1,0 +1,73 @@
+# Copyright 2025 Canonical Ltd.
+# See LICENSE file for licensing details.
+[project]
+name = "litmus-auth-k8s"
+version = "0.1"  # this is in fact irrelevant
+requires-python = ">=3.12"
+
+dependencies = [
+    "ops",
+]
+
+[project.optional-dependencies]
+dev = [
+#   INTEGRATION TESTS
+    "jubilant",
+    "pytest-jubilant>=0.2.1",
+
+#   LINTING
+    "pyright",
+    "ruff",
+]
+
+[tool.pyright]
+extraPaths = ["lib"]
+pythonVersion = "3.12"
+pythonPlatform = "All"
+
+[build]
+build-base = "/tmp/build"
+
+[egg_info]
+egg-base = "/tmp"
+
+# Testing tools configuration
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+log_cli_level = "INFO"
+markers = ["setup", "teardown"]
+
+# Linting tools configuration
+[lint]
+line-length = 99
+select = ["E", "W", "F", "C", "N", "D", "I001"]
+extend-ignore = [
+    "D203",
+    "D204",
+    "D213",
+    "D215",
+    "D400",
+    "D404",
+    "D406",
+    "D407",
+    "D408",
+    "D409",
+    "D413",
+]
+ignore = ["E501", "D107"]
+extend-exclude = ["__pycache__", "*.egg_info", "*integration/tester*"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D100","D101","D102","D103","D104"]
+
+[lint.mccabe]
+max-complexity = 10
+
+[tool.codespell]
+skip = "build,lib,venv,icon.svg,.tox,.git,.mypy_cache,.ruff_cache,.vscode,.coverage"
