@@ -1,0 +1,39 @@
+name: Release Charm to Edge and Publish Libraries
+
+on:
+  push:
+    branches:
+      - main
+      - track/**
+
+jobs:
+  charms-changed:
+    runs-on: ubuntu-latest
+    outputs:
+      auth_changed: ${{ steps.auth-changed-files.outputs.any_modified }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Determine changed files in the auth charm
+        id: auth-changed-files
+        uses: tj-actions/changed-files@v45
+        with:
+          files: auth/**
+          files_ignore: |
+            README.md
+            CONTRIBUTING.md
+            INTEGRATING.md
+            CODEOWNERS
+            LICENSE
+            icon.svg
+            .gitignore
+            .github/**
+  release-auth:
+    needs: charms-changed
+    if: needs.charms-changed.outputs.auth_changed == 'true'
+    uses: canonical/observability/.github/workflows/charm-release.yaml@v1
+    secrets: inherit
+    with:
+      default-track: 2
+      charm-path: auth
+      git-tag-prefix: auth-

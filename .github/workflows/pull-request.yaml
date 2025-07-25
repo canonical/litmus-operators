@@ -1,0 +1,40 @@
+name: Pull Requests
+
+on:
+  pull_request:
+    branches:
+      - main
+      - track/**
+
+jobs:
+  charms-changed:
+    runs-on: ubuntu-latest
+    outputs:
+      auth_changed: ${{ steps.auth-changed-files.outputs.any_modified }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          fetch-depth: 0
+      - name: Determine changed files in the auth charm
+        id: auth-changed-files
+        uses: tj-actions/changed-files@v45
+        with:
+          files: auth/**
+          files_ignore: |
+            README.md
+            CONTRIBUTING.md
+            INTEGRATING.md
+            CODEOWNERS
+            LICENSE
+            icon.svg
+            .gitignore
+            .github/**
+  pull-request-auth:
+    needs: charms-changed
+    if: needs.charms-changed.outputs.auth_changed == 'true'
+    uses: canonical/observability/.github/workflows/charm-pull-request.yaml@v1
+    secrets: inherit
+    with:
+      charm-path: auth
