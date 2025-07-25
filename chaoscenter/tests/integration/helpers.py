@@ -9,8 +9,8 @@ import yaml
 from pytest_jubilant import pack
 
 METADATA = yaml.safe_load(Path("./charmcraft.yaml").read_text())
-AUTH_SERVER_APP = "litmus-auth"
-AUTH_SERVER_RESOURCES = {
+CHAOSCENTER_APP = "litmus-chaoscenter"
+CHAOSCENTER_RESOURCES = {
     image_name: image_meta["upstream-source"]
     for image_name, image_meta in METADATA["resources"].items()
 }
@@ -30,7 +30,7 @@ def get_charm():
         try:
             pth = pack().absolute()
         except subprocess.CalledProcessError:
-            logger.warning("Failed to build auth charm. Trying again!")
+            logger.warning("Failed to build chaoscenter charm. Trying again!")
             continue
         os.environ["CHARM_PATH"] = str(pth)
         return pth

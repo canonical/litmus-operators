@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       auth_changed: ${{ steps.auth-changed-files.outputs.any_modified }}
+      chaoscenter_changed: ${{ steps.chaoscenter-changed-files.outputs.any_modified }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -19,6 +20,20 @@ jobs:
         uses: tj-actions/changed-files@v45
         with:
           files: auth/**
+          files_ignore: |
+            README.md
+            CONTRIBUTING.md
+            INTEGRATING.md
+            CODEOWNERS
+            LICENSE
+            icon.svg
+            .gitignore
+            .github/**
+      - name: Determine changed files in the chaoscenter charm
+        id: chaoscenter-changed-files
+        uses: tj-actions/changed-files@v45
+        with:
+          files: chaoscenter/**
           files_ignore: |
             README.md
             CONTRIBUTING.md
@@ -37,3 +52,12 @@ jobs:
       default-track: 2
       charm-path: auth
       git-tag-prefix: auth-
+  release-chaoscenter:
+    needs: charms-changed
+    if: needs.charms-changed.outputs.chaoscenter_changed == 'true'
+    uses: canonical/observability/.github/workflows/charm-release.yaml@v1
+    secrets: inherit
+    with:
+      default-track: 2
+      charm-path: chaoscenter
+      git-tag-prefix: chaoscenter-
