@@ -28,7 +28,7 @@ def get_charm():
     for _ in range(3):
         logger.info("packing...")
         try:
-            pth = pack().absolute()
+            pth = pack()
         except subprocess.CalledProcessError:
             logger.warning("Failed to build auth charm. Trying again!")
             continue

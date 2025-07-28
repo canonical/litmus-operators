@@ -23,11 +23,11 @@ resources:
   litmus-chaoscenter-image:
     type: oci-image
     description: OCI image for Litmus frontend server 
-    # FIXME: use the rock
+    # FIXME: use the rock https://github.com/canonical/litmus-operators/issues/5
     upstream-source: litmuschaos/litmusportal-frontend:3.19.0
 
 links:
-  # FIXME: update discourse link
+  # FIXME: update discourse link https://github.com/canonical/litmus-operators/issues/4
   documentation: https://discourse.charmhub.io/t/18122
   website: https://charmhub.io/litmus-chaoscenter-k8s
   source: https://github.com/canonical/litmus-operators/tree/main/auth
