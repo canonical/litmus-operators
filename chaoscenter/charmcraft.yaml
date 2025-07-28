@@ -1,6 +1,6 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
-name: litmus-auth-k8s
+name: litmus-chaoscenter-k8s
 type: charm
 title: Litmus Authentication Server
 
@@ -9,27 +9,27 @@ assumes:
   - juju >= 3.6.0
 
 description: |
-  Litmus Authentication Server is a component of the LitmusChaos solution, an open source platform used for chaos testing.
-  It is responsible for authenticating and authorising requests received by the ChaosCenter, and for managing users and their associated projects.
+  Litmus ChaosCenter is a component of the LitmusChaos solution, an open source platform used for chaos testing.
+  It is responsible for serving the user interface for the Litmus solution, allowing to schedule experiments.
 
 summary: |
-  Litmus Authentication Server is a component of the LitmusChaos solution, an open source platform used for chaos testing.
+  Litmus ChaosCenter is a component of the LitmusChaos solution, an open source platform used for chaos testing.
 
 containers:
-  authserver:
-    resource: litmus-auth-image
+  nginx:
+    resource: litmus-chaoscenter-image
 
 resources:
-  litmus-auth-image:
+  litmus-chaoscenter-image:
     type: oci-image
-    description: OCI image for Litmus authentication server 
+    description: OCI image for Litmus frontend server 
     # FIXME: use the rock https://github.com/canonical/litmus-operators/issues/5
-    upstream-source: litmuschaos/litmusportal-auth-server:3.19.0
+    upstream-source: litmuschaos/litmusportal-frontend:3.19.0
 
 links:
   # FIXME: update discourse link https://github.com/canonical/litmus-operators/issues/4
   documentation: https://discourse.charmhub.io/t/18122
-  website: https://charmhub.io/litmus-auth-k8s
+  website: https://charmhub.io/litmus-chaoscenter-k8s
   source: https://github.com/canonical/litmus-operators/tree/main/auth
   issues: https://github.com/canonical/litmus-operators/issues
 
