@@ -15,6 +15,7 @@ on:
         description: Charm to promote
         options:
           - auth
+          - backend
           - chaoscenter
 
 jobs:
