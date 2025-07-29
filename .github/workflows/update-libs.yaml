@@ -13,15 +13,18 @@ jobs:
     secrets: inherit
     with:
       charm-path: auth
+      git-branch: chore/auto-libs/auth
   update-lib-chaoscenter:
     name: Check libraries
     uses: canonical/observability/.github/workflows/charm-update-libs.yaml@v1
     secrets: inherit
     with:
       charm-path: chaoscenter
+      git-branch: chore/auto-libs/chaoscenter
   update-lib-backend:
     name: Check libraries
     uses: canonical/observability/.github/workflows/charm-update-libs.yaml@v1
     secrets: inherit
     with:
       charm-path: backend
+      git-branch: chore/auto-libs/backend
