@@ -3,7 +3,7 @@
 [project]
 name = "litmus-k8s"
 version = "0.1"  # this is in fact irrelevant
-requires-python = ">=3.12"
+requires-python = "~=3.12.0"
 
 
 [project.optional-dependencies]

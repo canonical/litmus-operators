@@ -23,8 +23,16 @@ resources:
   litmus-chaoscenter-image:
     type: oci-image
     description: OCI image for Litmus frontend server 
-    # FIXME: use the rock https://github.com/canonical/litmus-operators/issues/5
-    upstream-source: litmuschaos/litmusportal-frontend:3.19.0
+    upstream-source: ubuntu/litmuschaos-frontend:3-24.04_edge
+
+requires:
+  database:
+    optional: false
+    interface: mongodb_client
+    limit: 1
+    description: |
+      Require a MongoDB database to store essential information for Litmus Chaos,
+      including projects, users, chaos workflows, experiments, and the results generated from these experiments. 
 
 links:
   # FIXME: update discourse link https://github.com/canonical/litmus-operators/issues/4

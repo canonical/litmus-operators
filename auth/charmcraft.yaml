@@ -23,8 +23,7 @@ resources:
   litmus-auth-image:
     type: oci-image
     description: OCI image for Litmus authentication server 
-    # FIXME: use the rock https://github.com/canonical/litmus-operators/issues/5
-    upstream-source: litmuschaos/litmusportal-auth-server:3.19.0
+    upstream-source: ubuntu/litmuschaos-authserver:3-24.04_edge
 
 links:
   # FIXME: update discourse link https://github.com/canonical/litmus-operators/issues/4
