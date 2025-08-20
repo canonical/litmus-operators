@@ -96,6 +96,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "cosl" },
     { name = "ops" },
+    { name = "pydantic" },
 ]
 
 [package.optional-dependencies]
@@ -117,6 +118,7 @@ requires-dist = [
     { name = "jubilant", marker = "extra == 'dev'" },
     { name = "ops" },
     { name = "ops", extras = ["testing"], marker = "extra == 'dev'" },
+    { name = "pydantic", specifier = ">2" },
     { name = "pyright", marker = "extra == 'dev'" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "pytest-cov", marker = "extra == 'dev'" },

@@ -8,12 +8,13 @@ from typing import Optional
 
 from ops.charm import CharmBase
 from ops import ActiveStatus, CollectStatusEvent, BlockedStatus, WaitingStatus
+from pydantic_core import ValidationError
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseRequires,
 )
 from litmus_frontend import LitmusFrontend
 from cosl.reconciler import all_events, observe_events
-from database_model import DatabaseConfig
+from models import DatabaseConfig
 
 logger = logging.getLogger(__name__)
 
@@ -47,17 +48,16 @@ class LitmusChaoscenterCharm(CharmBase):
         observe_events(self, all_events, self._reconcile)
 
     @property
-    def _database_config(self) -> Optional[DatabaseConfig]:
+    def database_config(self) -> Optional[DatabaseConfig]:
         remote_relations_databags = self._database.fetch_relation_data()
         if not remote_relations_databags:
             return None
         # because of limit: 1, we'll only have at most 1 remote relation
         remote_relation_databag = next(iter(remote_relations_databags.values()))
-        return (
-            DatabaseConfig(**remote_relation_databag)
-            if remote_relation_databag
-            else None
-        )
+        try:
+            return DatabaseConfig(**remote_relation_databag)
+        except ValidationError:
+            return None
 
     ##################
     # EVENT HANDLERS #
@@ -65,7 +65,7 @@ class LitmusChaoscenterCharm(CharmBase):
     def _on_collect_unit_status(self, e: CollectStatusEvent):
         if not self._database.relations:
             e.add_status(BlockedStatus("Missing MongoDB integration."))
-        if not self._database_config:
+        if not self.database_config:
             e.add_status(WaitingStatus("MongoDB config not ready."))
 
         e.add_status(ActiveStatus(""))
