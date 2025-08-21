@@ -48,14 +48,14 @@ class LitmusAuthDataProvider:
         self._relation = relation
         self._app = app
 
-    def publish_auth_data(
+    def publish_auth_service_data(
         self,
         grpc_server_host: str,
         grpc_server_port: int,
         insecure: bool = False,
         dex_config: Optional[DexConfig] = None,
     ):
-        """Publish litmus auth data to the requirer."""
+        """Publish litmus auth service data to the requirer."""
         try:
             self._relation.save(
                 AuthProviderAppDatabagModel(
@@ -68,7 +68,7 @@ class LitmusAuthDataProvider:
         except ops.ModelError:
             logger.debug("failed to validate app data; is the relation still being created?")
 
-    def get_endpoint(self) -> Optional[AuthRequirerAppDatabagModel]:
+    def get_requirer_endpoint(self) -> Optional[AuthRequirerAppDatabagModel]:
         """Obtain the requirer's gRPC server endpoint."""
         try:
             return self._relation.load(AuthRequirerAppDatabagModel, self._relation.app)
@@ -104,8 +104,8 @@ class LitmusAuthDataRequirer:
         except ops.ModelError:
             logger.debug("failed to validate app data; is the relation still being created?")
 
-    def get_auth_data(self) -> Optional[AuthProviderAppDatabagModel]:
-        """Obtain the auth data from the provider relation."""
+    def get_auth_service_data(self) -> Optional[AuthProviderAppDatabagModel]:
+        """Obtain the litmus auth service data from the provider relation."""
         try:
             return self._relation.load(AuthProviderAppDatabagModel, self._relation.app)
         except ops.ModelError:
