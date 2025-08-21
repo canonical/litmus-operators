@@ -4,7 +4,7 @@
 """Litmus auth integration endpoint wrapper."""
 
 import logging
-from typing import Optional
+from typing import List, Optional
 
 import ops
 import pydantic
@@ -44,8 +44,8 @@ class AuthRequirerAppDatabagModel(pydantic.BaseModel):
 class LitmusAuthDataProvider:
     """Wraps a litmus_auth provider endpoint."""
 
-    def __init__(self, relation: ops.Relation, app: ops.Application):
-        self._relation = relation
+    def __init__(self, relations: List[ops.Relation], app: ops.Application):
+        self._relations = relations
         self._app = app
 
     def publish_auth_service_data(
@@ -55,36 +55,43 @@ class LitmusAuthDataProvider:
         insecure: bool = False,
         dex_config: Optional[DexConfig] = None,
     ):
-        """Publish litmus auth service data to the requirer."""
-        try:
-            self._relation.save(
-                AuthProviderAppDatabagModel(
-                    grpc_server_host=grpc_server_host,
-                    grpc_server_port=grpc_server_port,
-                    dex_config=dex_config,
-                    insecure=insecure,
-                ),
-                self._app,
-            )
-        except ops.ModelError:
-            logger.debug("failed to validate app data; is the relation still being created?")
+        """Publish litmus auth service data to the requirers."""
+        for relation in self._relations:
+            try:
+                relation.save(
+                    AuthProviderAppDatabagModel(
+                        grpc_server_host=grpc_server_host,
+                        grpc_server_port=grpc_server_port,
+                        dex_config=dex_config,
+                        insecure=insecure,
+                    ),
+                    self._app,
+                )
+            except ops.ModelError:
+                logger.debug("failed to validate app data; is the relation still being created?")
+                continue
 
-    def get_requirer_endpoint(self) -> Optional[AuthRequirerAppDatabagModel]:
-        """Obtain the requirer's gRPC server endpoint."""
-        try:
-            return self._relation.load(AuthRequirerAppDatabagModel, self._relation.app)
-        except ops.ModelError:
-            logger.debug("failed to validate app data; is the relation still being created?")
-        except pydantic.ValidationError:
-            logger.debug("failed to validate app data; is the relation still settling?")
-        return None
+    def get_requirer_endpoint(self) -> List[AuthRequirerAppDatabagModel]:
+        """Obtain the requirers' gRPC server endpoint."""
+        out = []
+        for relation in sorted(self._relations, key=lambda x: x.id):
+            try:
+                data = relation.load(AuthRequirerAppDatabagModel, relation.app)
+            except ops.ModelError:
+                logger.debug("failed to validate app data; is the relation still being created?")
+                continue
+            except pydantic.ValidationError:
+                logger.debug("failed to validate app data; is the relation still settling?")
+                continue
+            out.append(data)
+        return out
 
 
 class LitmusAuthDataRequirer:
     """Wraps a litmus_auth requirer endpoint."""
 
-    def __init__(self, relation: ops.Relation, app: ops.Application):
-        self._relation = relation
+    def __init__(self, relations: List[ops.Relation], app: ops.Application):
+        self._relations = relations
         self._app = app
 
     def publish_endpoint(
@@ -93,25 +100,32 @@ class LitmusAuthDataRequirer:
         grpc_server_port: int,
         insecure: bool = False,
     ):
-        """Publish the requirer's gRPC server endpoint to the provider."""
-        try:
-            self._relation.save(
-                AuthRequirerAppDatabagModel(
-                    grpc_server_host=grpc_server_host,
-                    grpc_server_port=grpc_server_port,
-                    insecure=insecure,
-                ),
-                self._app,
-            )
-        except ops.ModelError:
-            logger.debug("failed to validate app data; is the relation still being created?")
+        """Publish the requirer's gRPC server endpoint to the providers."""
+        for relation in self._relations:
+            try:
+                relation.save(
+                    AuthRequirerAppDatabagModel(
+                        grpc_server_host=grpc_server_host,
+                        grpc_server_port=grpc_server_port,
+                        insecure=insecure,
+                    ),
+                    self._app,
+                )
+            except ops.ModelError:
+                logger.debug("failed to validate app data; is the relation still being created?")
+                continue
 
-    def get_auth_service_data(self) -> Optional[AuthProviderAppDatabagModel]:
-        """Obtain the litmus auth service data from the provider relation."""
-        try:
-            return self._relation.load(AuthProviderAppDatabagModel, self._relation.app)
-        except ops.ModelError:
-            logger.debug("failed to validate app data; is the relation still being created?")
-        except pydantic.ValidationError:
-            logger.debug("failed to validate app data; is the relation still settling?")
-        return None
+    def get_auth_service_data(self) -> List[AuthProviderAppDatabagModel]:
+        """Obtain the litmus auth service data from the provider relations."""
+        out = []
+        for relation in sorted(self._relations, key=lambda x: x.id):
+            try:
+                data = relation.load(AuthProviderAppDatabagModel, relation.app)
+            except ops.ModelError:
+                logger.debug("failed to validate app data; is the relation still being created?")
+                continue
+            except pydantic.ValidationError:
+                logger.debug("failed to validate app data; is the relation still settling?")
+                continue
+            out.append(data)
+        return out
