@@ -26,7 +26,7 @@ class LitmusAuthCharm(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
 
-        self.unit.set_ports(LitmusAuth.http_port)
+        self.unit.set_ports(LitmusAuth.http_port, LitmusAuth.grpc_port)
         self._database = DatabaseRequires(
             self,
             relation_name="database",
@@ -39,6 +39,7 @@ class LitmusAuthCharm(CharmBase):
 
         self.litmus_auth = LitmusAuth(
             container=self.unit.get_container(LitmusAuth.name),
+            db_config=self.database_config,
         )
 
         self.framework.observe(
@@ -66,6 +67,8 @@ class LitmusAuthCharm(CharmBase):
     def _on_collect_unit_status(self, e: CollectStatusEvent):
         if not self._database.relations:
             e.add_status(BlockedStatus("Missing MongoDB integration."))
+        # TODO: set to blocked if `litmus_auth` integration is not present
+        # https://github.com/canonical/litmus-operators/issues/17
         if not self.database_config:
             e.add_status(WaitingStatus("MongoDB config not ready."))
 

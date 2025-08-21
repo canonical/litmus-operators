@@ -1,14 +1,13 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 import logging
-import shlex
-import subprocess
 import pytest
 from jubilant import Juju, all_blocked, all_active, any_error
 from pathlib import Path
 from conftest import APP, RESOURCES
 
 MONGO_APP = "mongodb-k8s"
+
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +18,7 @@ def test_setup(juju: Juju, charm: Path):
     juju.deploy(MONGO_APP, trust=True)
     juju.integrate(f"{APP}:database", MONGO_APP)
 
-    # TODO: assert that backend server will be blocked because of missing auth server integration
+    # TODO: assert that the auth charm will be blocked because of missing auth server integration
     # https://github.com/canonical/litmus-operators/issues/17
     juju.wait(
         lambda status: all_active(status, MONGO_APP),
@@ -30,15 +29,7 @@ def test_setup(juju: Juju, charm: Path):
     )
 
 
-def test_backend_is_running(juju: Juju):
-    backend_ip = list(juju.status().get_units(APP).values())[0].public_address
-    cmd = (
-        f"curl {backend_ip}:8080/query "
-        '-H "Content-Type: application/json" '
-        '-d \'{"query": "{ listEnvironments(projectID:"test") {environments {name} } }"}\''
-    )
-    out = subprocess.run(shlex.split(cmd), text=True, capture_output=True)
-    assert out.returncode == 0
+# FIXME: add a test
 
 
 @pytest.mark.teardown

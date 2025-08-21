@@ -26,7 +26,7 @@ class LitmusBackendCharm(CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
-        self.unit.set_ports(LitmusBackend.http_port)
+        self.unit.set_ports(LitmusBackend.http_port, LitmusBackend.grpc_port)
 
         self._database = DatabaseRequires(
             self,
