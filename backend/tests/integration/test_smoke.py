@@ -19,10 +19,10 @@ def test_setup(juju: Juju, charm: Path):
     juju.deploy(MONGO_APP)
     juju.integrate(f"{APP}:database", MONGO_APP)
 
-    # TODO: backend server will be blocked because of missing auth server integration
+    # TODO: assert that backend server will be blocked because of missing auth server integration
     # https://github.com/canonical/litmus-operators/issues/17
     juju.wait(
-        lambda status: all_blocked(status, APP) and all_active(status, MONGO_APP),
+        lambda status: all_active(status, MONGO_APP),
         error=any_error,
         timeout=1000,
         delay=10,

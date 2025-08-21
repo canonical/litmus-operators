@@ -11,7 +11,7 @@ from litmus_backend import LitmusBackend
 from cosl.reconciler import all_events, observe_events
 from models import DatabaseConfig
 
-from ops import CollectStatusEvent, BlockedStatus, WaitingStatus
+from ops import ActiveStatus, CollectStatusEvent, BlockedStatus, WaitingStatus
 from pydantic_core import ValidationError
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseRequires,
@@ -68,12 +68,12 @@ class LitmusBackendCharm(CharmBase):
     def _on_collect_unit_status(self, e: CollectStatusEvent):
         if not self._database.relations:
             e.add_status(BlockedStatus("Missing MongoDB integration."))
+        # TODO: set to blocked if `litmus_auth` integration is not present
+        # https://github.com/canonical/litmus-operators/issues/17
         if not self.database_config:
             e.add_status(WaitingStatus("MongoDB config not ready."))
 
-        # TODO: check that the `litmus_auth` integration is present
-        # https://github.com/canonical/litmus-operators/issues/17
-        e.add_status(BlockedStatus("missing auth server integration"))
+        e.add_status(ActiveStatus(""))
 
     ###################
     # UTILITY METHODS #
