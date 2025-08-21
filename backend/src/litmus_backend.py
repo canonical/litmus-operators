@@ -8,6 +8,8 @@ import logging
 
 from ops import Container
 from ops.pebble import Layer
+from typing import Optional
+from models import DatabaseConfig
 
 
 logger = logging.getLogger(__name__)
@@ -18,9 +20,11 @@ class LitmusBackend:
 
     name = "litmuschaos-server"
     http_port = 8080
+    grpc_port = 8000
 
-    def __init__(self, container: Container):
+    def __init__(self, container: Container, db_config: Optional[DatabaseConfig]):
         self._container = container
+        self._db_config = db_config
 
     def reconcile(self):
         """Unconditional control logic."""
@@ -28,29 +32,52 @@ class LitmusBackend:
             self._reconcile_workload_config()
 
     def _reconcile_workload_config(self):
-        layer = self._pebble_layer
-        services = layer.services.keys()
-        self._container.add_layer(self.name, layer, combine=True)
-        # FIXME: only restart if we have a valid config else stop the service
-        # if VALID_CONFIG
-        # self._container.restart(*services)
-        # else
-        self._container.stop(*services)
+        self._container.add_layer(self.name, self._pebble_layer, combine=True)
+        # replan only if the available env var config is sufficient for the workload to run
+        if self._db_config:
+            self._container.replan()
+        else:
+            self._container.stop(self.name)
 
     @property
     def _pebble_layer(self) -> Layer:
         """Return a Pebble layer for Litmus backend server."""
-        # FIXME: Backend server is configured using env variables
-        # reconcile based on existing and new env vars
-        env = {}
+        env = {
+            "REST_PORT": self.http_port,
+            "GRPC_PORT": self.grpc_port,
+            "INFRA_DEPLOYMENTS": '["app=chaos-exporter", "name=chaos-operator", "app=workflow-controller", "app=event-tracker"]',
+            "DEFAULT_HUB_BRANCH_NAME": "master",
+            "ALLOWED_ORIGINS": ".*",
+            "CONTAINER_RUNTIME_EXECUTOR": "k8sapi",
+            # TODO: is there a way to provide the version instead of hardcoding it below?
+            # https://github.com/canonical/litmus-operators/issues/16
+            "WORKFLOW_HELPER_IMAGE_VERSION": "3.20.0",
+            "INFRA_COMPATIBLE_VERSIONS": '["3.20.0"]',
+            "VERSION": "3.20.0",
+            # TODO: use the rocks https://github.com/canonical/litmus-operators/issues/15
+            "SUBSCRIBER_IMAGE": "litmuschaos/litmusportal-subscriber:3.20.0",
+            "EVENT_TRACKER_IMAGE": "litmuschaos/litmusportal-event-tracker:3.20.0",
+            "ARGO_WORKFLOW_CONTROLLER_IMAGE": "litmuschaos/workflow-controller:v3.3.1",
+            "ARGO_WORKFLOW_EXECUTOR_IMAGE": "litmuschaos/argoexec:v3.3.1",
+            "LITMUS_CHAOS_OPERATOR_IMAGE": "litmuschaos/chaos-operator:3.20.0",
+            "LITMUS_CHAOS_RUNNER_IMAGE": "litmuschaos/chaos-runner:3.20.0",
+            "LITMUS_CHAOS_EXPORTER_IMAGE": "litmuschaos/chaos-exporter:3.20.0",
+        }
+        if db_config := self._db_config:
+            env.update(
+                {
+                    "DB_USER": db_config.username,
+                    "DB_PASSWORD": db_config.password,
+                    "DB_SERVER": db_config.uris,
+                }
+            )
         return Layer(
             {
                 "services": {
                     self.name: {
                         "override": "replace",
                         "summary": "litmus backend server layer",
-                        # FIXME: after switching to the rock, change the binary to /bin/server
-                        "command": "server",
+                        "command": "/bin/server",
                         "startup": "enabled",
                         "environment": env,
                     }

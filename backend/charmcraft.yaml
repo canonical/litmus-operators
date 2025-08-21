@@ -41,6 +41,8 @@ requires:
       Require a MongoDB database to store essential information for Litmus Chaos,
       including chaos workflows, experiments, and the results generated from these experiments. 
 
+      Note: This should be the same MongoDB instance used by the Litmus auth server (and vice versa).
+
 platforms:
   ubuntu@24.04:amd64:
 

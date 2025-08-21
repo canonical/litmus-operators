@@ -11,7 +11,7 @@ from litmus_backend import LitmusBackend
 from cosl.reconciler import all_events, observe_events
 from models import DatabaseConfig
 
-from ops import ActiveStatus, CollectStatusEvent, BlockedStatus, WaitingStatus
+from ops import CollectStatusEvent, BlockedStatus, WaitingStatus
 from pydantic_core import ValidationError
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseRequires,
@@ -40,6 +40,7 @@ class LitmusBackendCharm(CharmBase):
 
         self.litmus_backend = LitmusBackend(
             container=self.unit.get_container(LitmusBackend.name),
+            db_config=self.database_config,
         )
 
         self.framework.observe(
@@ -70,7 +71,9 @@ class LitmusBackendCharm(CharmBase):
         if not self.database_config:
             e.add_status(WaitingStatus("MongoDB config not ready."))
 
-        e.add_status(ActiveStatus(""))
+        # TODO: check that the `litmus_auth` integration is present
+        # https://github.com/canonical/litmus-operators/issues/17
+        e.add_status(BlockedStatus("missing auth server integration"))
 
     ###################
     # UTILITY METHODS #
