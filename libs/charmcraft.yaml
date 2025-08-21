@@ -1,0 +1,13 @@
+name: ceci-nest-pas-une-charm
+type: charm
+
+title: pass
+summary: pass
+description: pass
+bases:
+  - build-on:
+    - name: ubuntu
+      channel: "22.04"
+    run-on:
+    - name: ubuntu
+      channel: "22.04"
