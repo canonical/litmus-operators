@@ -23,7 +23,7 @@ def test_setup(juju: Juju, charm: Path):
     # https://github.com/canonical/litmus-operators/issues/17
     juju.wait(
         lambda status: all_active(status, MONGO_APP),
-        error=any_error,
+        error=lambda status: any_error(status, APP),
         timeout=1000,
         delay=10,
         successes=5,
@@ -46,7 +46,7 @@ def test_teardown(juju: Juju):
     juju.remove_application(MONGO_APP)
     juju.wait(
         lambda status: all_blocked(status, APP),
-        error=any_error,
+        error=lambda status: any_error(status, APP),
         timeout=1000,
         delay=10,
         successes=5,

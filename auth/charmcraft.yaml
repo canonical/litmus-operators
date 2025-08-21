@@ -34,7 +34,7 @@ requires:
       Require a MongoDB database to store essential information for 
       Litmus Chaos, including projects, and users.
 
-      Note: This should be the same MongoDB instance used by the Litmus backend server (and vice versa).
+      Note: This should be the same MongoDB instance used by the Litmus backend server.
 
 links:
   # FIXME: update discourse link https://github.com/canonical/litmus-operators/issues/4
