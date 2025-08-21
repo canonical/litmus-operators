@@ -63,7 +63,8 @@ class LitmusAuthDataProvider:
                     grpc_server_port=grpc_server_port,
                     dex_config=dex_config,
                     insecure=insecure,
-                )
+                ),
+                self._app,
             )
         except ops.ModelError:
             logger.debug("failed to validate app data; is the relation still being created?")
@@ -99,7 +100,8 @@ class LitmusAuthDataRequirer:
                     grpc_server_host=grpc_server_host,
                     grpc_server_port=grpc_server_port,
                     insecure=insecure,
-                )
+                ),
+                self._app,
             )
         except ops.ModelError:
             logger.debug("failed to validate app data; is the relation still being created?")
