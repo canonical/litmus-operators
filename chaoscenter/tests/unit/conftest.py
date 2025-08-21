@@ -1,7 +1,7 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-from ops.testing import Container, Context, Relation
+from ops.testing import Container, Context
 import pytest
 from charm import LitmusChaoscenterCharm
 
@@ -22,8 +22,3 @@ def nginx_container():
 @pytest.fixture
 def ctx(chaoscenter_charm):
     return Context(charm_type=chaoscenter_charm)
-
-
-@pytest.fixture
-def database_relation():
-    return Relation("database")

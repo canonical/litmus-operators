@@ -17,6 +17,7 @@ class LitmusAuth:
     """Litmus Authentication server workload."""
 
     name = "authserver"
+    http_port = 3000
 
     def __init__(self, container: Container):
         self._container = container

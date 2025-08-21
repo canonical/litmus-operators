@@ -1,7 +1,7 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-from ops.testing import Container, Context
+from ops.testing import Container, Context, Relation
 import pytest
 from charm import LitmusBackendCharm
 
@@ -22,3 +22,8 @@ def backend_container():
 @pytest.fixture
 def ctx(backend_charm):
     return Context(charm_type=backend_charm)
+
+
+@pytest.fixture
+def database_relation():
+    return Relation("database")

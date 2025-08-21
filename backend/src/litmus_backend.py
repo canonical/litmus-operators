@@ -17,6 +17,7 @@ class LitmusBackend:
     """Litmus Backend server workload."""
 
     name = "litmuschaos-server"
+    http_port = 8080
 
     def __init__(self, container: Container):
         self._container = container

@@ -32,6 +32,15 @@ links:
   source: https://github.com/canonical/litmus-operators/tree/main/backend
   issues: https://github.com/canonical/litmus-operators/issues
 
+requires:
+  database:
+    optional: false
+    interface: mongodb_client
+    limit: 1
+    description: |
+      Require a MongoDB database to store essential information for Litmus Chaos,
+      including chaos workflows, experiments, and the results generated from these experiments. 
+
 platforms:
   ubuntu@24.04:amd64:
 

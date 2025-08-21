@@ -11,7 +11,9 @@ logger = logging.getLogger(__name__)
 
 @pytest.mark.setup
 def test_deploy_litmus_backend_server(juju: Juju, charm: Path):
-    juju.deploy(charm, BACKEND_SERVER_APP, resources=BACKEND_SERVER_RESOURCES, trust=True)
+    juju.deploy(
+        charm, BACKEND_SERVER_APP, resources=BACKEND_SERVER_RESOURCES, trust=True
+    )
 
     # backend server will be blocked because of missing control plane integrations
     juju.wait(

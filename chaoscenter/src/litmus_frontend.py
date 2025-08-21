@@ -17,7 +17,6 @@ class LitmusFrontend:
     """Litmus frontend workload."""
 
     name = "nginx"
-    port = 8185
 
     def __init__(self, container: Container):
         self._container = container

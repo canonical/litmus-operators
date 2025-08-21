@@ -25,6 +25,15 @@ resources:
     description: OCI image for Litmus authentication server 
     upstream-source: ubuntu/litmuschaos-authserver:3-24.04_edge
 
+requires:
+  database:
+    optional: false
+    interface: mongodb_client
+    limit: 1
+    description: |
+      Require a MongoDB database to store essential information for 
+      Litmus Chaos, including projects, and users.
+
 links:
   # FIXME: update discourse link https://github.com/canonical/litmus-operators/issues/4
   documentation: https://discourse.charmhub.io/t/18122

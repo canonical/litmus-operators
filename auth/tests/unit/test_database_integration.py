@@ -30,7 +30,7 @@ from ops.testing import State
     ),
 )
 def test_require_database(
-    ctx, nginx_container, database_relation, databag, expected, leader
+    ctx, authserver_container, database_relation, databag, expected, leader
 ):
     # GIVEN a database integration with remote app data
     database_relation = dataclasses.replace(database_relation, remote_app_data=databag)
@@ -38,7 +38,9 @@ def test_require_database(
     # WHEN a relation_changed event fires
     with ctx(
         state=State(
-            relations={database_relation}, containers={nginx_container}, leader=leader
+            relations={database_relation},
+            containers={authserver_container},
+            leader=leader,
         ),
         event=ctx.on.relation_changed(database_relation),
     ) as mgr:
