@@ -6,11 +6,18 @@ import subprocess
 import pytest
 from jubilant import Juju, all_blocked, all_active, any_error
 from pathlib import Path
+
+from tenacity import retry, stop_after_attempt, wait_fixed
 from conftest import APP, RESOURCES
 
 MONGO_APP = "mongodb-k8s"
 
 logger = logging.getLogger(__name__)
+
+
+def _get_unit_ip_address(juju: Juju, app_name: str, unit_no: int):
+    """Return a juju unit's IP address."""
+    return juju.status().apps[app_name].units[f"{app_name}/{unit_no}"].address
 
 
 @pytest.mark.setup
@@ -30,8 +37,9 @@ def test_setup(juju: Juju, charm: Path):
     )
 
 
+@retry(stop=stop_after_attempt(6), wait=wait_fixed(10))
 def test_backend_is_running(juju: Juju):
-    backend_ip = list(juju.status().get_units(APP).values())[0].public_address
+    backend_ip = _get_unit_ip_address(juju, APP, 0)
     cmd = (
         f"curl {backend_ip}:8080/query "
         '-H "Content-Type: application/json" '
