@@ -23,8 +23,18 @@ resources:
   litmus-auth-image:
     type: oci-image
     description: OCI image for Litmus authentication server 
-    # FIXME: use the rock https://github.com/canonical/litmus-operators/issues/5
-    upstream-source: litmuschaos/litmusportal-auth-server:3.19.0
+    upstream-source: ubuntu/litmuschaos-authserver:3-24.04_edge
+
+requires:
+  database:
+    optional: false
+    interface: mongodb_client
+    limit: 1
+    description: |
+      Require a MongoDB database to store essential information for 
+      Litmus Chaos, including projects, and users.
+
+      Note: This should be the same MongoDB instance used by the Litmus backend server.
 
 links:
   # FIXME: update discourse link https://github.com/canonical/litmus-operators/issues/4
