@@ -1,6 +1,6 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
-from libs.src.litmus_libs.models import DatabaseConfig
+from litmus_libs.models import DatabaseConfig
 
 
 def test_database_config_ignores_extra_args():

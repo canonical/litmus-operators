@@ -22,7 +22,7 @@ jobs:
         with:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           fetch-depth: 0
-      - name: Determine changed files in the auth charm
+      - name: Determine changed files in libs
         id: libs-changed-files
         uses: tj-actions/changed-files@v45
         with:
@@ -54,16 +54,16 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 1
-      - name: Set up Python 3.8
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: 3.8
+          python-version: 3.12
       - name: Install dependencies
         run: |
           sudo snap install charmcraft --classic
           sudo snap install astral-uv --classic
       - name: Run static analysis
-        run: cd libs && uvx tox -vve fetch-libs,static
+        run: cd libs && uvx tox -vve static
   linting:
     name: Linting
     needs: libs-changed
@@ -77,13 +77,13 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.8
+          python-version: 3.12
       - name: Install dependencies
         run: |
           sudo snap install charmcraft --classic
           sudo snap install astral-uv --classic
       - name: Run linters
-        run: cd libs && uvx tox -vve fetch-libs,lint
+        run: cd libs && uvx tox -vve lint
   unit-test:
     name: Unit Tests
     needs: libs-changed
@@ -97,10 +97,10 @@ jobs:
       - name: Set up python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.8
+          python-version: 3.12
       - name: Install dependencies
         run: |
           sudo snap install charmcraft --classic
           sudo snap install astral-uv --classic
       - name: Run tests
-        run: cd libs && uvx tox -e fetch-libs,unit
+        run: cd libs && uvx tox -e unit

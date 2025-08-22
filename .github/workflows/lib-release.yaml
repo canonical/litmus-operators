@@ -20,12 +20,12 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.8"
+          python-version: "3.12"
       - name: Auto set version from tag
         # Ref: https://github.com/grst/python-ci-versioneer
         run: |
-          # from refs/tags/1.2.3 get 1.2.3
-          VERSION=$(echo $GITHUB_REF | sed 's#.*/##')
+          # from refs/tags/libs-1.2.3 get 1.2.3
+          VERSION=$(echo $GITHUB_REF | sed 's#.*/libs-##')
           cd libs
           echo "Setting version to $VERSION"
           PLACEHOLDER='^version\s*=.*'
