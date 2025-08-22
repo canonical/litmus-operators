@@ -74,19 +74,24 @@ class LitmusAuthDataProvider:
         self,
         relations: List[ops.Relation],
         app: ops.Application,
-        secret_getter: Callable[..., ops.Secret],
         secret_setter: Callable[..., ops.Secret],
+        secret_getter: Callable[..., ops.Secret],
     ):
         self._relations = relations
         self._app = app
-        self._secret_getter = secret_getter
         self._secret_setter = secret_setter
+        self._secret_getter = secret_getter
 
-    def _store_dex_config_in_secret(self, dex: DexConfig) -> ops.Secret:
-        content = {
-            "dex_oauth_client_secret": dex.dex_oauth_client_secret,
-            "oauth_jwt_secret": dex.oauth_jwt_secret,
-        }
+    def _store_dex_config_in_secret(self, dex: DexConfig) -> Optional[ops.Secret]:
+        if dex is None:
+            return None
+        content = {}
+        if dex.dex_oauth_client_secret is not None:
+            content["dex-oauth-client-secret"] = dex.dex_oauth_client_secret
+        if dex.oauth_jwt_secret is not None:
+            content["oauth-jwt-secret"] = dex.oauth_jwt_secret
+        if not content:
+            return None
         try:
             secret = self._secret_getter(label=DEX_SECRET_LABEL)
             secret.set_content(content)  # pyright: ignore
@@ -101,26 +106,30 @@ class LitmusAuthDataProvider:
 
     def publish_auth_data(
         self,
-        auth_data_config: AuthDataConfig,
+        auth_data: AuthDataConfig,
     ):
         """Publish litmus auth service data to the requirers."""
-        databag_dex_config = None
-        dex_secret = None
-        if auth_data_config.dex_config:
-            dex_secret = self._store_dex_config_in_secret(auth_data_config.dex_config)
-            databag_dex_config = _DexConfigDatabagModel(
-                **auth_data_config.dex_config.model_dump(),
-                auth_secret_id=dex_secret.get_info().id,
-            )
+        dex_secret = self._store_dex_config_in_secret(auth_data.dex_config)
 
         for relation in self._relations:
             try:
                 relation.save(
                     AuthProviderAppDatabagModel(
-                        grpc_server_host=auth_data_config.grpc_server_host,
-                        grpc_server_port=auth_data_config.grpc_server_port,
-                        insecure=auth_data_config.insecure,
-                        dex_config=databag_dex_config,
+                        grpc_server_host=auth_data.grpc_server_host,
+                        grpc_server_port=auth_data.grpc_server_port,
+                        insecure=auth_data.insecure,
+                        dex_config=(
+                            {
+                                **auth_data.dex_config.model_dump(),
+                                **(
+                                    {"auth_secret_id": dex_secret.get_info().id}
+                                    if dex_secret
+                                    else {}
+                                ),
+                            }
+                        )
+                        if auth_data.dex_config
+                        else None,
                     ),
                     self._app,
                 )
@@ -163,7 +172,8 @@ class LitmusAuthDataRequirer:
 
     def _get_dex_secret_content(self, secret_id: str) -> Dict[str, str]:
         dex_secret = self._secret_getter(id=secret_id)
-        return dex_secret.get_content()
+        content = dex_secret.get_content()
+        return {k.replace("-", "_"): v for k, v in content.items()}
 
     def publish_endpoint(
         self,
