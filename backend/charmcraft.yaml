@@ -44,7 +44,6 @@ requires:
 
       Note: This should be the same MongoDB instance used by the Litmus auth server.
 
-
 platforms:
   ubuntu@24.04:amd64:
 
