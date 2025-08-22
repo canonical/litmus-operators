@@ -13,6 +13,7 @@ from .base import BaseVersionedModel, SimpleEndpointWrapper
 
 logger = logging.getLogger()
 
+DEX_SECRET_LABEL = "dex-secret-label"
 
 @dataclass
 class Endpoint:
