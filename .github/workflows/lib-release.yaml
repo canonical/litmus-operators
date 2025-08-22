@@ -6,7 +6,7 @@ on:
 
 jobs:
   quality:
-    uses: ./.github/workflows/pull-request.yaml
+    uses: ./.github/workflows/lib-pull-request.yaml
   release:
     name: Build and Publish to PyPI
     runs-on: ubuntu-latest
