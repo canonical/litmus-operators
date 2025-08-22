@@ -25,14 +25,6 @@ resources:
     description: OCI image for Litmus Backend server 
     upstream-source: ubuntu/litmuschaos-server:3-24.04_edge
 
-requires:
-  auth-service:
-    interface: litmus_auth
-    optional: false
-    limit: 1
-    description: |
-      Require a Litmus authentication service endpoint and optional Dex
-      configuration to authorize requests to the backend server's routes.
 
 links:
   # FIXME: update discourse link https://github.com/canonical/litmus-operators/issues/4
