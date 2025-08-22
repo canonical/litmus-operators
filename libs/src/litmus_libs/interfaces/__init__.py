@@ -4,9 +4,9 @@
 """Litmus interfaces module."""
 
 from .litmus_auth import (
-    AuthProviderAppDatabagModel,
-    AuthRequirerAppDatabagModel,
+    AuthDataConfig,
     DexConfig,
+    Endpoint,
     LitmusAuthDataProvider,
     LitmusAuthDataRequirer,
 )
@@ -15,6 +15,6 @@ __all__ = [
     "LitmusAuthDataRequirer",
     "LitmusAuthDataProvider",
     "DexConfig",
-    "AuthRequirerAppDatabagModel",
-    "AuthProviderAppDatabagModel",
+    "Endpoint",
+    "AuthDataConfig",
 ]
