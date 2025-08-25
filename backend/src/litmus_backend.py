@@ -41,7 +41,7 @@ class LitmusBackend:
     def _reconcile_workload_config(self):
         self._container.add_layer(self.name, self._pebble_layer, combine=True)
         # replan only if the available env var config is sufficient for the workload to run
-        if self._db_config and self._auth_config:
+        if self._db_config:
             self._container.replan()
         else:
             self._container.stop(self.name)
