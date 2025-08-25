@@ -16,11 +16,10 @@ readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.12, <4"
 dependencies = [
-    "ops",
     "pydantic",
 ]
 classifiers = [
-    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.12",
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Topic :: Utilities",
