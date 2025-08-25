@@ -44,6 +44,8 @@ provides:
     description: |
       Provide a Litmus auth server endpoint to the Litmus backend server.
 
+      The backend server will also provide its own gRPC server endpoint to the auth server.
+
 links:
   # FIXME: update discourse link https://github.com/canonical/litmus-operators/issues/4
   documentation: https://discourse.charmhub.io/t/18122

@@ -30,7 +30,7 @@ from ops.testing import State, Model
         ),
     ),
 )
-def test_get_auth_data(
+def test_get_auth_grpc_endpoint(
     ctx, auth_relation, backend_container, databag, expected, leader
 ):
     # GIVEN an auth integration with remote app data
@@ -44,8 +44,8 @@ def test_get_auth_data(
         event=ctx.on.relation_changed(auth_relation),
     ) as mgr:
         charm = mgr.charm
-        # THEN the auth_endpoint is the same as expected
-        assert charm.auth_endpoint == expected
+        # THEN the auth_grpc_endpoint is the same as expected
+        assert charm.auth_grpc_endpoint == expected
 
 
 @pytest.mark.parametrize(

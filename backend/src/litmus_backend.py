@@ -27,11 +27,11 @@ class LitmusBackend:
         self,
         container: Container,
         db_config: Optional[DatabaseConfig],
-        auth_endpoint: Optional[Endpoint],
+        auth_grpc_endpoint: Optional[Endpoint],
     ):
         self._container = container
         self._db_config = db_config
-        self._auth_endpoint = auth_endpoint
+        self._auth_grpc_endpoint = auth_grpc_endpoint
 
     def reconcile(self):
         """Unconditional control logic."""
@@ -78,7 +78,7 @@ class LitmusBackend:
                     "DB_SERVER": db_config.uris,
                 }
             )
-        if auth_endpoint := self._auth_endpoint:
+        if auth_endpoint := self._auth_grpc_endpoint:
             env.update(
                 {
                     "LITMUS_AUTH_GRPC_ENDPOINT": auth_endpoint.grpc_server_host,

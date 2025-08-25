@@ -49,7 +49,7 @@ class LitmusBackendCharm(CharmBase):
         self.litmus_backend = LitmusBackend(
             container=self.unit.get_container(LitmusBackend.name),
             db_config=self.database_config,
-            auth_endpoint=self.auth_endpoint,
+            auth_grpc_endpoint=self.auth_grpc_endpoint,
         )
 
         self.framework.observe(
@@ -71,7 +71,7 @@ class LitmusBackendCharm(CharmBase):
             return None
 
     @property
-    def auth_endpoint(self) -> Optional[Endpoint]:
+    def auth_grpc_endpoint(self) -> Optional[Endpoint]:
         return self._auth.get_auth_grpc_endpoint()
 
     ##################
@@ -85,8 +85,10 @@ class LitmusBackendCharm(CharmBase):
             e.add_status(BlockedStatus("Missing litmus-auth integration."))
         if not self.database_config:
             e.add_status(WaitingStatus("MongoDB config not ready."))
-        if not self.auth_endpoint:
-            e.add_status(WaitingStatus("Auth server config not ready."))
+        if not self.auth_grpc_endpoint:
+            e.add_status(
+                WaitingStatus("Auth server has not provided its gRPC endpoint yet.")
+            )
 
         e.add_status(ActiveStatus(""))
 
