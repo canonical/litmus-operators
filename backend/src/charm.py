@@ -10,7 +10,7 @@ from ops.charm import CharmBase
 from litmus_backend import LitmusBackend
 from ops import ActiveStatus, CollectStatusEvent, BlockedStatus
 
-from litmus_libs.interfaces import LitmusAuthDataRequirer, AuthDataConfig, Endpoint
+from litmus_libs.interfaces import LitmusAuthDataRequirer, Endpoint
 from litmus_libs import DatabaseConfig, app_hostname
 from cosl.reconciler import all_events, observe_events
 
@@ -44,13 +44,12 @@ class LitmusBackendCharm(CharmBase):
         self._auth = LitmusAuthDataRequirer(
             self.model.get_relation("litmus-auth"),
             self.app,
-            self.model,
         )
 
         self.litmus_backend = LitmusBackend(
             container=self.unit.get_container(LitmusBackend.name),
             db_config=self.database_config,
-            auth_config=self.auth_config,
+            auth_endpoint=self.auth_endpoint,
         )
 
         self.framework.observe(
@@ -72,8 +71,8 @@ class LitmusBackendCharm(CharmBase):
             return None
 
     @property
-    def auth_config(self) -> Optional[AuthDataConfig]:
-        return self._auth.get_auth_data()
+    def auth_endpoint(self) -> Optional[Endpoint]:
+        return self._auth.get_auth_grpc_endpoint()
 
     ##################
     # EVENT HANDLERS #
@@ -86,7 +85,7 @@ class LitmusBackendCharm(CharmBase):
             e.add_status(BlockedStatus("Missing litmus-auth integration."))
         if not self.database_config:
             e.add_status(WaitingStatus("MongoDB config not ready."))
-        if not self.auth_config:
+        if not self.auth_endpoint:
             e.add_status(WaitingStatus("Auth server config not ready."))
 
         e.add_status(ActiveStatus(""))

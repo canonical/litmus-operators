@@ -49,7 +49,9 @@ requires:
     interface: litmus_auth
     limit: 1
     description: |
-      Require a Litmus auth server endpoint to authorize requests to the backend server's routes.
+      Require a Litmus auth server endpoint to authorize requests to the backend server.
+
+      The backend server will also provide its own gRPC server endpoint to the Litmus auth server.
 
 platforms:
   ubuntu@24.04:amd64:

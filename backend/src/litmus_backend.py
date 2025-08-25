@@ -10,7 +10,7 @@ from ops import Container
 from ops.pebble import Layer
 from typing import Optional
 from litmus_libs import DatabaseConfig
-from litmus_libs.interfaces import AuthDataConfig
+from litmus_libs.interfaces import Endpoint
 
 
 logger = logging.getLogger(__name__)
@@ -27,11 +27,11 @@ class LitmusBackend:
         self,
         container: Container,
         db_config: Optional[DatabaseConfig],
-        auth_config: Optional[AuthDataConfig],
+        auth_endpoint: Optional[Endpoint],
     ):
         self._container = container
         self._db_config = db_config
-        self._auth_config = auth_config
+        self._auth_endpoint = auth_endpoint
 
     def reconcile(self):
         """Unconditional control logic."""
@@ -78,11 +78,11 @@ class LitmusBackend:
                     "DB_SERVER": db_config.uris,
                 }
             )
-        if auth_config := self._auth_config:
+        if auth_endpoint := self._auth_endpoint:
             env.update(
                 {
-                    "LITMUS_AUTH_GRPC_ENDPOINT": auth_config.grpc_server_host,
-                    "LITMUS_AUTH_GRPC_PORT": auth_config.grpc_server_port,
+                    "LITMUS_AUTH_GRPC_ENDPOINT": auth_endpoint.grpc_server_host,
+                    "LITMUS_AUTH_GRPC_PORT": auth_endpoint.grpc_server_port,
                 }
             )
 

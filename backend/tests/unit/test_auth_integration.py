@@ -3,7 +3,7 @@
 import dataclasses
 import pytest
 import json
-from litmus_libs.interfaces import AuthDataConfig
+from litmus_libs.interfaces import Endpoint
 from ops.testing import State, Model
 
 
@@ -22,7 +22,7 @@ from ops.testing import State, Model
                 "grpc_server_port": json.dumps(80),
                 "insecure": json.dumps(True),
             },
-            AuthDataConfig(
+            Endpoint(
                 grpc_server_host="host",
                 grpc_server_port=80,
                 insecure=True,
@@ -44,8 +44,8 @@ def test_get_auth_data(
         event=ctx.on.relation_changed(auth_relation),
     ) as mgr:
         charm = mgr.charm
-        # THEN the auth_config is the same as expected
-        assert charm.auth_config == expected
+        # THEN the auth_endpoint is the same as expected
+        assert charm.auth_endpoint == expected
 
 
 @pytest.mark.parametrize(
