@@ -65,8 +65,8 @@ def test_pebble_plan_with_database_relation(ctx, backend_container, database_rel
     ]["environment"]
     assert expected_env_vars.issubset(actual_env_vars.keys())
 
-    # AND the pebble service is NOT running
-    assert not backend_container_out.services.get("litmuschaos-server").is_running()
+    # AND the pebble service is running
+    assert backend_container_out.services.get("litmuschaos-server").is_running()
 
 
 def test_pebble_plan_with_auth_relation(ctx, backend_container, auth_relation):
