@@ -9,7 +9,8 @@ import logging
 from ops import Container
 from ops.pebble import Layer
 from typing import Optional
-from models import DatabaseConfig
+from litmus_libs import DatabaseConfig
+from litmus_libs.interfaces import AuthDataConfig
 
 
 logger = logging.getLogger(__name__)
@@ -22,9 +23,15 @@ class LitmusBackend:
     http_port = 8080
     grpc_port = 8000
 
-    def __init__(self, container: Container, db_config: Optional[DatabaseConfig]):
+    def __init__(
+        self,
+        container: Container,
+        db_config: Optional[DatabaseConfig],
+        auth_config: Optional[AuthDataConfig],
+    ):
         self._container = container
         self._db_config = db_config
+        self._auth_config = auth_config
 
     def reconcile(self):
         """Unconditional control logic."""
@@ -34,7 +41,7 @@ class LitmusBackend:
     def _reconcile_workload_config(self):
         self._container.add_layer(self.name, self._pebble_layer, combine=True)
         # replan only if the available env var config is sufficient for the workload to run
-        if self._db_config:
+        if self._db_config and self._auth_config:
             self._container.replan()
         else:
             self._container.stop(self.name)
@@ -71,6 +78,14 @@ class LitmusBackend:
                     "DB_SERVER": db_config.uris,
                 }
             )
+        if auth_config := self._auth_config:
+            env.update(
+                {
+                    "LITMUS_AUTH_GRPC_ENDPOINT": auth_config.grpc_server_host,
+                    "LITMUS_AUTH_GRPC_PORT": auth_config.grpc_server_port,
+                }
+            )
+
         return Layer(
             {
                 "services": {
