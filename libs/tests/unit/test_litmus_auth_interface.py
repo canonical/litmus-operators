@@ -31,7 +31,9 @@ MOCK_SECRET_ID = "my_secret_id"
             AuthDataConfig(
                 grpc_server_host="host",
                 grpc_server_port=80,
-                dex_config=DexConfig(client_id="1", dex_oauth_client_secret="secret1"),
+                dex_config=DexConfig(
+                    client_id="1", dex_oauth_client_secret="secret1", enabled=True
+                ),
             ),
             {
                 "dex-oauth-client-secret": "secret1",
@@ -42,7 +44,10 @@ MOCK_SECRET_ID = "my_secret_id"
                 grpc_server_host="host",
                 grpc_server_port=80,
                 dex_config=DexConfig(
-                    client_id="1", dex_oauth_client_secret="secret1", oauth_jwt_secret="secret2"
+                    client_id="1",
+                    dex_oauth_client_secret="secret1",
+                    oauth_jwt_secret="secret2",
+                    enabled=True,
                 ),
             ),
             {
@@ -68,10 +73,9 @@ def test_provider_publish_auth_data_secret(litmus_auth, input, expected_secret_c
         charm = mgr.charm
         # WHEN the charm publishes auth data
         provider = LitmusAuthDataProvider(
-            charm.model.relations["litmus-auth"],
+            charm.model.get_relation("litmus-auth"),
             charm.app,
-            charm.app.add_secret,
-            charm.model.get_secret,
+            charm.model,
         )
         provider.publish_auth_data(input)
 
@@ -99,15 +103,15 @@ def test_provider_publish_auth_data_secret(litmus_auth, input, expected_secret_c
     (
         (
             {},
-            [],
+            None,
         ),
         (
             {"grpc_server_host": '"host"', "grpc_server_port": "80", "insecure": "false"},
-            [Endpoint(grpc_server_host="host", grpc_server_port=80, insecure=False)],
+            Endpoint(grpc_server_host="host", grpc_server_port=80, insecure=False),
         ),
     ),
 )
-def test_provider_get_requirer_endpoint(litmus_auth, remote_databag, expected):
+def test_provider_get_backend_grpc_endpoint(litmus_auth, remote_databag, expected):
     # GIVEN a charm that provides litmus-auth
     ctx = Context(
         CharmBase,
@@ -123,12 +127,11 @@ def test_provider_get_requirer_endpoint(litmus_auth, remote_databag, expected):
     ) as mgr:
         charm = mgr.charm
         provider = LitmusAuthDataProvider(
-            charm.model.relations["litmus-auth"],
+            charm.model.get_relation("litmus-auth"),
             charm.app,
-            charm.app.add_secret,
-            charm.model.get_secret,
+            charm.model,
         )
-        assert provider.get_requirer_endpoint() == expected
+        assert provider.get_backend_grpc_endpoint() == expected
 
 
 @pytest.mark.parametrize(
@@ -160,9 +163,9 @@ def test_requirer_publish_endpoint(litmus_auth, input, expected):
     ) as mgr:
         charm = mgr.charm
         requirer = LitmusAuthDataRequirer(
-            charm.model.relations["litmus-auth"],
+            charm.model.get_relation("litmus-auth"),
             charm.app,
-            charm.model.get_secret,
+            charm.model,
         )
         # WHEN the requirer publishes its endpoint
         requirer.publish_endpoint(input)
@@ -179,7 +182,7 @@ def test_requirer_publish_endpoint(litmus_auth, input, expected):
         (
             {},
             None,
-            [],
+            None,
         ),
         (
             {
@@ -189,32 +192,31 @@ def test_requirer_publish_endpoint(litmus_auth, input, expected):
                 "dex_config": "null",
             },
             None,
-            [
-                AuthDataConfig(
-                    grpc_server_host="host", grpc_server_port=80, insecure=False, dex_config=None
-                )
-            ],
+            AuthDataConfig(
+                grpc_server_host="host", grpc_server_port=80, insecure=False, dex_config=None
+            ),
         ),
         (
             {
                 "grpc_server_host": '"host"',
                 "grpc_server_port": "80",
                 "insecure": "false",
-                "dex_config": json.dumps({"client_id": "1", "auth_secret_id": MOCK_SECRET_ID}),
+                "dex_config": json.dumps(
+                    {"client_id": "1", "auth_secret_id": MOCK_SECRET_ID, "enabled": True}
+                ),
             },
             {"dex_oauth_client_secret": "secret1", "oauth_jwt_secret": "secret2"},
-            [
-                AuthDataConfig(
-                    grpc_server_host="host",
-                    grpc_server_port=80,
-                    insecure=False,
-                    dex_config=DexConfig(
-                        client_id="1",
-                        dex_oauth_client_secret="secret1",
-                        oauth_jwt_secret="secret2",
-                    ),
-                )
-            ],
+            AuthDataConfig(
+                grpc_server_host="host",
+                grpc_server_port=80,
+                insecure=False,
+                dex_config=DexConfig(
+                    enabled=True,
+                    client_id="1",
+                    dex_oauth_client_secret="secret1",
+                    oauth_jwt_secret="secret2",
+                ),
+            ),
         ),
     ),
 )
@@ -235,9 +237,9 @@ def test_requirer_get_auth_data(litmus_auth, remote_databag, secret_content, exp
     ) as mgr:
         charm = mgr.charm
         requirer = LitmusAuthDataRequirer(
-            charm.model.relations["litmus-auth"],
+            charm.model.get_relation("litmus-auth"),
             charm.app,
-            charm.model.get_secret,
+            charm.model,
         )
         # WHEN the requirer gets the published auth data
         auth_data = requirer.get_auth_data()

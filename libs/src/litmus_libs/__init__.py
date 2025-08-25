@@ -5,6 +5,4 @@
 
 from .models import DatabaseConfig
 
-__all__ = [
-    "DatabaseConfig"
-]
+__all__ = ["DatabaseConfig"]
