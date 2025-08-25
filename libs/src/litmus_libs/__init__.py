@@ -4,5 +4,6 @@
 """Utilities to work with litmus."""
 
 from .models import DatabaseConfig
+from .utils import app_hostname
 
-__all__ = ["DatabaseConfig"]
+__all__ = ["DatabaseConfig", "app_hostname"]
