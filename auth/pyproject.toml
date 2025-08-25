@@ -28,6 +28,9 @@ dev = [
 #   LINTING
     "pyright",
     "ruff",
+
+#   INTERFACE TESTS
+    "pytest-interface-tester",
 ]
 
 [tool.pyright]

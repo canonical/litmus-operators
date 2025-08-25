@@ -25,6 +25,7 @@ resources:
     description: OCI image for Litmus Backend server 
     upstream-source: ubuntu/litmuschaos-server:3-24.04_edge
 
+
 links:
   # FIXME: update discourse link https://github.com/canonical/litmus-operators/issues/4
   documentation: https://discourse.charmhub.io/t/18122
