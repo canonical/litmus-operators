@@ -130,7 +130,7 @@ provides-extras = ["dev"]
 [[package]]
 name = "litmus-libs"
 version = "0.0.2"
-source = { git = "https://github.com/canonical/litmus-operators?subdirectory=libs&rev=TAP-699#c7e48fa4d699436148a733f8e647112116c7b7d8" }
+source = { git = "https://github.com/canonical/litmus-operators?subdirectory=libs&rev=TAP-699#c1ccdbf8e77526b5400c88da0807463942789267" }
 dependencies = [
     { name = "pydantic" },
 ]
