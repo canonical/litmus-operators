@@ -107,8 +107,8 @@ version = "0.1"
 source = { virtual = "." }
 dependencies = [
     { name = "cosl" },
+    { name = "litmus-libs" },
     { name = "ops" },
-    { name = "pydantic" },
 ]
 
 [package.optional-dependencies]
@@ -129,9 +129,9 @@ requires-dist = [
     { name = "cosl" },
     { name = "coverage", extras = ["toml"], marker = "extra == 'dev'" },
     { name = "jubilant", marker = "extra == 'dev'" },
+    { name = "litmus-libs", git = "https://github.com/canonical/litmus-operators?subdirectory=libs&rev=TAP-699" },
     { name = "ops" },
     { name = "ops", extras = ["testing"], marker = "extra == 'dev'" },
-    { name = "pydantic", specifier = ">2" },
     { name = "pyright", marker = "extra == 'dev'" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "pytest-cov", marker = "extra == 'dev'" },
@@ -140,6 +140,14 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'" },
 ]
 provides-extras = ["dev"]
+
+[[package]]
+name = "litmus-libs"
+version = "0.0.2"
+source = { git = "https://github.com/canonical/litmus-operators?subdirectory=libs&rev=TAP-699#c1ccdbf8e77526b5400c88da0807463942789267" }
+dependencies = [
+    { name = "pydantic" },
+]
 
 [[package]]
 name = "nodeenv"

@@ -10,12 +10,13 @@ from ops.charm import CharmBase
 
 from litmus_auth import LitmusAuth
 from cosl.reconciler import all_events, observe_events
-from models import DatabaseConfig
 from ops import ActiveStatus, CollectStatusEvent, BlockedStatus, WaitingStatus
 from pydantic_core import ValidationError
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseRequires,
 )
+from litmus_libs.interfaces import LitmusAuthDataProvider, Endpoint
+from litmus_libs import app_hostname, DatabaseConfig
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,11 @@ class LitmusAuthCharm(CharmBase):
         super().__init__(*args)
 
         self.unit.set_ports(LitmusAuth.http_port, LitmusAuth.grpc_port)
+        self._auth_provider = LitmusAuthDataProvider(
+            self.model.get_relation("litmus-auth"),
+            self.app,
+        )
+
         self._database = DatabaseRequires(
             self,
             relation_name="database",
@@ -40,6 +46,7 @@ class LitmusAuthCharm(CharmBase):
         self.litmus_auth = LitmusAuth(
             container=self.unit.get_container(LitmusAuth.name),
             db_config=self.database_config,
+            backend_grpc_endpoint=self.backend_grpc_endpoint,
         )
 
         self.framework.observe(
@@ -60,6 +67,10 @@ class LitmusAuthCharm(CharmBase):
         except ValidationError:
             return None
 
+    @property
+    def backend_grpc_endpoint(self) -> Optional[Endpoint]:
+        return self._auth_provider.get_backend_grpc_endpoint()
+
     ##################
     # EVENT HANDLERS #
     ##################
@@ -67,11 +78,14 @@ class LitmusAuthCharm(CharmBase):
     def _on_collect_unit_status(self, e: CollectStatusEvent):
         if not self._database.relations:
             e.add_status(BlockedStatus("Missing MongoDB integration."))
-        # TODO: set to blocked if `litmus_auth` integration is not present
-        # https://github.com/canonical/litmus-operators/issues/17
+        if not self.model.relations["litmus-auth"]:
+            e.add_status(BlockedStatus("Missing litmus-auth integration."))
         if not self.database_config:
             e.add_status(WaitingStatus("MongoDB config not ready."))
-
+        if not self.backend_grpc_endpoint:
+            e.add_status(
+                WaitingStatus("Backend server has not provided its gRPC endpoint yet.")
+            )
         e.add_status(ActiveStatus(""))
 
     ###################
@@ -80,6 +94,15 @@ class LitmusAuthCharm(CharmBase):
     def _reconcile(self):
         """Run all logic that is independent of what event we're processing."""
         self.litmus_auth.reconcile()
+        if self.unit.is_leader():
+            self._auth_provider.publish_endpoint(
+                Endpoint(
+                    grpc_server_host=app_hostname(self.app.name, self.model.name),
+                    grpc_server_port=LitmusAuth.grpc_port,
+                    # TODO: check if TLS is enabled once https://github.com/canonical/litmus-operators/issues/25 is fixed
+                    insecure=True,
+                )
+            )
 
 
 if __name__ == "__main__":  # pragma: nocover

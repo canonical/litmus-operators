@@ -9,8 +9,8 @@ dependencies = [
     "ops",
     # for the reconciler
     "cosl",
-    #for models
-    "pydantic>2", 
+    # FIXME: use the lib from pypi
+    "litmus-libs@git+https://github.com/canonical/litmus-operators@TAP-699#subdirectory=libs"
 ]
 
 [project.optional-dependencies]
