@@ -5,7 +5,7 @@
 from typing import Optional
 
 import pydantic
-from _base import (
+from litmus_libs.interfaces._base import (
     AuthApiProviderAppDatabagModelV0,
     BackendApiProviderAppDatabagModelV0,
     SimpleEndpointWrapper,
