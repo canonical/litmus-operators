@@ -5,11 +5,19 @@
 from typing import Optional
 
 import pydantic
-from litmus_libs.interfaces._base import (
-    AuthApiProviderAppDatabagModelV0,
-    BackendApiProviderAppDatabagModelV0,
-    SimpleEndpointWrapper,
-)
+from ._base import BaseVersionedModel, SimpleEndpointWrapper
+
+
+class AuthApiProviderAppDatabagModelV0(BaseVersionedModel):
+    """Auth API provider application databag model."""
+    version: int = 0
+    endpoint: pydantic.HttpUrl
+
+
+class BackendApiProviderAppDatabagModelV0(BaseVersionedModel):
+    """Backend API provider application databag model."""
+    version: int = 0
+    endpoint: pydantic.HttpUrl
 
 
 class LitmusBackendApiProvider(SimpleEndpointWrapper):

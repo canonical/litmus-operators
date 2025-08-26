@@ -12,48 +12,38 @@ import pydantic
 logger = logging.getLogger()
 
 
-class _BaseVersionedModel(pydantic.BaseModel):
-    """Base class of all our internal models."""
-    version: int
-
-
-class _HttpApiEndpoint(_BaseVersionedModel):
-    """Data model representing a server endpoint."""
-    endpoint: pydantic.HttpUrl
-
-
-class BackendApiProviderAppDatabagModelV0(_HttpApiEndpoint):
-    """Provider application databag model for the litmus_backend_http_api interface."""
-    version: int = 0
-
-
-class AuthApiProviderAppDatabagModelV0(_HttpApiEndpoint):
-    """Provider application databag model for the litmus_auth_http_api interface."""
-    version: int = 0
-
-
 _M = TypeVar("_M", bound=pydantic.BaseModel)
 
 
-def _get_versioned_databag(
-        relation:ops.Relation,
-        owner:ops.Application|ops.Unit,
-        model: Type[_M]
-        ) -> Optional[_M]:
+class BaseVersionedModel(pydantic.BaseModel):
+    """Base class of all our internal models.
+
+    This class is intended to be inherited by all databag models
+    so they share a standardized version field to make it easier
+    to implement version negotiation.
+    """
+
+    model_config = pydantic.ConfigDict(extra="ignore")
+    version: int
+
+
+def _get_versioned_databag(relation: ops.Relation, model: Type[_M]) -> Optional[_M]:
     """Attempt to load a relation databag containing a version schema."""
     try:
         version = relation.load(
-            _BaseVersionedModel,
-            owner,
+            BaseVersionedModel,
+            relation.app,
         ).version
     except pydantic.ValidationError:
-        logger.debug("Validation failed for %s; is the relation still bootstrapping?", str(relation))
+        logger.debug(
+            "Validation failed for %s; is the relation still bootstrapping?", str(relation)
+        )
         return None
 
     try:
         return relation.load(
             model,
-            owner,
+            relation.app,
         )
     except pydantic.ValidationError:
         # this is a worse situation: we've declared vX, but validation using the vX schema is failing.
@@ -63,11 +53,11 @@ def _get_versioned_databag(
 
 
 def _set_versioned_databag(
-        relation:ops.Relation,
-        owner:ops.Application|ops.Unit,
-        model: Type[pydantic.BaseModel],
-        data: Dict[str, Any]
-        ):
+    relation: ops.Relation,
+    owner: ops.Application | ops.Unit,
+    model: Type[pydantic.BaseModel],
+    data: Dict[str, Any],
+):
     """Attempt to write a relation databag using a versioned schema.
 
     Will raise if the data is invalid, or silently pass if a write fails because of a model error.
@@ -89,6 +79,7 @@ def _set_versioned_databag(
 
 class SimpleEndpointWrapper:
     """Endpoint wrapper base class."""
+
     def __init__(
         self,
         relation: Optional[ops.Relation],
@@ -97,25 +88,13 @@ class SimpleEndpointWrapper:
         self._relation = relation
         self._app = app
 
-    def _set(self,
-                 model:Type[_BaseVersionedModel],
-                 data: Dict[str, Any]
-                 ):
+    def _set(self, model: Type[BaseVersionedModel], data: Dict[str, Any]):
         if not self._relation:
             return
-        _set_versioned_databag(
-            relation=self._relation,
-            owner=self._app,
-            model=model,
-            data = data
-        )
+        _set_versioned_databag(relation=self._relation, owner=self._app, model=model, data=data)
 
-    def _get(self, model:Type[_M]) -> Optional[_M]:
+    def _get(self, model: Type[_M]) -> Optional[_M]:
         if not self._relation:
             return None
-        datamodel = _get_versioned_databag(
-            relation=self._relation,
-            owner=self._app,
-            model=model
-        )
+        datamodel = _get_versioned_databag(relation=self._relation, model=model)
         return datamodel
