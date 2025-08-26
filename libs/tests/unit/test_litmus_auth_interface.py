@@ -7,6 +7,7 @@ import pytest
 from ops import CharmBase
 from ops.testing import Context, State
 
+from src.litmus_libs.interfaces.base import VersionMismatchError
 from src.litmus_libs.interfaces.litmus_auth import (
     Endpoint,
     LitmusAuthProvider,
@@ -210,3 +211,36 @@ def test_requirer_get_auth_grpc_endpoint(litmus_auth, remote_databag, expected):
         endpoint = requirer.get_auth_grpc_endpoint()
         # THEN the fetched data is the same as expected
         assert endpoint == expected
+
+
+def test_fail_version_mismatch(litmus_auth):
+    # GIVEN a charm that provides litmus-auth
+    ctx = Context(
+        CharmBase,
+        meta={"name": "provider", "provides": {"litmus-auth": {"interface": "litmus_auth"}}},
+    )
+
+    # WHEN the charm receives its endpoints
+    with ctx(
+        ctx.on.update_status(),
+        state=State(
+            relations={
+                dataclasses.replace(
+                    litmus_auth,
+                    remote_app_data={
+                        "version": json.dumps(42),
+                        "foo": '"bar"',
+                    },
+                )
+            },
+            leader=True,
+        ),
+    ) as mgr:
+        charm = mgr.charm
+        provider = LitmusAuthProvider(
+            charm.model.get_relation("litmus-auth"),
+            charm.app,
+        )
+        # THEN the charm raises an exception if it receives a version the lib doesn't support
+        with pytest.raises(VersionMismatchError):
+            assert provider.get_backend_grpc_endpoint()

@@ -12,7 +12,8 @@ import pydantic
 logger = logging.getLogger()
 
 
-_M = TypeVar("_M", bound=pydantic.BaseModel)
+class VersionMismatchError(Exception):
+    """Raised if the schema version in the relation data is not the one supported by this library version."""
 
 
 class BaseVersionedModel(pydantic.BaseModel):
@@ -24,6 +25,9 @@ class BaseVersionedModel(pydantic.BaseModel):
     """
 
     version: int
+
+
+_M = TypeVar("_M", bound=BaseVersionedModel)
 
 
 def _get_versioned_databag(relation: ops.Relation, model: Type[_M]) -> Optional[_M]:
@@ -38,6 +42,13 @@ def _get_versioned_databag(relation: ops.Relation, model: Type[_M]) -> Optional[
             "Validation failed for %s; is the relation still bootstrapping?", str(relation)
         )
         return None
+
+    # hacky way to get the version value from the model class
+    model_version = model.model_fields["version"].default
+    if version != model_version:
+        raise VersionMismatchError(
+            f"schema {relation.name}@v{version} is not the version supported by this library ({relation.name}@v{model_version})"
+        )
 
     try:
         return relation.load(

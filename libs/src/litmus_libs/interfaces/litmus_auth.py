@@ -9,7 +9,7 @@ from typing import Optional
 
 import pydantic
 
-from ._base import BaseVersionedModel, SimpleEndpointWrapper
+from .base import BaseVersionedModel, SimpleEndpointWrapper
 
 logger = logging.getLogger()
 
@@ -84,7 +84,12 @@ class LitmusAuthProvider(SimpleEndpointWrapper):
         self._set(_LitmusAuthProviderAppDatabagModelV0, asdict(endpoint))
 
     def get_backend_grpc_endpoint(self) -> Optional[Endpoint]:
-        """Get the backend server's gRPC endpoint."""
+        """Get the backend server's gRPC endpoint.
+
+        Raises:
+            VersionMismatchError: If the schema version in the relation data
+            is not the one supported by this library version.
+        """
         data = self._get(_LitmusAuthRequirerAppDatabagModelV0)
         # wrap the data in a user-facing model (Endpoint) to hide internal fields like `version`
         return (
@@ -143,7 +148,12 @@ class LitmusAuthRequirer(SimpleEndpointWrapper):
         self._set(_LitmusAuthRequirerAppDatabagModelV0, asdict(endpoint))
 
     def get_auth_grpc_endpoint(self) -> Optional[Endpoint]:
-        """Get the auth server's gRPC endpoint."""
+        """Get the auth server's gRPC endpoint.
+
+        Raises:
+            VersionMismatchError: If the schema version in the relation data
+            is not supported by this library version.
+        """
         data = self._get(_LitmusAuthProviderAppDatabagModelV0)
         # wrap the data in a user-facing model (Endpoint) to hide internal fields like `version`
         return (
