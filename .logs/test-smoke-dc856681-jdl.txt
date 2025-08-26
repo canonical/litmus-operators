@@ -1,0 +1,9 @@
+controller-0: 15:46:53 INFO juju.worker.apicaller [0c3d1f] "controller-0" successfully connected to "wss://localhost:17070"
+controller-0: 15:46:53 INFO juju.worker.logforwarder config change - log forwarding not enabled
+controller-0: 15:46:53 INFO juju.worker.logger logger worker started
+controller-0: 15:46:53 INFO juju.worker.pruner.statushistory pruner config: max age: 336h0m0s, max collection size 5120M for test-smoke-dc856681 (0c3d1f25-4fc9-49ba-874b-ce6bc05ed488)
+controller-0: 15:46:53 INFO juju.worker.pruner.action pruner config: max age: 336h0m0s, max collection size 5120M for test-smoke-dc856681 (0c3d1f25-4fc9-49ba-874b-ce6bc05ed488)
+model-0c3d1f25-4fc9-49ba-874b-ce6bc05ed488: 15:46:55 INFO juju.worker.caasupgrader abort check blocked until version event received
+model-0c3d1f25-4fc9-49ba-874b-ce6bc05ed488: 15:46:55 INFO juju.worker.caasupgrader unblocking abort check
+model-0c3d1f25-4fc9-49ba-874b-ce6bc05ed488: 15:46:58 INFO juju.worker.muxhttpserver starting http server on [::]:17071
+model-0c3d1f25-4fc9-49ba-874b-ce6bc05ed488: 15:46:58 INFO juju.worker.caasadmission ensuring model k8s webhook configurations

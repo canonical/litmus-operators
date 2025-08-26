@@ -7,7 +7,7 @@ import pytest
 from ops import CharmBase
 from ops.testing import Context, State
 
-from litmus_libs.interfaces import (
+from litmus_libs.interfaces.litmus_auth import (
     Endpoint,
     LitmusAuthProvider,
     LitmusAuthRequirer,

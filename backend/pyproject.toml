@@ -10,7 +10,8 @@ dependencies = [
     # for the reconciler
     "cosl",
     #for models
-    "pydantic>2", 
+    "pydantic>2",
+    "litmus-libs>=0.0.1",
 ]
 
 [project.optional-dependencies]

@@ -82,6 +82,8 @@ class LitmusBackendApiRequirer(SimpleEndpointWrapper):
     def endpoint(self) -> Optional[str]:
         """Fetch the backend API endpoint from relation data."""
         datamodel = self._get(BackendApiProviderAppDatabagModelV0)
+        if not datamodel:
+            return None
         return str(datamodel.endpoint)
 
 
@@ -147,4 +149,6 @@ class LitmusAuthApiRequirer(SimpleEndpointWrapper):
     def endpoint(self) -> Optional[str]:
         """Fetch the backend API endpoint from relation data."""
         datamodel = self._get(AuthApiProviderAppDatabagModelV0)
+        if not datamodel:
+            return None
         return str(datamodel.endpoint)
