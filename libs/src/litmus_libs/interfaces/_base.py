@@ -23,7 +23,6 @@ class BaseVersionedModel(pydantic.BaseModel):
     to implement version negotiation.
     """
 
-    model_config = pydantic.ConfigDict(extra="ignore")
     version: int
 
 

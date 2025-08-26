@@ -7,12 +7,11 @@ import pytest
 from ops import CharmBase
 from ops.testing import Context, State
 
-from litmus_libs.interfaces import (
+from src.litmus_libs.interfaces.litmus_auth import (
     Endpoint,
     LitmusAuthProvider,
     LitmusAuthRequirer,
 )
-from litmus_libs.interfaces.litmus_auth import __version__
 
 
 @pytest.mark.parametrize(
@@ -84,7 +83,7 @@ def test_provider_publish_endpoint(litmus_auth, input, expected):
                 "grpc_server_host": '"host"',
                 "grpc_server_port": "80",
                 "insecure": "false",
-                "version": f"{__version__}",
+                "version": "0",
             },
             Endpoint(grpc_server_host="host", grpc_server_port=80, insecure=False),
         ),
@@ -121,7 +120,7 @@ def test_provider_get_backend_grpc_endpoint(litmus_auth, remote_databag, expecte
                 "grpc_server_host": '"host"',
                 "grpc_server_port": "80",
                 "insecure": "false",
-                "version": f"{__version__}",
+                "version": "0",
             },
         ),
     ),
@@ -165,7 +164,7 @@ def test_requirer_publish_endpoint(litmus_auth, input, expected):
                 "grpc_server_host": '"host"',
                 "grpc_server_port": "80",
                 "insecure": "false",
-                "version": f"{__version__}",
+                "version": "0",
             },
             Endpoint(
                 grpc_server_host="host",
@@ -178,7 +177,7 @@ def test_requirer_publish_endpoint(litmus_auth, input, expected):
                 "grpc_server_host": '"host"',
                 "grpc_server_port": "80",
                 "insecure": "true",
-                "version": f"{__version__}",
+                "version": "0",
             },
             Endpoint(
                 grpc_server_host="host",

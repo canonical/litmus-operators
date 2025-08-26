@@ -3,9 +3,6 @@
 
 """Litmus auth integration endpoint wrapper."""
 
-# don't forget to bump when we bump the interface version
-__version__ = 0
-
 import logging
 from dataclasses import asdict, dataclass
 from typing import Optional
@@ -89,13 +86,15 @@ class LitmusAuthProvider(SimpleEndpointWrapper):
     def get_backend_grpc_endpoint(self) -> Optional[Endpoint]:
         """Get the backend server's gRPC endpoint."""
         data = self._get(_LitmusAuthRequirerAppDatabagModelV0)
-        if data is None:
-            return None
         # wrap the data in a user-facing model (Endpoint) to hide internal fields like `version`
-        return Endpoint(
-            grpc_server_host=data.grpc_server_host,
-            grpc_server_port=data.grpc_server_port,
-            insecure=data.insecure,
+        return (
+            Endpoint(
+                grpc_server_host=data.grpc_server_host,
+                grpc_server_port=data.grpc_server_port,
+                insecure=data.insecure,
+            )
+            if data
+            else None
         )
 
 
@@ -146,11 +145,13 @@ class LitmusAuthRequirer(SimpleEndpointWrapper):
     def get_auth_grpc_endpoint(self) -> Optional[Endpoint]:
         """Get the auth server's gRPC endpoint."""
         data = self._get(_LitmusAuthProviderAppDatabagModelV0)
-        if data is None:
-            return None
         # wrap the data in a user-facing model (Endpoint) to hide internal fields like `version`
-        return Endpoint(
-            grpc_server_host=data.grpc_server_host,
-            grpc_server_port=data.grpc_server_port,
-            insecure=data.insecure,
+        return (
+            Endpoint(
+                grpc_server_host=data.grpc_server_host,
+                grpc_server_port=data.grpc_server_port,
+                insecure=data.insecure,
+            )
+            if data
+            else None
         )
