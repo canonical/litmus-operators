@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "litmus-libs"
-version = "0.0.1"
+version = "0.0.2"
 authors = [
     { name = "mmkay", email = "232859+mmkay@users.noreply.github.com" },
 ]
@@ -91,7 +91,6 @@ classmethod-decorators = ["classmethod", "pydantic.validator"]
 [tool.pyright]
 include = ["src"]
 
-extraPaths = ["lib", "src/coordinated_workers"]
 pythonVersion = "3.12"
 pythonPlatform = "All"
 typeCheckingMode = "strict"
