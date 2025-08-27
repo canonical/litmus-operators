@@ -43,6 +43,14 @@ requires:
 
       Note: This should be the same MongoDB instance used by the Litmus auth server.
 
+provides:
+  http-api:
+    optional: false
+    interface: litmus_backend_http_api
+    limit: 1
+    description: |
+      Send this component's HTTP API to the frontend component.
+
 platforms:
   ubuntu@24.04:amd64:
 

@@ -25,6 +25,21 @@ resources:
     description: OCI image for Litmus frontend server 
     upstream-source: ubuntu/litmuschaos-frontend:3-24.04_edge
 
+requires:
+  backend-http-api:
+    optional: false
+    interface: litmus_backend_http_api
+    limit: 1
+    description: |
+      Receive the litmus auth HTTP API .
+  auth-http-api:
+    optional: false
+    interface: litmus_auth_http_api
+    limit: 1
+    description: |
+      Receive the litmus auth HTTP API .
+
+
 links:
   # FIXME: update discourse link https://github.com/canonical/litmus-operators/issues/4
   documentation: https://discourse.charmhub.io/t/18122

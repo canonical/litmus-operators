@@ -4,6 +4,7 @@
 """Charmed Operator for Litmus Authentication server; the auth layer for a chaos testing platform."""
 
 import logging
+import socket
 from typing import Optional
 
 from ops.charm import CharmBase
@@ -16,6 +17,7 @@ from pydantic_core import ValidationError
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseRequires,
 )
+from litmus_libs.interfaces import http_api
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +37,10 @@ class LitmusAuthCharm(CharmBase):
             # to do this, it requires cluster-wide permissions that are only part of the `admin` role.
             # cfr. https://github.com/canonical/mongo-single-kernel-library/blob/6/edge/single_kernel_mongo/utils/mongodb_users.py#L52
             extra_user_roles="admin",
+        )
+        self._send_http_api = http_api.LitmusBackendApiProvider(
+            self.model.get_relation("http-api"),
+            app=self.app
         )
 
         self.litmus_auth = LitmusAuth(
@@ -77,9 +83,15 @@ class LitmusAuthCharm(CharmBase):
     ###################
     # UTILITY METHODS #
     ###################
+    @property
+    def _http_api_endpoint(self):
+        """Internal (i.e. not ingressed) url."""
+        return f"http://{socket.getfqdn()}:{self.litmus_auth.http_port}"
+
     def _reconcile(self):
         """Run all logic that is independent of what event we're processing."""
         self.litmus_auth.reconcile()
+        self._send_http_api.publish_endpoint(self._http_api_endpoint)
 
 
 if __name__ == "__main__":  # pragma: nocover

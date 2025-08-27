@@ -36,6 +36,14 @@ requires:
 
       Note: This should be the same MongoDB instance used by the Litmus backend server.
 
+provides:
+  http-api:
+    optional: false
+    interface: litmus_auth_http_api
+    limit: 1
+    description: |
+      Send this component's HTTP API to the frontend component.
+
 links:
   # FIXME: update discourse link https://github.com/canonical/litmus-operators/issues/4
   documentation: https://discourse.charmhub.io/t/18122

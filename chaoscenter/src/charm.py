@@ -9,7 +9,7 @@ from ops.charm import CharmBase
 from ops import LifecycleEvent, EventBase, CollectStatusEvent, BlockedStatus
 
 from litmus_frontend import LitmusFrontend
-
+from litmus_libs.interfaces.http_api import LitmusAuthApiRequirer, LitmusBackendApiRequirer
 logger = logging.getLogger(__name__)
 
 
@@ -20,6 +20,14 @@ class LitmusChaoscenterCharm(CharmBase):
         super().__init__(*args)
         self.litmus_frontend = LitmusFrontend(
             container=self.unit.get_container(LitmusFrontend.name),
+        )
+        self._receive_auth_http_api = LitmusAuthApiRequirer(
+            relation=self.model.get_relation("auth-http-api"),
+            app=self.app
+        )
+        self._receive_backend_http_api = LitmusBackendApiRequirer(
+            relation=self.model.get_relation("backend-http-api"),
+            app=self.app
         )
 
         self.framework.observe(

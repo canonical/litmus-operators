@@ -17,6 +17,7 @@ from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseRequires,
 )
 from typing import Optional
+from litmus_libs.interfaces import http_api
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,11 @@ class LitmusBackendCharm(CharmBase):
             # to do this, it requires cluster-wide permissions that are only part of the `admin` role.
             # cfr. https://github.com/canonical/mongo-single-kernel-library/blob/6/edge/single_kernel_mongo/utils/mongodb_users.py#L52
             extra_user_roles="admin",
+        )
+
+        self._send_http_api = http_api.LitmusAuthApiProvider(
+            self.model.get_relation("http-api"),
+            app=self.app
         )
 
         self.litmus_backend = LitmusBackend(
