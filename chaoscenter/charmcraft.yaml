@@ -2,7 +2,7 @@
 # See LICENSE file for licensing details.
 name: litmus-chaoscenter-k8s
 type: charm
-title: Litmus Authentication Server
+title: Litmus ChaosCenter
 
 assumes:
   - k8s-api
@@ -26,8 +26,7 @@ resources:
     upstream-source: ubuntu/litmuschaos-frontend:3-24.04_edge
 
 links:
-  # FIXME: update discourse link https://github.com/canonical/litmus-operators/issues/4
-  documentation: https://discourse.charmhub.io/t/18122
+  documentation: https://discourse.charmhub.io/t/18788
   website: https://charmhub.io/litmus-chaoscenter-k8s
   source: https://github.com/canonical/litmus-operators/tree/main/chaoscenter
   issues: https://github.com/canonical/litmus-operators/issues
