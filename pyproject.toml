@@ -7,7 +7,12 @@ requires-python = ">=3.12, <4"
 
 
 [project.optional-dependencies]
-dev = []
+dev = [
+    #INTEGRATION TESTS
+    "jubilant",
+    "pytest-jubilant~=1.0",
+    "tenacity"
+]
 
 
 [tool.pytest.ini_options]
