@@ -100,7 +100,7 @@ jobs:
 
           # detect "all" mode if top-level tests changed OR all components' files have been modified
           if [[ "${{ steps.tests-changed-files.outputs.any_modified }}" == "true" || ${#modes[@]} -eq 3 ]]; then
-            modes=("local-all")
+            modes+=("local-all")
           fi
           # convert to JSON array
           matrix=$(printf '%s\n' "${modes[@]}" | grep -v '^$' | jq -r -ncR '[inputs]')
