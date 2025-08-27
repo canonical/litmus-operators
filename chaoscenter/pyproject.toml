@@ -6,7 +6,7 @@ version = "0.1"  # this is in fact irrelevant
 requires-python = ">=3.12, <4"
 
 dependencies = [
-    "litmus-libs",
+    "litmus-libs>=0.0.2",
     "ops",
 ]
 
@@ -78,6 +78,3 @@ max-complexity = 10
 
 [tool.codespell]
 skip = "build,lib,venv,icon.svg,.tox,.git,.mypy_cache,.ruff_cache,.vscode,.coverage"
-
-[tool.uv.sources]
-litmus-libs = { path = "wheels/litmus_libs-0.0+dev-py3-none-any.whl" }
