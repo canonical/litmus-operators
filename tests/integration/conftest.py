@@ -1,7 +1,7 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 import logging
-from .helpers import deploy_control_plane
+from tests.integration.helpers import deploy_control_plane
 from pytest import fixture
 
 

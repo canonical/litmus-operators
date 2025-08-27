@@ -8,7 +8,7 @@ import subprocess
 import pytest
 from jubilant import Juju, any_error, all_blocked
 from tenacity import retry, stop_after_attempt, wait_fixed
-from .helpers import (
+from tests.integration.helpers import (
     deploy_control_plane,
     BACKEND_APP,
     AUTH_APP,
