@@ -8,15 +8,22 @@ import logging
 from ops.charm import CharmBase
 
 from litmus_backend import LitmusBackend
-from cosl.reconciler import all_events, observe_events
-from models import DatabaseConfig
+from ops import ActiveStatus, CollectStatusEvent, BlockedStatus
 
-from ops import ActiveStatus, CollectStatusEvent, BlockedStatus, WaitingStatus
+from litmus_libs.interfaces.litmus_auth import LitmusAuthRequirer, Endpoint
+from litmus_libs import DatabaseConfig, get_app_hostname
+from cosl.reconciler import all_events, observe_events
+
+from ops import WaitingStatus
 from pydantic_core import ValidationError
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseRequires,
 )
+
 from typing import Optional
+
+DATABASE_ENDPOINT = "database"
+LITMUS_AUTH_ENDPOINT = "litmus-auth"
 
 logger = logging.getLogger(__name__)
 
@@ -30,17 +37,22 @@ class LitmusBackendCharm(CharmBase):
 
         self._database = DatabaseRequires(
             self,
-            relation_name="database",
+            relation_name=DATABASE_ENDPOINT,
             database_name="admin",
             # throughout its lifecycle, litmus will need to create and manage new databases (e.g. `auth` and `litmus`)
             # to do this, it requires cluster-wide permissions that are only part of the `admin` role.
             # cfr. https://github.com/canonical/mongo-single-kernel-library/blob/6/edge/single_kernel_mongo/utils/mongodb_users.py#L52
             extra_user_roles="admin",
         )
+        self._auth = LitmusAuthRequirer(
+            self.model.get_relation(LITMUS_AUTH_ENDPOINT),
+            self.app,
+        )
 
         self.litmus_backend = LitmusBackend(
             container=self.unit.get_container(LitmusBackend.name),
             db_config=self.database_config,
+            auth_grpc_endpoint=self.auth_grpc_endpoint,
         )
 
         self.framework.observe(
@@ -61,17 +73,38 @@ class LitmusBackendCharm(CharmBase):
         except ValidationError:
             return None
 
+    @property
+    def auth_grpc_endpoint(self) -> Optional[Endpoint]:
+        return self._auth.get_auth_grpc_endpoint()
+
     ##################
     # EVENT HANDLERS #
     ##################
 
     def _on_collect_unit_status(self, e: CollectStatusEvent):
-        if not self._database.relations:
-            e.add_status(BlockedStatus("Missing MongoDB integration."))
-        # TODO: set to blocked if `litmus_auth` integration is not present
-        # https://github.com/canonical/litmus-operators/issues/17
-        if not self.database_config:
-            e.add_status(WaitingStatus("MongoDB config not ready."))
+        missing_relations = [
+            rel
+            for rel in (DATABASE_ENDPOINT, LITMUS_AUTH_ENDPOINT)
+            if not self.model.get_relation(rel)
+        ]
+        missing_configs = [
+            config_name
+            for config_name, source in (
+                ("database config", self.database_config),
+                ("auth gRPC endpoint", self.auth_grpc_endpoint),
+            )
+            if not source
+        ]
+        if missing_relations:
+            e.add_status(
+                BlockedStatus(
+                    f"Missing [{', '.join(missing_relations)}] integration(s)."
+                )
+            )
+        if missing_configs:
+            e.add_status(
+                WaitingStatus(f"[{', '.join(missing_relations)}] not ready yet.")
+            )
 
         e.add_status(ActiveStatus(""))
 
@@ -81,6 +114,15 @@ class LitmusBackendCharm(CharmBase):
     def _reconcile(self):
         """Run all logic that is independent of what event we're processing."""
         self.litmus_backend.reconcile()
+        if self.unit.is_leader():
+            self._auth.publish_endpoint(
+                Endpoint(
+                    grpc_server_host=get_app_hostname(self.app.name, self.model.name),
+                    grpc_server_port=LitmusBackend.grpc_port,
+                    # TODO: check if TLS is enabled once https://github.com/canonical/litmus-operators/issues/23 is fixed
+                    insecure=True,
+                )
+            )
 
 
 if __name__ == "__main__":  # pragma: nocover

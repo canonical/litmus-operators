@@ -2,7 +2,7 @@
 # See LICENSE file for licensing details.
 import dataclasses
 import pytest
-from models import DatabaseConfig
+from litmus_libs import DatabaseConfig
 from ops.testing import State
 
 

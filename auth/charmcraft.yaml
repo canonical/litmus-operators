@@ -36,6 +36,15 @@ requires:
 
       Note: This should be the same MongoDB instance used by the Litmus backend server.
 
+provides:
+  litmus-auth:
+    optional: false
+    interface: litmus_auth
+    limit: 1
+    description: |
+      Exchange the gRPC server endpoints of the auth and backend components.
+
+
 links:
   # FIXME: update discourse link https://github.com/canonical/litmus-operators/issues/4
   documentation: https://discourse.charmhub.io/t/18122

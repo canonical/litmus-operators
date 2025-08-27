@@ -25,6 +25,7 @@ resources:
     description: OCI image for Litmus Backend server 
     upstream-source: ubuntu/litmuschaos-server:3-24.04_edge
 
+
 links:
   # FIXME: update discourse link https://github.com/canonical/litmus-operators/issues/4
   documentation: https://discourse.charmhub.io/t/18122
@@ -42,6 +43,13 @@ requires:
       including chaos workflows, experiments, and the results generated from these experiments. 
 
       Note: This should be the same MongoDB instance used by the Litmus auth server.
+
+  litmus-auth:
+    optional: false
+    interface: litmus_auth
+    limit: 1
+    description: |
+      Exchange the gRPC server endpoints of the auth and backend components.
 
 platforms:
   ubuntu@24.04:amd64:

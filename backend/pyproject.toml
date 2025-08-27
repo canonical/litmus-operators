@@ -9,8 +9,6 @@ dependencies = [
     "ops",
     # for the reconciler
     "cosl",
-    #for models
-    "pydantic>2",
     "litmus-libs>=0.0.2",
 ]
 
@@ -29,6 +27,9 @@ dev = [
 #   LINTING
     "pyright",
     "ruff",
+
+#   INTERFACE TESTS
+    "pytest-interface-tester",
 ]
 
 [tool.pyright]
