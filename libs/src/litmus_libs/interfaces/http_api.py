@@ -7,7 +7,8 @@ from typing import Optional
 
 import pydantic
 
-from ._base import BaseVersionedModel, SimpleEndpointWrapper
+
+from .base import BaseVersionedModel, SimpleEndpointWrapper
 
 
 class AuthApiProviderAppDatabagModelV0(BaseVersionedModel):
