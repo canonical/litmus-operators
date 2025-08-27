@@ -4,14 +4,17 @@ build-backend = "hatchling.build"
 
 [project]
 name = "litmus-libs"
-version = "0.0.2"
+
+# version tag only matters for local dev; CI will overwrite it on release based on the git tag
+version = "0.0+dev"
+
 authors = [
     { name = "mmkay", email = "232859+mmkay@users.noreply.github.com" },
 ]
 description = "Shared abstractions for litmus component operator charms."
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = "~=3.12.0"
+requires-python = ">=3.12, <4"
 dependencies = [
     "pydantic",
 ]
