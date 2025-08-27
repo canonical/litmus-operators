@@ -2,20 +2,24 @@
 # See LICENSE file for licensing details.
 
 """Litmus auth integration endpoint wrapper."""
+
 from typing import Optional
 
 import pydantic
+
 from .base import BaseVersionedModel, SimpleEndpointWrapper
 
 
 class AuthApiProviderAppDatabagModelV0(BaseVersionedModel):
     """Auth API provider application databag model."""
+
     version: int = 0
     endpoint: pydantic.HttpUrl
 
 
 class BackendApiProviderAppDatabagModelV0(BaseVersionedModel):
     """Backend API provider application databag model."""
+
     version: int = 0
     endpoint: pydantic.HttpUrl
 
@@ -44,14 +48,14 @@ class LitmusBackendApiProvider(SimpleEndpointWrapper):
             return self._litmus_backend_api.publish_endpoint(url)
     ```
     """
+
     def publish_endpoint(
         self,
         endpoint: str,
     ):
         """Publish this auth server's gRPC endpoint to the backend server."""
         self._set(
-            model=AuthApiProviderAppDatabagModelV0,
-            data={"endpoint": pydantic.HttpUrl(endpoint)}
+            model=AuthApiProviderAppDatabagModelV0, data={"endpoint": pydantic.HttpUrl(endpoint)}
         )
 
 
@@ -78,6 +82,7 @@ class LitmusBackendApiRequirer(SimpleEndpointWrapper):
             return self._litmus_backend_api.endpoint
     ```
     """
+
     @property
     def endpoint(self) -> Optional[str]:
         """Fetch the backend API endpoint from relation data."""
@@ -111,14 +116,14 @@ class LitmusAuthApiProvider(SimpleEndpointWrapper):
             return self._litmus_auth_api.publish_endpoint(url)
     ```
     """
+
     def publish_endpoint(
         self,
         endpoint: str,
     ):
         """Publish this auth server's gRPC endpoint to the auth server."""
         self._set(
-            model=AuthApiProviderAppDatabagModelV0,
-            data={"endpoint": pydantic.HttpUrl(endpoint)}
+            model=AuthApiProviderAppDatabagModelV0, data={"endpoint": pydantic.HttpUrl(endpoint)}
         )
 
 
@@ -145,6 +150,7 @@ class LitmusAuthApiRequirer(SimpleEndpointWrapper):
             return self._litmus_auth_api.endpoint
     ```
     """
+
     @property
     def endpoint(self) -> Optional[str]:
         """Fetch the backend API endpoint from relation data."""
