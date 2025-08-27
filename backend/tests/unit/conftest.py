@@ -1,5 +1,6 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
+from unittest.mock import patch
 
 from ops.testing import Container, Context, Relation
 import pytest
@@ -21,9 +22,15 @@ def backend_container():
 
 @pytest.fixture
 def ctx(backend_charm):
-    return Context(charm_type=backend_charm)
+    with patch("socket.getfqdn", new=lambda: "foo.com"):
+        yield Context(charm_type=backend_charm)
 
 
 @pytest.fixture
 def database_relation():
     return Relation("database")
+
+
+@pytest.fixture
+def http_api_relation():
+    return Relation("http-api")

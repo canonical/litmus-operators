@@ -7,7 +7,6 @@ from typing import Optional
 
 import pydantic
 
-
 from .base import BaseVersionedModel, SimpleEndpointWrapper
 
 

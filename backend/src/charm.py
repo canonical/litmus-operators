@@ -4,6 +4,7 @@
 """Charmed Operator for Litmus Backend server; the backend layer for a chaos testing platform."""
 
 import logging
+import socket
 
 from ops.charm import CharmBase
 
@@ -40,8 +41,7 @@ class LitmusBackendCharm(CharmBase):
         )
 
         self._send_http_api = http_api.LitmusAuthApiProvider(
-            self.model.get_relation("http-api"),
-            app=self.app
+            self.model.get_relation("http-api"), app=self.app
         )
 
         self.litmus_backend = LitmusBackend(
@@ -84,9 +84,15 @@ class LitmusBackendCharm(CharmBase):
     ###################
     # UTILITY METHODS #
     ###################
+    @property
+    def _http_api_endpoint(self):
+        """Internal (i.e. not ingressed) url."""
+        return f"http://{socket.getfqdn()}:{self.litmus_backend.http_port}"
+
     def _reconcile(self):
         """Run all logic that is independent of what event we're processing."""
         self.litmus_backend.reconcile()
+        self._send_http_api.publish_endpoint(self._http_api_endpoint)
 
 
 if __name__ == "__main__":  # pragma: nocover

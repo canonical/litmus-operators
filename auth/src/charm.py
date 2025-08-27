@@ -39,8 +39,7 @@ class LitmusAuthCharm(CharmBase):
             extra_user_roles="admin",
         )
         self._send_http_api = http_api.LitmusBackendApiProvider(
-            self.model.get_relation("http-api"),
-            app=self.app
+            self.model.get_relation("http-api"), app=self.app
         )
 
         self.litmus_auth = LitmusAuth(

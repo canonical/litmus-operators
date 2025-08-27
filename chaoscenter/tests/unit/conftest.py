@@ -3,6 +3,8 @@
 
 from ops.testing import Container, Context
 import pytest
+from scenario import Relation
+
 from charm import LitmusChaoscenterCharm
 
 
@@ -22,3 +24,13 @@ def nginx_container():
 @pytest.fixture
 def ctx(chaoscenter_charm):
     return Context(charm_type=chaoscenter_charm)
+
+
+@pytest.fixture
+def auth_http_api_relation():
+    return Relation("auth-http-api")
+
+
+@pytest.fixture
+def backend_http_api_relation():
+    return Relation("backend-http-api")
