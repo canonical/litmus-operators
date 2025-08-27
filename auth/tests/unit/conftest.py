@@ -22,7 +22,7 @@ def authserver_container():
 
 @pytest.fixture
 def ctx(auth_charm):
-    with patch("socket.getfqdn", new=lambda: "foo.com"):
+    with patch("charm.get_app_hostname", new=lambda _, __: "foo.com"):
         yield Context(charm_type=auth_charm)
 
 

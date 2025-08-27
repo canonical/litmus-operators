@@ -4,13 +4,14 @@
 """Charmed Operator for Litmus Authentication server; the auth layer for a chaos testing platform."""
 
 import logging
-import socket
 from typing import Optional
 
 from ops.charm import CharmBase
 
 from litmus_auth import LitmusAuth
 from cosl.reconciler import all_events, observe_events
+
+from litmus_libs import get_app_hostname
 from models import DatabaseConfig
 from ops import ActiveStatus, CollectStatusEvent, BlockedStatus, WaitingStatus
 from pydantic_core import ValidationError
@@ -85,12 +86,13 @@ class LitmusAuthCharm(CharmBase):
     @property
     def _http_api_endpoint(self):
         """Internal (i.e. not ingressed) url."""
-        return f"http://{socket.getfqdn()}:{self.litmus_auth.http_port}"
+        return f"http://{get_app_hostname(self.app.name, self.model.name)}:{self.litmus_auth.http_port}"
 
     def _reconcile(self):
         """Run all logic that is independent of what event we're processing."""
         self.litmus_auth.reconcile()
-        self._send_http_api.publish_endpoint(self._http_api_endpoint)
+        if self.unit.is_leader():
+            self._send_http_api.publish_endpoint(self._http_api_endpoint)
 
 
 if __name__ == "__main__":  # pragma: nocover
