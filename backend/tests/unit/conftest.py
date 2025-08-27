@@ -50,6 +50,7 @@ def db_remote_databag():
 
 def auth_remote_databag():
     return {
+        "version": json.dumps(0),
         "grpc_server_host": json.dumps("host"),
         "grpc_server_port": json.dumps(80),
     }

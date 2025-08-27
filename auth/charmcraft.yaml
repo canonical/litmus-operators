@@ -42,9 +42,8 @@ provides:
     interface: litmus_auth
     limit: 1
     description: |
-      Provide a Litmus auth server endpoint to the Litmus backend server.
+      Exchange the gRPC server endpoints of the auth and backend components.
 
-      The backend server will also provide its own gRPC server endpoint to the auth server.
 
 links:
   # FIXME: update discourse link https://github.com/canonical/litmus-operators/issues/4

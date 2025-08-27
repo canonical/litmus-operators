@@ -52,4 +52,5 @@ def auth_remote_databag():
     return {
         "grpc_server_host": json.dumps("host"),
         "grpc_server_port": json.dumps(80),
+        "version": json.dumps(0),
     }

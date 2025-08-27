@@ -10,7 +10,7 @@ from ops import Container
 from ops.pebble import Layer
 from typing import Optional
 from litmus_libs import DatabaseConfig
-from litmus_libs.interfaces import Endpoint
+from litmus_libs.interfaces.litmus_auth import Endpoint
 
 
 logger = logging.getLogger(__name__)

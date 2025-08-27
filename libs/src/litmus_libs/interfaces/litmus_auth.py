@@ -13,7 +13,6 @@ from .base import BaseVersionedModel, SimpleEndpointWrapper
 
 logger = logging.getLogger()
 
-DEX_SECRET_LABEL = "dex-secret-label"
 
 @dataclass
 class Endpoint:
@@ -49,7 +48,7 @@ class LitmusAuthProvider(SimpleEndpointWrapper):
         ```python
         # In your provider's charm code
         from typing import Optional
-        from litmus_libs.interfaces import LitmusAuthProvider, Endpoint
+        from litmus_libs.interfaces.limtus_auth import LitmusAuthProvider, Endpoint
 
         class LitmusAuthProviderCharm(CharmBase):
             def __init__(self, *args):
@@ -111,7 +110,7 @@ class LitmusAuthRequirer(SimpleEndpointWrapper):
         ```python
         # In your requirer's charm code
         from typing import Optional
-        from litmus_libs.interfaces import LitmusAuthRequirer, Endpoint
+        from litmus_libs.interfaces.limtus_auth import LitmusAuthRequirer, Endpoint
 
         class LitmusAuthRequirerCharm(CharmBase):
             def __init__(self, *args):

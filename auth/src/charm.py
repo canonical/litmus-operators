@@ -15,8 +15,11 @@ from pydantic_core import ValidationError
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseRequires,
 )
-from litmus_libs.interfaces import LitmusAuthDataProvider, Endpoint
-from litmus_libs import app_hostname, DatabaseConfig
+from litmus_libs.interfaces.litmus_auth import LitmusAuthProvider, Endpoint
+from litmus_libs import get_app_hostname, DatabaseConfig
+
+DATABASE_ENDPOINT = "database"
+LITMUS_AUTH_ENDPOINT = "litmus-auth"
 
 logger = logging.getLogger(__name__)
 
@@ -28,14 +31,14 @@ class LitmusAuthCharm(CharmBase):
         super().__init__(*args)
 
         self.unit.set_ports(LitmusAuth.http_port, LitmusAuth.grpc_port)
-        self._auth_provider = LitmusAuthDataProvider(
-            self.model.get_relation("litmus-auth"),
+        self._auth_provider = LitmusAuthProvider(
+            self.model.get_relation(LITMUS_AUTH_ENDPOINT),
             self.app,
         )
 
         self._database = DatabaseRequires(
             self,
-            relation_name="database",
+            relation_name=DATABASE_ENDPOINT,
             database_name="admin",
             # throughout its lifecycle, litmus will need to create and manage new databases (e.g. `auth` and `litmus`)
             # to do this, it requires cluster-wide permissions that are only part of the `admin` role.
@@ -76,16 +79,30 @@ class LitmusAuthCharm(CharmBase):
     ##################
 
     def _on_collect_unit_status(self, e: CollectStatusEvent):
-        if not self._database.relations:
-            e.add_status(BlockedStatus("Missing MongoDB integration."))
-        if not self.model.relations["litmus-auth"]:
-            e.add_status(BlockedStatus("Missing litmus-auth integration."))
-        if not self.database_config:
-            e.add_status(WaitingStatus("MongoDB config not ready."))
-        if not self.backend_grpc_endpoint:
-            e.add_status(
-                WaitingStatus("Backend server has not provided its gRPC endpoint yet.")
+        missing_relations = [
+            rel
+            for rel in (DATABASE_ENDPOINT, LITMUS_AUTH_ENDPOINT)
+            if not self.model.get_relation(rel)
+        ]
+        missing_configs = [
+            config_name
+            for config_name, source in (
+                ("database config", self.database_config),
+                ("backend gRPC endpoint", self.backend_grpc_endpoint),
             )
+            if not source
+        ]
+        if missing_relations:
+            e.add_status(
+                BlockedStatus(
+                    f"Missing [{', '.join(missing_relations)}] integration(s)."
+                )
+            )
+        if missing_configs:
+            e.add_status(
+                WaitingStatus(f"[{', '.join(missing_relations)}] not ready yet.")
+            )
+
         e.add_status(ActiveStatus(""))
 
     ###################
@@ -97,7 +114,7 @@ class LitmusAuthCharm(CharmBase):
         if self.unit.is_leader():
             self._auth_provider.publish_endpoint(
                 Endpoint(
-                    grpc_server_host=app_hostname(self.app.name, self.model.name),
+                    grpc_server_host=get_app_hostname(self.app.name, self.model.name),
                     grpc_server_port=LitmusAuth.grpc_port,
                     # TODO: check if TLS is enabled once https://github.com/canonical/litmus-operators/issues/25 is fixed
                     insecure=True,

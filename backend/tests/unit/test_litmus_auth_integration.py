@@ -3,7 +3,7 @@
 import dataclasses
 import pytest
 import json
-from litmus_libs.interfaces import Endpoint
+from litmus_libs.interfaces.litmus_auth import Endpoint
 from ops.testing import State, Model
 
 
@@ -21,6 +21,7 @@ from ops.testing import State, Model
                 "grpc_server_host": json.dumps("host"),
                 "grpc_server_port": json.dumps(80),
                 "insecure": json.dumps(True),
+                "version": json.dumps(0),
             },
             Endpoint(
                 grpc_server_host="host",
