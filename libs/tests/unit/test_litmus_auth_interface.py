@@ -7,8 +7,12 @@ import pytest
 from ops import CharmBase
 from ops.testing import Context, State
 
+<<<<<<< HEAD
 from src.litmus_libs.interfaces.base import VersionMismatchError
 from src.litmus_libs.interfaces.litmus_auth import (
+=======
+from litmus_libs.interfaces.litmus_auth import (
+>>>>>>> feat/frontend_http_interfaces_old
     Endpoint,
     LitmusAuthProvider,
     LitmusAuthRequirer,
