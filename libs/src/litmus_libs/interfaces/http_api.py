@@ -53,9 +53,10 @@ class LitmusBackendApiProvider(SimpleEndpointWrapper):
         self,
         endpoint: str,
     ):
-        """Publish this auth server's gRPC endpoint to the backend server."""
+        """Publish this backend server's HTTP endpoint to the chaoscenter component."""
         self._set(
-            model=AuthApiProviderAppDatabagModelV0, data={"endpoint": pydantic.HttpUrl(endpoint)}
+            model=BackendApiProviderAppDatabagModelV0,
+            data={"endpoint": pydantic.HttpUrl(endpoint)},
         )
 
 
@@ -121,7 +122,7 @@ class LitmusAuthApiProvider(SimpleEndpointWrapper):
         self,
         endpoint: str,
     ):
-        """Publish this auth server's gRPC endpoint to the auth server."""
+        """Publish this auth server's HTTP endpoint to the chaoscenter component."""
         self._set(
             model=AuthApiProviderAppDatabagModelV0, data={"endpoint": pydantic.HttpUrl(endpoint)}
         )
@@ -153,7 +154,7 @@ class LitmusAuthApiRequirer(SimpleEndpointWrapper):
 
     @property
     def endpoint(self) -> Optional[str]:
-        """Fetch the backend API endpoint from relation data."""
+        """Fetch the auth API endpoint from relation data."""
         datamodel = self._get(AuthApiProviderAppDatabagModelV0)
         if not datamodel:
             return None
