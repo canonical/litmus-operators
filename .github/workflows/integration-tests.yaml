@@ -12,7 +12,7 @@ on:
 
 jobs:
   modes-matrix:
-    name: Detect changed iles and determine which tests to run
+    name: Detect changed files and determine which tests to run
     runs-on: ubuntu-latest
     outputs:
       modes: ${{ steps.set-matrix.outputs.matrix }}
