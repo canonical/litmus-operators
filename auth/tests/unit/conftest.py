@@ -27,8 +27,7 @@ def authserver_container():
 
 @pytest.fixture
 def ctx(auth_charm):
-    with patch("charm.get_app_hostname", new=lambda _, __: "foo.com"):
-        yield Context(charm_type=auth_charm)
+    yield Context(charm_type=auth_charm)
 
 
 @pytest.fixture

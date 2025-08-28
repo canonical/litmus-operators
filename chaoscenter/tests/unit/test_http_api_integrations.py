@@ -1,4 +1,8 @@
+import json
+
 from scenario import State
+
+from litmus_libs.interfaces.http_api import BackendApiRequirerAppDatabagModelV0
 
 
 def test_chaoscenter_endpoints(
@@ -14,6 +18,14 @@ def test_chaoscenter_endpoints(
             containers={nginx_container},
         ),
     )
-    # THEN chaoscenter charm publishes nothing
-    assert not state_out.get_relation(backend_http_api_relation.id).local_app_data
+
+    # THEN chaoscenter publishes its endpoint data
+    def _dejsonify(d: dict):
+        return {k: json.loads(v) for k, v in d.items()}
+
+    assert BackendApiRequirerAppDatabagModelV0.model_validate(
+        _dejsonify(state_out.get_relation(backend_http_api_relation.id).local_app_data)
+    )
+
+    # THEN chaoscenter charm publishes nothing over auth-http-api
     assert not state_out.get_relation(auth_http_api_relation.id).local_app_data

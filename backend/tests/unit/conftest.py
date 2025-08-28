@@ -27,8 +27,7 @@ def backend_container():
 
 @pytest.fixture
 def ctx(backend_charm):
-    with patch("charm.get_app_hostname", new=lambda _, __: "foo.com"):
-        yield Context(charm_type=backend_charm)
+    yield Context(charm_type=backend_charm)
 
 
 @pytest.fixture
