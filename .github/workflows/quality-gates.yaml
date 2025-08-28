@@ -9,6 +9,13 @@ on:
   #   - cron: "0 0 * * Tue"
 
 jobs:
+  prepare:
+    steps:
+      - name: Update libs
+        run: |
+          sudo snap install astral-uv --classic
+          bash ./scripts/update_libs.sh
+
   quality-gates-auth:
     name: Run quality gates
     uses: canonical/observability/.github/workflows/charm-quality-gates.yaml@v1

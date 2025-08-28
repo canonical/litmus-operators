@@ -5,6 +5,7 @@
 
 from pydantic import BaseModel, ConfigDict
 
+TEST_CI = True
 
 class DatabaseConfig(BaseModel):
     """Model for database client relation databag.

@@ -12,6 +12,8 @@ from ops import ActiveStatus, CollectStatusEvent, BlockedStatus
 
 from litmus_libs.interfaces.litmus_auth import LitmusAuthRequirer, Endpoint
 from litmus_libs import DatabaseConfig, get_app_hostname
+from litmus_libs.models import TEST_CI
+assert TEST_CI # FIXME do not merge
 from cosl.reconciler import all_events, observe_events
 
 from ops import WaitingStatus

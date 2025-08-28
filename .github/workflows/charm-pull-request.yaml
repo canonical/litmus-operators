@@ -61,6 +61,23 @@ jobs:
             icon.svg
             .gitignore
             .github/**
+      - name: Update libs
+        run: |
+          sudo snap install astral-uv --classic
+          bash ./scripts/update_libs.sh
+      - name: Assert lockfiles are in sync
+        if: needs.libs-changed.outputs.libs_changed == 'true'
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then 
+            # Working directory clean; you did well.
+            echo "all good!"
+          else 
+            # Uncommitted changes; send passive-aggressive error message.
+            echo "you forgot to run ./scripts/update_libs.sh and commit the output.
+              Have you ever heard of pre-commit hooks?"
+            exit 1
+          fi
+
   pull-request-auth:
     needs: charms-changed
     if: needs.charms-changed.outputs.auth_changed == 'true'

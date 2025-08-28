@@ -85,6 +85,11 @@ jobs:
             icon.svg
             .gitignore
 
+      - name: Update libs
+        run: |
+          sudo snap install astral-uv --classic
+          bash ./scripts/update_libs.sh
+
       - name: Determine test modes matrix
         id: set-matrix
         run: |

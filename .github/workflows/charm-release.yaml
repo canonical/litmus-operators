@@ -58,6 +58,11 @@ jobs:
             icon.svg
             .gitignore
             .github/**
+      - name: Update libs
+        run: |
+          sudo snap install astral-uv --classic
+          bash ./scripts/update_libs.sh
+
   release-auth:
     needs: charms-changed
     if: needs.charms-changed.outputs.auth_changed == 'true'
