@@ -24,6 +24,13 @@ class BackendApiProviderAppDatabagModelV0(BaseVersionedModel):
     endpoint: pydantic.HttpUrl
 
 
+class BackendApiRequirerAppDatabagModelV0(BaseVersionedModel):
+    """Backend API requirer application databag model."""
+
+    version: int = 0
+    endpoint: pydantic.HttpUrl
+
+
 class LitmusBackendApiProvider(SimpleEndpointWrapper):
     """Wraps a litmus_backend_http_api provider endpoint.
 
@@ -46,8 +53,21 @@ class LitmusBackendApiProvider(SimpleEndpointWrapper):
             # Publish the litmus backend http API server endpoint
             url = f"https://{socket.getfqdn()}:1234" # for example
             return self._litmus_backend_api.publish_endpoint(url)
+
+        @property
+        def _frontend_url(self):
+            # obtain frontend URL from frontend component
+            return self._litmus_backend_api.frontend_url()
     ```
     """
+
+    @property
+    def frontend_endpoint(self) -> Optional[str]:
+        """Retrieve the url of the frontend component."""
+        datamodel = self._get(BackendApiRequirerAppDatabagModelV0)
+        if not datamodel:
+            return None
+        return str(datamodel.endpoint)
 
     def publish_endpoint(
         self,
@@ -85,12 +105,22 @@ class LitmusBackendApiRequirer(SimpleEndpointWrapper):
     """
 
     @property
-    def endpoint(self) -> Optional[str]:
+    def backend_endpoint(self) -> Optional[str]:
         """Fetch the backend API endpoint from relation data."""
         datamodel = self._get(BackendApiProviderAppDatabagModelV0)
         if not datamodel:
             return None
         return str(datamodel.endpoint)
+
+    def publish_endpoint(
+        self,
+        endpoint: str,
+    ):
+        """Publish this frontend's HTTP endpoint to the backend component."""
+        self._set(
+            model=BackendApiRequirerAppDatabagModelV0,
+            data={"endpoint": pydantic.HttpUrl(endpoint)},
+        )
 
 
 class LitmusAuthApiProvider(SimpleEndpointWrapper):
@@ -153,7 +183,7 @@ class LitmusAuthApiRequirer(SimpleEndpointWrapper):
     """
 
     @property
-    def endpoint(self) -> Optional[str]:
+    def auth_endpoint(self) -> Optional[str]:
         """Fetch the auth API endpoint from relation data."""
         datamodel = self._get(AuthApiProviderAppDatabagModelV0)
         if not datamodel:
