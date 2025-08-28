@@ -61,11 +61,8 @@ class LitmusBackendApiProvider(SimpleEndpointWrapper):
     ```
     """
 
-    # WRITE: BackendApiProviderAppDatabagModelV0
-    # READ: BackendApiRequirerAppDatabagModelV0
-
     @property
-    def endpoint(self) -> Optional[str]:
+    def frontend_endpoint(self) -> Optional[str]:
         """Retrieve the url of the frontend component."""
         datamodel = self._get(BackendApiRequirerAppDatabagModelV0)
         if not datamodel:
@@ -108,7 +105,7 @@ class LitmusBackendApiRequirer(SimpleEndpointWrapper):
     """
 
     @property
-    def endpoint(self) -> Optional[str]:
+    def backend_endpoint(self) -> Optional[str]:
         """Fetch the backend API endpoint from relation data."""
         datamodel = self._get(BackendApiProviderAppDatabagModelV0)
         if not datamodel:
@@ -186,7 +183,7 @@ class LitmusAuthApiRequirer(SimpleEndpointWrapper):
     """
 
     @property
-    def endpoint(self) -> Optional[str]:
+    def auth_endpoint(self) -> Optional[str]:
         """Fetch the auth API endpoint from relation data."""
         datamodel = self._get(AuthApiProviderAppDatabagModelV0)
         if not datamodel:

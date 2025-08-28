@@ -55,9 +55,14 @@ class HTTPAPICharm(CharmBase):
     def publish_endpoint(self, foo: str):
         self.send_auth.publish_endpoint(foo)
         self.send_backend.publish_endpoint(foo)
+        self.receive_backend.publish_endpoint(foo)
 
     def receive_endpoints(self):
-        return self.receive_auth.endpoint, self.receive_backend.endpoint
+        return (
+            self.receive_auth.auth_endpoint,
+            self.receive_backend.backend_endpoint,
+            self.send_backend.frontend_endpoint,
+        )
 
 
 @pytest.fixture(
@@ -80,7 +85,11 @@ def test_provider_publish_endpoint(endpoint):
     state_out = ctx.run(
         ctx.on.update_status(),
         state=State(
-            relations={Relation("send-auth-http", id=1), Relation("send-backend-http", id=2)},
+            relations={
+                Relation("send-auth-http", id=1),
+                Relation("send-backend-http", id=2),
+                Relation("receive-backend-http", id=3),
+            },
             leader=True,
         ),
     )
@@ -103,10 +112,11 @@ def test_requirer_receive_endpoint(endpoint):
             relations={
                 Relation("receive-auth-http", id=1, remote_app_data=databag),
                 Relation("receive-backend-http", id=2, remote_app_data=databag),
+                Relation("send-backend-http", id=3, remote_app_data=databag),
             },
             leader=True,
         ),
     )
 
     # THEN the data is received as expected
-    assert HTTPAPICharm._OUT == (endpoint, endpoint)
+    assert HTTPAPICharm._OUT == (endpoint, endpoint, endpoint)
