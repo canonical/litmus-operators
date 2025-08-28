@@ -42,6 +42,7 @@ tox -e fmt           # update your code according to formatting rules
 tox -e lint          # lint the codebase
 tox -e unit          # run the unit testing suite
 tox -e integration   # run the integration testing suite
+tox -e sync_libs     # sync the library with all components
 tox                  # runs 'lint' and 'unit' environments
 ```
 

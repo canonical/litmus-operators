@@ -36,6 +36,14 @@ jobs:
             icon.svg
             .gitignore
             .github/**
+      - name: Check-lockfiles-synced
+        if: needs.libs-changed.outputs.libs_changed == 'true'
+        run: |
+          bash ./update_libs.sh
+          
+          
+
+
   call-inclusive-naming-check:
     name: Inclusive naming
     needs: libs-changed

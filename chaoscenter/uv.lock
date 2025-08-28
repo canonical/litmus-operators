@@ -142,7 +142,7 @@ dev = [
 requires-dist = [
     { name = "coverage", extras = ["toml"], marker = "extra == 'dev'" },
     { name = "jubilant", marker = "extra == 'dev'" },
-    { name = "litmus-libs", specifier = ">=0.0.2" },
+    { name = "litmus-libs", path = "wheels/litmus_libs-0.0+dev-py3-none-any.whl" },
     { name = "ops" },
     { name = "ops", extras = ["testing"], marker = "extra == 'dev'" },
     { name = "pyright", marker = "extra == 'dev'" },
@@ -155,15 +155,26 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "litmus-libs"
-version = "0.0.2"
-source = { registry = "https://pypi.org/simple" }
+version = "0.0+dev"
+source = { path = "wheels/litmus_libs-0.0+dev-py3-none-any.whl" }
 dependencies = [
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/51/8e/b901e7b146b5f23cf008b067de3117d2f1a318f6d20fb234f201fa5f006f/litmus_libs-0.0.2.tar.gz", hash = "sha256:dff7deddae7abcb38f02deede7f35130dafbb8286df8494c978ba5b524edd86f", size = 24237, upload-time = "2025-08-26T16:20:01.987Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d0/7a/fa113fce59ef60df37173f2730b1d96d6ea14576b42c6f5799defaa4dca6/litmus_libs-0.0.2-py3-none-any.whl", hash = "sha256:467519bf8ce077382e1fb9d568f02aa4c9ddd78a9bfe884a7e61f3a948a30345", size = 13885, upload-time = "2025-08-26T16:20:00.564Z" },
+    { filename = "litmus_libs-0.0+dev-py3-none-any.whl", hash = "sha256:63daac0d28625692ad224fe04022d89bae797bbfd91c023c778da144b9cdcbc0" },
 ]
+
+[package.metadata]
+requires-dist = [
+    { name = "coverage", extras = ["toml"], marker = "extra == 'dev'" },
+    { name = "ops", extras = ["testing"], marker = "extra == 'dev'" },
+    { name = "pydantic" },
+    { name = "pyright", marker = "extra == 'dev'" },
+    { name = "pytest", marker = "extra == 'dev'" },
+    { name = "pytest-cov", marker = "extra == 'dev'" },
+    { name = "ruff", marker = "extra == 'dev'" },
+]
+provides-extras = ["dev"]
 
 [[package]]
 name = "nodeenv"

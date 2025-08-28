@@ -83,3 +83,6 @@ max-complexity = 10
 
 [tool.codespell]
 skip = "build,lib,venv,icon.svg,.tox,.git,.mypy_cache,.ruff_cache,.vscode,.coverage"
+
+[tool.uv.sources]
+litmus-libs = { path = "wheels/litmus_libs-0.0+dev-py3-none-any.whl" }
