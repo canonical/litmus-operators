@@ -2,6 +2,8 @@
 # See LICENSE file for licensing details.
 from unittest.mock import patch
 
+import json
+from unittest.mock import patch
 from ops.testing import Container, Context, Relation
 import pytest
 from charm import LitmusBackendCharm
@@ -9,7 +11,11 @@ from charm import LitmusBackendCharm
 
 @pytest.fixture
 def backend_charm():
-    yield LitmusBackendCharm
+    with patch(
+        "socket.getfqdn",
+        return_value="app-0.app-headless.default.svc.cluster.local",
+    ):
+        yield LitmusBackendCharm
 
 
 @pytest.fixture
@@ -29,6 +35,27 @@ def ctx(backend_charm):
 @pytest.fixture
 def database_relation():
     return Relation("database")
+
+
+@pytest.fixture
+def auth_relation():
+    return Relation("litmus-auth")
+
+
+def db_remote_databag():
+    return {
+        "uris": "uris",
+        "username": "username",
+        "password": "password",
+    }
+
+
+def auth_remote_databag():
+    return {
+        "version": json.dumps(0),
+        "grpc_server_host": json.dumps("host"),
+        "grpc_server_port": json.dumps(80),
+    }
 
 
 @pytest.fixture
