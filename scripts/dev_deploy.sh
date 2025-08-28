@@ -8,6 +8,6 @@ juju relate auth backend
 juju relate auth chaoscenter
 juju relate backend chaoscenter
 
-juju deploy mongodb-k8s mongo
+juju deploy mongodb-k8s mongo --trust
 juju relate mongo auth
 juju relate mongo backend
