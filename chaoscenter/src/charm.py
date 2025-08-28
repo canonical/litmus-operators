@@ -9,6 +9,7 @@ from ops.charm import CharmBase
 from ops import LifecycleEvent, EventBase, CollectStatusEvent, BlockedStatus
 
 from litmus_frontend import LitmusFrontend
+from litmus_libs import get_app_hostname
 from litmus_libs.interfaces.http_api import (
     LitmusAuthApiRequirer,
     LitmusBackendApiRequirer,
@@ -45,9 +46,17 @@ class LitmusChaoscenterCharm(CharmBase):
     ##################
     # EVENT HANDLERS #
     ##################
+    @property
+    def _frontend_url(self):
+        """Internal (i.e. not ingressed) url."""
+        # TODO: add support for HTTPS once https://github.com/canonical/litmus-operators/issues/23 is fixed
+        # TODO: add nginx port instead of 8080
+        return f"http://{get_app_hostname(self.app.name, self.model.name)}:8080"
+
     def _on_any_event(self, _: EventBase):
         """Common entry hook."""
         self._reconcile()
+        self._receive_backend_http_api.publish_endpoint(self._frontend_url)
 
     def _on_collect_unit_status(self, e: CollectStatusEvent):
         # FIXME: add a condition to set to blocked if we don't have a valid config from relation data

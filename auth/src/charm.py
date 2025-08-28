@@ -18,7 +18,7 @@ from pydantic_core import ValidationError
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseRequires,
 )
-from litmus_libs.interfaces import http_api
+from litmus_libs.interfaces.http_api import LitmusBackendApiProvider
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class LitmusAuthCharm(CharmBase):
             # cfr. https://github.com/canonical/mongo-single-kernel-library/blob/6/edge/single_kernel_mongo/utils/mongodb_users.py#L52
             extra_user_roles="admin",
         )
-        self._send_http_api = http_api.LitmusBackendApiProvider(
+        self._send_http_api = LitmusBackendApiProvider(
             self.model.get_relation("http-api"), app=self.app
         )
 
@@ -86,6 +86,7 @@ class LitmusAuthCharm(CharmBase):
     @property
     def _http_api_endpoint(self):
         """Internal (i.e. not ingressed) url."""
+        # TODO: add support for HTTPS once https://github.com/canonical/litmus-operators/issues/23 is fixed
         return f"http://{get_app_hostname(self.app.name, self.model.name)}:{self.litmus_auth.http_port}"
 
     def _reconcile(self):

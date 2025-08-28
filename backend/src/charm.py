@@ -19,7 +19,7 @@ from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseRequires,
 )
 from typing import Optional
-from litmus_libs.interfaces import http_api
+from litmus_libs.interfaces.http_api import LitmusBackendApiProvider
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ class LitmusBackendCharm(CharmBase):
             extra_user_roles="admin",
         )
 
-        self._send_http_api = http_api.LitmusAuthApiProvider(
+        self._send_http_api = LitmusBackendApiProvider(
             self.model.get_relation("http-api"), app=self.app
         )
 
@@ -86,8 +86,14 @@ class LitmusBackendCharm(CharmBase):
     # UTILITY METHODS #
     ###################
     @property
+    def _frontend_url(self):
+        """Frontend URL."""
+        return self._send_http_api.frontend_url()
+
+    @property
     def _http_api_endpoint(self):
         """Internal (i.e. not ingressed) url."""
+        # TODO: add support for HTTPS once https://github.com/canonical/litmus-operators/issues/23 is fixed
         return f"http://{get_app_hostname(self.app.name, self.model.name)}:{self.litmus_backend.http_port}"
 
     def _reconcile(self):

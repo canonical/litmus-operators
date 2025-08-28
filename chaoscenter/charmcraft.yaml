@@ -31,13 +31,13 @@ requires:
     interface: litmus_backend_http_api
     limit: 1
     description: |
-      Receive the litmus auth HTTP API .
+      Receive the litmus backend HTTP API.
   auth-http-api:
     optional: false
     interface: litmus_auth_http_api
     limit: 1
     description: |
-      Receive the litmus auth HTTP API .
+      Receive the litmus auth HTTP API.
 
 
 links:
