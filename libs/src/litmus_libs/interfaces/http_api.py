@@ -60,6 +60,7 @@ class LitmusBackendApiProvider(SimpleEndpointWrapper):
             return self._litmus_backend_api.frontend_url()
     ```
     """
+
     # WRITE: BackendApiProviderAppDatabagModelV0
     # READ: BackendApiRequirerAppDatabagModelV0
 

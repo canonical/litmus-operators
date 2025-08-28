@@ -14,9 +14,6 @@ from litmus_libs.interfaces.litmus_auth import LitmusAuthRequirer, Endpoint
 from litmus_libs import DatabaseConfig, get_app_hostname
 from cosl.reconciler import all_events, observe_events
 
-from litmus_libs import get_app_hostname
-from models import DatabaseConfig
-
 from ops import WaitingStatus
 from pydantic_core import ValidationError
 from charms.data_platform_libs.v0.data_interfaces import (

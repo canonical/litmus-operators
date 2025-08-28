@@ -3,7 +3,6 @@
 from unittest.mock import patch
 
 import json
-from unittest.mock import patch
 from ops.testing import Container, Context, Relation
 import pytest
 from charm import LitmusBackendCharm
