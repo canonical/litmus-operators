@@ -45,6 +45,10 @@ tox -e integration   # run the integration testing suite
 tox                  # runs 'lint' and 'unit' environments
 ```
 
+## Shared library code
+
+The three charms contained in this repo share the litmus-libs dependency whose source is in ./libs.
+
 ## Build charm
 
 Build the charm in this git repository using:

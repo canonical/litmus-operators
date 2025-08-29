@@ -58,6 +58,7 @@ class LitmusBackendCharm(CharmBase):
             container=self.unit.get_container(LitmusBackend.name),
             db_config=self.database_config,
             auth_grpc_endpoint=self.auth_grpc_endpoint,
+            frontend_url=self.frontend_url,
         )
 
         self.framework.observe(
@@ -68,6 +69,7 @@ class LitmusBackendCharm(CharmBase):
 
     @property
     def database_config(self) -> Optional[DatabaseConfig]:
+        """Database configuration."""
         remote_relations_databags = self._database.fetch_relation_data()
         if not remote_relations_databags:
             return None
@@ -80,7 +82,13 @@ class LitmusBackendCharm(CharmBase):
 
     @property
     def auth_grpc_endpoint(self) -> Optional[Endpoint]:
+        """Auth gRPC endpoint."""
         return self._auth.get_auth_grpc_endpoint()
+
+    @property
+    def frontend_url(self) -> Optional[str]:
+        """Frontend URL."""
+        return self._send_http_api.frontend_endpoint
 
     ##################
     # EVENT HANDLERS #
@@ -97,6 +105,7 @@ class LitmusBackendCharm(CharmBase):
             for config_name, source in (
                 ("database config", self.database_config),
                 ("auth gRPC endpoint", self.auth_grpc_endpoint),
+                ("frontend url", self.frontend_url),
             )
             if not source
         ]
@@ -108,19 +117,15 @@ class LitmusBackendCharm(CharmBase):
             )
         if missing_configs:
             e.add_status(
-                WaitingStatus(f"[{', '.join(missing_relations)}] not ready yet.")
+                WaitingStatus(f"[{', '.join(missing_configs)}] not provided yet.")
             )
 
+        # TODO: add pebble check to verify backend is up
         e.add_status(ActiveStatus(""))
 
     ###################
     # UTILITY METHODS #
     ###################
-    @property
-    def _frontend_url(self):
-        """Frontend URL."""
-        return self._send_http_api.frontend_url()
-
     @property
     def _http_api_endpoint(self):
         """Internal (i.e. not ingressed) url."""

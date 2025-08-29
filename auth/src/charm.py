@@ -17,7 +17,7 @@ from charms.data_platform_libs.v0.data_interfaces import (
 )
 from litmus_libs.interfaces.litmus_auth import LitmusAuthProvider, Endpoint
 from litmus_libs import get_app_hostname, DatabaseConfig
-from litmus_libs.interfaces.http_api import LitmusBackendApiProvider
+from litmus_libs.interfaces.http_api import LitmusAuthApiProvider
 
 DATABASE_ENDPOINT = "database"
 LITMUS_AUTH_ENDPOINT = "litmus-auth"
@@ -46,7 +46,7 @@ class LitmusAuthCharm(CharmBase):
             # cfr. https://github.com/canonical/mongo-single-kernel-library/blob/6/edge/single_kernel_mongo/utils/mongodb_users.py#L52
             extra_user_roles="admin",
         )
-        self._send_http_api = LitmusBackendApiProvider(
+        self._send_http_api = LitmusAuthApiProvider(
             self.model.get_relation("http-api"), app=self.app
         )
 
@@ -104,9 +104,10 @@ class LitmusAuthCharm(CharmBase):
             )
         if missing_configs:
             e.add_status(
-                WaitingStatus(f"[{', '.join(missing_relations)}] not ready yet.")
+                WaitingStatus(f"[{', '.join(missing_configs)}] not provided yet.")
             )
 
+        # TODO: add pebble check to verify auth server is up
         e.add_status(ActiveStatus(""))
 
     ###################

@@ -56,6 +56,13 @@ def auth_remote_databag():
     }
 
 
+def http_api_remote_databag():
+    return {
+        "version": json.dumps(0),
+        "endpoint": json.dumps("http://foo.com:8080"),
+    }
+
+
 @pytest.fixture
 def http_api_relation():
     return Relation("http-api")

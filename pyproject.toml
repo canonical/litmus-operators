@@ -5,33 +5,18 @@ name = "litmus-k8s"
 version = "0.1"  # this is in fact irrelevant
 requires-python = ">=3.12, <4"
 
+
+[dependency-groups]
+dev = [
+    #INTEGRATION TESTS
+    "jubilant",
+    "pytest-jubilant~=1.0",
+    "tenacity"
+]
+
+
 [tool.pytest.ini_options]
 minversion = "6.0"
 log_cli_level = "INFO"
 markers = ["setup", "teardown"]
-
-[tool.uv.workspace]
-members = [
-    "libs",
-    "auth",
-    "backend",
-    "chaoscenter",
-]
-
-[dependency-groups]
-dev = [
-    "pytest>=8.4.1",
-    "pytest-jubilant",
-    "ops[testing]>=3.1.0",
-    "litmus-libs",
-    "litmus-auth-k8s",
-    "litmus-backend-k8s",
-    "litmus-chaoscenter-k8s",
-]
-
-[tool.uv.sources]
-litmus-libs = { workspace = true }
-litmus-auth-k8s = { workspace = true }
-litmus-backend-k8s = { workspace = true }
-litmus-chaoscenter-k8s = { workspace = true }
 
