@@ -31,7 +31,6 @@ class LitmusAuth:
         self._container = container
         self._db_config = db_config
         self._backend_grpc_endpoint = backend_grpc_endpoint
-        self._container.get_check()
 
     def reconcile(self):
         """Unconditional control logic."""
