@@ -51,8 +51,7 @@ provides:
       Send this component's HTTP API to the frontend component.
 
 links:
-  # FIXME: update discourse link https://github.com/canonical/litmus-operators/issues/4
-  documentation: https://discourse.charmhub.io/t/18122
+  documentation: https://discourse.charmhub.io/t/18789
   website: https://charmhub.io/litmus-auth-k8s
   source: https://github.com/canonical/litmus-operators/tree/main/auth
   issues: https://github.com/canonical/litmus-operators/issues

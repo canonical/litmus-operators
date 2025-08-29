@@ -27,8 +27,7 @@ resources:
 
 
 links:
-  # FIXME: update discourse link https://github.com/canonical/litmus-operators/issues/4
-  documentation: https://discourse.charmhub.io/t/18122
+  documentation: https://discourse.charmhub.io/t/18790
   website: https://charmhub.io/litmus-backend-k8s
   source: https://github.com/canonical/litmus-operators/tree/main/backend
   issues: https://github.com/canonical/litmus-operators/issues
