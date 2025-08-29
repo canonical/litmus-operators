@@ -108,6 +108,7 @@ class LitmusAuthCharm(CharmBase):
             )
 
         # TODO: add pebble check to verify auth server is up
+        #  https://github.com/canonical/litmus-operators/issues/36
         e.add_status(ActiveStatus(""))
 
     ###################

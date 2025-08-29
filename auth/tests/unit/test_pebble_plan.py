@@ -49,7 +49,7 @@ def test_pebble_plan_with_database_relation(
     # WHEN a relation changed event is fired
     state_out = ctx.run(ctx.on.relation_changed(database_relation), state=state)
 
-    # THEN litmus auth server pebble plan is generated with extra db env vars
+    # THEN litmus auth server pebble plan is generated with an extra frontend env var
     auth_container_out = state_out.get_container(authserver_container.name)
     actual_env_vars = auth_container_out.plan.to_dict()["services"]["authserver"][
         "environment"

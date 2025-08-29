@@ -121,6 +121,7 @@ class LitmusBackendCharm(CharmBase):
             )
 
         # TODO: add pebble check to verify backend is up
+        #  https://github.com/canonical/litmus-operators/issues/36
         e.add_status(ActiveStatus(""))
 
     ###################

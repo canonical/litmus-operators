@@ -42,6 +42,7 @@ class LitmusChaoscenterCharm(CharmBase):
         self.litmus_frontend = LitmusFrontend(
             container=self.unit.get_container(LitmusFrontend.name),
             backend_url=self.backend_url,
+            auth_url=self.auth_url,
         )
 
         self.framework.observe(
@@ -68,6 +69,11 @@ class LitmusChaoscenterCharm(CharmBase):
     def backend_url(self):
         """The backend's http API url."""
         return self._receive_backend_http_api.backend_endpoint
+
+    @property
+    def auth_url(self):
+        """The auth's http API url."""
+        return self._receive_auth_http_api.auth_endpoint
 
     def _on_any_event(self, _: EventBase):
         """Common entry hook."""
@@ -99,6 +105,7 @@ class LitmusChaoscenterCharm(CharmBase):
             )
 
         # TODO: add pebble check to verify frontend is up
+        #  https://github.com/canonical/litmus-operators/issues/36
         e.add_status(ActiveStatus(f"Ready at {self._frontend_url}."))
 
     ###################
