@@ -19,4 +19,3 @@ dev = [
 minversion = "6.0"
 log_cli_level = "INFO"
 markers = ["setup", "teardown"]
-
