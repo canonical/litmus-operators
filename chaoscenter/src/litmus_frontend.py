@@ -5,6 +5,7 @@
 """Control Litmus frontend server running in a container under Pebble. Provides a LitmusFrontend class."""
 
 import logging
+from typing import Optional
 
 from ops import Container
 from ops.pebble import Layer
@@ -18,8 +19,16 @@ class LitmusFrontend:
 
     name = "nginx"
 
-    def __init__(self, container: Container):
+    def __init__(self, container: Container,
+                 backend_url: Optional[str],
+                 auth_url: Optional[str],
+                 ):
         self._container = container
+
+        # TODO: inject in frontend nginx service and mount at /api/ location
+        self._backend_url = backend_url
+        # TODO: inject in frontend nginx service and mount at /auth/ location
+        self._auth_url = auth_url
 
     def reconcile(self):
         """Unconditional control logic."""

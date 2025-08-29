@@ -9,6 +9,7 @@ from pytest_jubilant import pack, get_resources
 from pathlib import Path
 
 AUTH_APP = "auth"
+CHAOSCENTER_APP = "chaoscenter"
 BACKEND_APP = "backend"
 MONGO_APP = "mongodb"
 
@@ -46,7 +47,7 @@ def _charm_and_channel_and_resources(
 
 
 def deploy_control_plane(juju: Juju, wait_for_idle: bool = True):
-    for component in (AUTH_APP, BACKEND_APP):
+    for component in (AUTH_APP, BACKEND_APP, CHAOSCENTER_APP):
         charm_url, channel, resources = _charm_and_channel_and_resources(
             component,
             f"{component.upper()}_CHARM_PATH",
@@ -65,14 +66,20 @@ def deploy_control_plane(juju: Juju, wait_for_idle: bool = True):
     juju.deploy("mongodb-k8s", app=MONGO_APP, trust=True)
 
     juju.integrate(f"{AUTH_APP}:database", MONGO_APP)
+    juju.integrate(f"{AUTH_APP}:http-api", CHAOSCENTER_APP)
+    juju.integrate(f"{BACKEND_APP}:http-api", CHAOSCENTER_APP)
     juju.integrate(f"{BACKEND_APP}:database", MONGO_APP)
     juju.integrate(f"{AUTH_APP}:litmus-auth", f"{BACKEND_APP}:litmus-auth")
 
     if wait_for_idle:
         logger.info("waiting for the control plane to be active/idle...")
         juju.wait(
-            lambda status: all_active(status, MONGO_APP, AUTH_APP, BACKEND_APP),
-            error=lambda status: any_error(status, AUTH_APP, BACKEND_APP),
+            lambda status: all_active(
+                status, MONGO_APP, AUTH_APP, BACKEND_APP, CHAOSCENTER_APP
+            ),
+            error=lambda status: any_error(
+                status, AUTH_APP, BACKEND_APP, CHAOSCENTER_APP
+            ),
             timeout=1000,
             delay=10,
             successes=6,

@@ -21,6 +21,7 @@ from charms.data_platform_libs.v0.data_interfaces import (
 )
 
 from typing import Optional
+from litmus_libs.interfaces.http_api import LitmusBackendApiProvider
 
 DATABASE_ENDPOINT = "database"
 LITMUS_AUTH_ENDPOINT = "litmus-auth"
@@ -49,10 +50,15 @@ class LitmusBackendCharm(CharmBase):
             self.app,
         )
 
+        self._send_http_api = LitmusBackendApiProvider(
+            self.model.get_relation("http-api"), app=self.app
+        )
+
         self.litmus_backend = LitmusBackend(
             container=self.unit.get_container(LitmusBackend.name),
             db_config=self.database_config,
             auth_grpc_endpoint=self.auth_grpc_endpoint,
+            frontend_url=self.frontend_url,
         )
 
         self.framework.observe(
@@ -63,6 +69,7 @@ class LitmusBackendCharm(CharmBase):
 
     @property
     def database_config(self) -> Optional[DatabaseConfig]:
+        """Database configuration."""
         remote_relations_databags = self._database.fetch_relation_data()
         if not remote_relations_databags:
             return None
@@ -75,7 +82,13 @@ class LitmusBackendCharm(CharmBase):
 
     @property
     def auth_grpc_endpoint(self) -> Optional[Endpoint]:
+        """Auth gRPC endpoint."""
         return self._auth.get_auth_grpc_endpoint()
+
+    @property
+    def frontend_url(self) -> Optional[str]:
+        """Frontend URL."""
+        return self._send_http_api.frontend_endpoint
 
     ##################
     # EVENT HANDLERS #
@@ -92,6 +105,7 @@ class LitmusBackendCharm(CharmBase):
             for config_name, source in (
                 ("database config", self.database_config),
                 ("auth gRPC endpoint", self.auth_grpc_endpoint),
+                ("frontend url", self.frontend_url),
             )
             if not source
         ]
@@ -103,14 +117,22 @@ class LitmusBackendCharm(CharmBase):
             )
         if missing_configs:
             e.add_status(
-                WaitingStatus(f"[{', '.join(missing_relations)}] not ready yet.")
+                WaitingStatus(f"[{', '.join(missing_configs)}] not provided yet.")
             )
 
+        # TODO: add pebble check to verify backend is up
+        #  https://github.com/canonical/litmus-operators/issues/36
         e.add_status(ActiveStatus(""))
 
     ###################
     # UTILITY METHODS #
     ###################
+    @property
+    def _http_api_endpoint(self):
+        """Internal (i.e. not ingressed) url."""
+        # TODO: add support for HTTPS once https://github.com/canonical/litmus-operators/issues/23 is fixed
+        return f"http://{get_app_hostname(self.app.name, self.model.name)}:{self.litmus_backend.http_port}"
+
     def _reconcile(self):
         """Run all logic that is independent of what event we're processing."""
         self.litmus_backend.reconcile()
@@ -123,6 +145,7 @@ class LitmusBackendCharm(CharmBase):
                     insecure=True,
                 )
             )
+            self._send_http_api.publish_endpoint(self._http_api_endpoint)
 
 
 if __name__ == "__main__":  # pragma: nocover

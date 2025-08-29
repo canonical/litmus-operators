@@ -6,7 +6,7 @@ version = "0.1"  # this is in fact irrelevant
 requires-python = ">=3.12, <4"
 
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     #INTEGRATION TESTS
     "jubilant",
@@ -19,5 +19,3 @@ dev = [
 minversion = "6.0"
 log_cli_level = "INFO"
 markers = ["setup", "teardown"]
-
-

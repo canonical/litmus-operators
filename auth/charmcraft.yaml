@@ -43,7 +43,12 @@ provides:
     limit: 1
     description: |
       Exchange the gRPC server endpoints of the auth and backend components.
-
+  http-api:
+    optional: false
+    interface: litmus_auth_http_api
+    limit: 1
+    description: |
+      Send this component's HTTP API to the frontend component.
 
 links:
   # FIXME: update discourse link https://github.com/canonical/litmus-operators/issues/4

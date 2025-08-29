@@ -5,7 +5,7 @@ import dataclasses
 import pytest
 import ops
 from ops.testing import State, CharmEvents, Relation
-from conftest import db_remote_databag, auth_remote_databag
+from conftest import db_remote_databag, auth_remote_databag, http_api_remote_databag
 
 
 @pytest.mark.parametrize("leader", (False, True))
@@ -47,25 +47,29 @@ def test_blocked_status(ctx, relations, event, backend_container, leader):
     ),
 )
 @pytest.mark.parametrize(
-    "relations",
-    (
-        {
-            Relation("database"),
-            Relation("litmus-auth", remote_app_data=auth_remote_databag()),
-        },
-        {
-            Relation("litmus-auth"),
-            Relation("database", remote_app_data=db_remote_databag()),
-        },
-    ),
+    "data_missing_from",
+    ("database", "litmus-auth", "http-api"),
 )
-def test_waiting_status(ctx, relations, event, backend_container):
+def test_waiting_status(ctx, data_missing_from, event, backend_container):
     # GIVEN a running container
-    # AND the relations provided by input (if any)
-    # AND remote hasn't sent any data yet
+    # AND remote hasn't sent any data yet for any one relation
+
+    required_relations = {
+        "database": Relation("database", remote_app_data=db_remote_databag()),
+        "litmus-auth": Relation("litmus-auth", remote_app_data=auth_remote_databag()),
+        "http-api": Relation("http-api", remote_app_data=http_api_remote_databag()),
+    }
+
+    relation_missing_remote_data = dataclasses.replace(
+        required_relations.pop(data_missing_from), remote_app_data={}
+    )
     # WHEN we receive any event
     state_out = ctx.run(
-        event, State(containers={backend_container}, relations=relations)
+        event,
+        State(
+            containers={backend_container},
+            relations={relation_missing_remote_data, *required_relations.values()},
+        ),
     )
     # THEN the unit sets waiting
     assert isinstance(state_out.unit_status, ops.WaitingStatus)
@@ -80,7 +84,9 @@ def test_waiting_status(ctx, relations, event, backend_container):
         CharmEvents.install(),
     ),
 )
-def test_active_status(ctx, database_relation, auth_relation, backend_container, event):
+def test_active_status(
+    ctx, database_relation, auth_relation, http_api_relation, backend_container, event
+):
     # GIVEN a running container
     # AND a database and a litmus-auth relation
     # AND remotes have sent their data
@@ -90,11 +96,15 @@ def test_active_status(ctx, database_relation, auth_relation, backend_container,
     auth_relation = dataclasses.replace(
         auth_relation, remote_app_data=auth_remote_databag()
     )
+    http_api_relation = dataclasses.replace(
+        http_api_relation, remote_app_data=http_api_remote_databag()
+    )
     # WHEN we receive any event
     state_out = ctx.run(
         event,
         State(
-            containers={backend_container}, relations={database_relation, auth_relation}
+            containers={backend_container},
+            relations={database_relation, auth_relation, http_api_relation},
         ),
     )
     # THEN the unit sets active

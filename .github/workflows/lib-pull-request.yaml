@@ -60,7 +60,6 @@ jobs:
           python-version: 3.12
       - name: Install dependencies
         run: |
-          sudo snap install charmcraft --classic
           sudo snap install astral-uv --classic
       - name: Run static analysis
         run: cd libs && uvx tox -vve static
@@ -80,7 +79,6 @@ jobs:
           python-version: 3.12
       - name: Install dependencies
         run: |
-          sudo snap install charmcraft --classic
           sudo snap install astral-uv --classic
       - name: Run linters
         run: cd libs && uvx tox -vve lint
@@ -100,7 +98,6 @@ jobs:
           python-version: 3.12
       - name: Install dependencies
         run: |
-          sudo snap install charmcraft --classic
           sudo snap install astral-uv --classic
       - name: Run tests
         run: cd libs && uvx tox -e unit

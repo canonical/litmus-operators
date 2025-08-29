@@ -43,13 +43,20 @@ requires:
       including chaos workflows, experiments, and the results generated from these experiments. 
 
       Note: This should be the same MongoDB instance used by the Litmus auth server.
-
   litmus-auth:
     optional: false
     interface: litmus_auth
     limit: 1
     description: |
       Exchange the gRPC server endpoints of the auth and backend components.
+
+provides:
+  http-api:
+    optional: false
+    interface: litmus_backend_http_api
+    limit: 1
+    description: |
+      Send this component's HTTP API to the frontend component.
 
 platforms:
   ubuntu@24.04:amd64:

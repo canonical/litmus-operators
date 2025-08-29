@@ -28,10 +28,12 @@ class LitmusBackend:
         container: Container,
         db_config: Optional[DatabaseConfig],
         auth_grpc_endpoint: Optional[Endpoint],
+        frontend_url: Optional[str],
     ):
         self._container = container
         self._db_config = db_config
         self._auth_grpc_endpoint = auth_grpc_endpoint
+        self._frontend_url = frontend_url
 
     def reconcile(self):
         """Unconditional control logic."""
@@ -83,6 +85,13 @@ class LitmusBackend:
                 {
                     "LITMUS_AUTH_GRPC_ENDPOINT": auth_endpoint.grpc_server_host,
                     "LITMUS_AUTH_GRPC_PORT": auth_endpoint.grpc_server_port,
+                }
+            )
+
+        if frontend_url := self._frontend_url:
+            env.update(
+                {
+                    "CHAOS_CENTER_UI_ENDPOINT": frontend_url,
                 }
             )
 

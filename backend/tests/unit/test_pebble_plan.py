@@ -2,7 +2,11 @@
 # See LICENSE file for licensing details.
 from ops.testing import State
 from dataclasses import replace
-from conftest import db_remote_databag, auth_remote_databag
+from conftest import (
+    db_remote_databag,
+    auth_remote_databag,
+    http_api_remote_databag,
+)
 
 
 def test_pebble_plan_minimal(ctx, backend_container):
@@ -83,6 +87,33 @@ def test_pebble_plan_with_auth_relation(ctx, backend_container, auth_relation):
 
     # WHEN a relation changed event is fired
     state_out = ctx.run(ctx.on.relation_changed(auth_relation), state=state)
+
+    # THEN litmus backend server pebble plan is generated with extra db env vars
+    backend_container_out = state_out.get_container(backend_container.name)
+    actual_env_vars = backend_container_out.plan.to_dict()["services"][
+        "litmuschaos-server"
+    ]["environment"]
+    assert expected_env_vars.issubset(actual_env_vars.keys())
+
+    # AND the pebble service is NOT running
+    assert not backend_container_out.services.get("litmuschaos-server").is_running()
+
+
+def test_pebble_plan_with_backend_http_api_relation(
+    ctx, backend_container, http_api_relation
+):
+    expected_env_vars = {
+        "CHAOS_CENTER_UI_ENDPOINT",
+    }
+    # GIVEN a running container with a backend-http-api relation
+    http_api_relation = replace(
+        http_api_relation,
+        remote_app_data=http_api_remote_databag(),
+    )
+    state = State(containers=[backend_container], relations=[http_api_relation])
+
+    # WHEN a relation changed event is fired
+    state_out = ctx.run(ctx.on.relation_changed(http_api_relation), state=state)
 
     # THEN litmus backend server pebble plan is generated with extra db env vars
     backend_container_out = state_out.get_container(backend_container.name)

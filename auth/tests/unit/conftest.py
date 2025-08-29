@@ -1,8 +1,8 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
+from unittest.mock import patch
 
 import json
-from unittest.mock import patch
 from ops.testing import Container, Context, Relation
 import pytest
 from charm import LitmusAuthCharm
@@ -27,7 +27,7 @@ def authserver_container():
 
 @pytest.fixture
 def ctx(auth_charm):
-    return Context(charm_type=auth_charm)
+    yield Context(charm_type=auth_charm)
 
 
 @pytest.fixture
@@ -54,3 +54,8 @@ def auth_remote_databag():
         "grpc_server_port": json.dumps(80),
         "version": json.dumps(0),
     }
+
+
+@pytest.fixture
+def http_api_relation():
+    return Relation("http-api")
