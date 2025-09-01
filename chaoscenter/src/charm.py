@@ -4,6 +4,7 @@
 """Charmed Operator for Litmus Chaoscenter; the frontend for a chaos testing platform."""
 
 import logging
+import socket
 
 from ops.charm import CharmBase
 from ops import (
@@ -14,8 +15,13 @@ from ops import (
     WaitingStatus,
     ActiveStatus,
 )
+from coordinated_workers.nginx import (
+    Nginx,
+    NginxConfig,
+)
 
-from litmus_frontend import LitmusFrontend
+from nginx_config import get_config
+
 from litmus_libs import get_app_hostname
 from litmus_libs.interfaces.http_api import (
     LitmusAuthApiRequirer,
@@ -39,10 +45,11 @@ class LitmusChaoscenterCharm(CharmBase):
             relation=self.model.get_relation(BACKEND_HTTP_API_ENDPOINT), app=self.app
         )
 
-        self.litmus_frontend = LitmusFrontend(
-            container=self.unit.get_container(LitmusFrontend.name),
-            backend_url=self.backend_url,
-            auth_url=self.auth_url,
+        self.nginx = Nginx(
+            self,
+            config_getter=self._nginx_config,
+            tls_config_getter=lambda: None,
+            options=None,
         )
 
         self.framework.observe(
@@ -56,14 +63,21 @@ class LitmusChaoscenterCharm(CharmBase):
             self.framework.observe(event, self._on_any_event)
 
     ##################
+    # CONFIG METHODS #
+    ##################
+
+    def _nginx_config(self, tls: bool) -> NginxConfig:
+        # TODO add support for TLS https://github.com/canonical/litmus-operators/issues/39
+        return get_config(self.hostname, self.auth_url, self.backend_url)
+
+    ##################
     # EVENT HANDLERS #
     ##################
     @property
     def _frontend_url(self):
         """Internal (i.e. not ingressed) url."""
         # TODO: add support for HTTPS once https://github.com/canonical/litmus-operators/issues/23 is fixed
-        # TODO: add nginx port instead of 8080
-        return f"http://{get_app_hostname(self.app.name, self.model.name)}:8080"
+        return f"http://{get_app_hostname(self.app.name, self.model.name)}:8185"
 
     @property
     def backend_url(self):
@@ -90,6 +104,7 @@ class LitmusChaoscenterCharm(CharmBase):
             config_name
             for config_name, source in (
                 ("backend http API endpoint url", self.backend_url),
+                ("auth http API endpoint url", self.auth_url),
             )
             if not source
         ]
@@ -113,7 +128,13 @@ class LitmusChaoscenterCharm(CharmBase):
     ###################
     def _reconcile(self):
         """Run all logic that is independent of what event we're processing."""
-        self.litmus_frontend.reconcile()
+        if self.backend_url and self.auth_url:
+            self.nginx.reconcile()
+
+    @property
+    def hostname(self) -> str:
+        """Unit's hostname."""
+        return socket.getfqdn()
 
 
 if __name__ == "__main__":  # pragma: nocover
