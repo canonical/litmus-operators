@@ -14,9 +14,10 @@ REQUIRED_CHARMLIBS = [
 
 _LIBPATCH_RE = re.compile(r".*/lib/(.+)\.py:\d+:LIBPATCH = (\d+).*")
 
+
 def _get_charmlibs_versions(project: str):
     cmd = f"grep -rnw {REPO_ROOT}/{project}/lib -e 'LIBPATCH ='"
-    proc = subprocess.run(shlex.split(cmd),capture_output=True, text=True)
+    proc = subprocess.run(shlex.split(cmd), capture_output=True, text=True)
     out = {}
     for line in proc.stdout.splitlines():
         match = _LIBPATCH_RE.match(line)
@@ -24,10 +25,10 @@ def _get_charmlibs_versions(project: str):
         out[libpath.replace("/", ".")] = libv
     return out
 
+
 INSTALLED_CHARMLIBS = {
     project: _get_charmlibs_versions(project) for project in PROJECTS
 }
-
 
 
 def test_charmlibs_version_consistent():
@@ -40,7 +41,9 @@ def test_charmlibs_version_consistent():
             for other_project in projs:
                 other_libv = INSTALLED_CHARMLIBS[other_project].get(lib)
                 if other_libv is not None and other_libv != libv:
-                    errors.append(f"{lib} has revision {libv} in {p} but {other_libv} in {other_project}")
+                    errors.append(
+                        f"{lib} has revision {libv} in {p} but {other_libv} in {other_project}"
+                    )
     if errors:
         raise AssertionError("\n".join(errors))
 
@@ -55,10 +58,3 @@ def test_required_charmlibs_installed():
 
     if errors:
         raise AssertionError("\n".join(errors))
-
-
-
-
-
-
-

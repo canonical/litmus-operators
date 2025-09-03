@@ -1,9 +1,19 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
+import sys
+from pathlib import Path
+
 import pytest
 from ops import CharmBase
 from ops.testing import Context, State
 from scenario import Relation
+
+# we cannot import self_monitoring without pretending we're running this from a charm's POV,
+# because the module attempts to import charm libraries.
+# Hopefully some day we can treat charmlibs like regular python deps...
+sys.path.append(
+    str((Path(__file__).parent.parent.parent.parent / "chaoscenter" / "lib").absolute())
+)
 
 from litmus_libs.interfaces.self_monitoring import SelfMonitoring
 

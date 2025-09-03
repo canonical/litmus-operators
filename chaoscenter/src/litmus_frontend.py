@@ -19,10 +19,12 @@ class LitmusFrontend:
 
     name = "nginx"
 
-    def __init__(self, container: Container,
-                 backend_url: Optional[str],
-                 auth_url: Optional[str],
-                 ):
+    def __init__(
+        self,
+        container: Container,
+        backend_url: Optional[str],
+        auth_url: Optional[str],
+    ):
         self._container = container
 
         # TODO: inject in frontend nginx service and mount at /api/ location
