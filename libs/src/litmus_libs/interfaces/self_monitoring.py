@@ -1,3 +1,7 @@
+# Copyright 2025 Canonical Ltd.
+# See LICENSE file for licensing details.
+"""Generic self-monitoring integration wrappers for all litmus charms."""
+
 from typing import Dict, Optional
 
 import ops
