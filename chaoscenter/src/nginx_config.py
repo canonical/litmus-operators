@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 http_locations: List[NginxLocationConfig] = [
-    NginxLocationConfig(path="/auth", backend="auth"),
+    NginxLocationConfig(path="/auth", backend="auth", rewrite="^/auth(/.*)$"),
     NginxLocationConfig(path="/api", backend="backend"),
 ]
 
@@ -43,7 +43,7 @@ def get_config(hostname: str, auth_url: str, backend_url: str) -> NginxConfig:
         enable_status_page=False,
     )
     return config.get_config(
-        _upstreams_to_addresses(auth_parsed_url.netloc, backend_parsed_url.netloc),
+        _upstreams_to_addresses(auth_parsed_url.hostname, backend_parsed_url.hostname),
         listen_tls=False,
         root_path="/dist",
     )
