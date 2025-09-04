@@ -8,14 +8,40 @@ requires-python = ">=3.12, <4"
 
 [dependency-groups]
 dev = [
-    #INTEGRATION TESTS
+    # itests
     "jubilant",
     "pytest-jubilant~=1.0",
-    "tenacity"
-]
+    "tenacity",
+    ]
 
+type-checking = [
+    # type checking
+    "pyright",
+    "ops[tracing]"
+]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
 log_cli_level = "INFO"
 markers = ["setup", "teardown"]
+
+
+# This pyright configuration is only about the `libs` folder.
+# we can't run static checks from ./libs, because it's too hard to tell pyright that at runtime
+# the libs' execution environment will be that of one of auth, backend, chaoscenter.
+[tool.pyright]
+pythonVersion = "3.12"
+pythonPlatform = "All"
+typeCheckingMode = "strict"
+reportIncompatibleMethodOverride = false
+reportImportCycles = false
+reportTypeCommentUsage = false
+
+include = ["libs/src"]
+
+# Without this, the static checker will fail to resolve `libs.charms....` imports (all charmlibs)
+# that are a dependency of the litmus_libs.interfaces.self_monitoring module.
+# if those charm libs ever get to pypi, we can drop this hack
+executionEnvironments = [
+    { "root"=".", "extraPaths"=["backend/lib"]}
+]

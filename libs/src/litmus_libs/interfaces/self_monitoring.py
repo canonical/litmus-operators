@@ -1,5 +1,4 @@
-from collections import namedtuple
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple
 
 import ops
 from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
@@ -7,7 +6,10 @@ from charms.loki_k8s.v1.loki_push_api import LogForwarder
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from charms.tempo_coordinator_k8s.v0.tracing import ReceiverProtocol, TracingEndpointRequirer
 
-_Endpoint = namedtuple("_Endpoint", "name, interface")
+
+class _Endpoint(NamedTuple):
+    name: str
+    interface: str
 
 
 class SelfMonitoring:
@@ -64,10 +66,16 @@ class SelfMonitoring:
         """Retrieve the workload tracing endpoint from the workload-tracing integration, if any."""
         tracing = self._workload_tracing
         return tuple(
-            tracing.get_endpoint(protocol, relation=relation) for relation in tracing.relations
+            filter(
+                None,
+                (
+                    tracing.get_endpoint(protocol, relation=relation)
+                    for relation in tracing.relations
+                ),
+            )
         )
 
-    def _validate_endpoints(self, charm):
+    def _validate_endpoints(self, charm: ops.CharmBase):
         # verify that the charm's metadata has declared all required endpoints
         for endpoint in self._endpoint_mapping.values():
             ep_meta = charm.meta.requires.get(
