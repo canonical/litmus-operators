@@ -1,90 +1,57 @@
-from typing import Any, Dict, List, NamedTuple, Optional, Tuple
+from typing import Dict, Optional
 
 import ops
-from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
 from charms.loki_k8s.v1.loki_push_api import LogForwarder
-from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
-from charms.tempo_coordinator_k8s.v0.tracing import ReceiverProtocol, TracingEndpointRequirer
 
-
-class _Endpoint(NamedTuple):
-    name: str
-    interface: str
+_DEFAULT_ENDPOINT_MAPPING = {
+    "charm-tracing": "charm-tracing",
+    "logging": "logging",
+    "cert-transfer": "cert-transfer",
+}
 
 
 class SelfMonitoring:
     """Self-monitoring relation integrator for all litmus charms."""
 
-    _endpoint_mapping = {
-        "charm-tracing": _Endpoint("charm-tracing", "tracing"),
-        "workload-tracing": _Endpoint("workload-tracing", "tracing"),
-        "logging": _Endpoint("logging", "loki_push_api"),
-        "prometheus-scrape": _Endpoint("prometheus-scrape", "prometheus_scrape"),
-        "grafana-dashboard": _Endpoint("grafana-dashboard", "grafana_dashboard"),
-        # FIXME: update with https://github.com/canonical/litmus-operators/issues/39
-        # "tls-certificates": _Endpoint("tls-certificates", "tls_certificates"),
+    _expected_interfaces = {
+        "logging": "loki_push_api",
+        "charm-tracing": "tracing",
+        "cert-transfer": "certificate_transfer",
     }
 
     def __init__(
         self,
         charm: ops.CharmBase,
-        workload_tracing_protocols: Optional[List[ReceiverProtocol]] = None,
-        prometheus_scrape_jobs: Optional[List[Dict[str, Any]]] = None,
+        endpoint_overrides: Optional[Dict[str, str]] = None,
     ):
-        self._validate_endpoints(charm)
+        endpoint_mapping = _DEFAULT_ENDPOINT_MAPPING.copy()
+        if endpoint_overrides:
+            endpoint_mapping.update(endpoint_overrides)
+
+        self._validate_endpoints(charm, endpoint_mapping)
 
         # this injects a pebble-forwarding layer in all sidecars that this charm owns
-        self._log_forwarder = LogForwarder(
-            charm, relation_name=self._endpoint_mapping["logging"].name
-        )
-
+        self._log_forwarder = LogForwarder(charm, relation_name=endpoint_mapping["logging"])
+        # this sets up charm tracing with ops.tracing.
         self._charm_tracing = ops.tracing.Tracing(
             charm,
-            tracing_relation_name=self._endpoint_mapping["charm-tracing"].name,
-            ca_relation_name=self._endpoint_mapping["tls-certificates"].name
-            if "tls-certificates" in self._endpoint_mapping
-            else None,
-        )
-        self._workload_tracing = TracingEndpointRequirer(
-            charm,
-            relation_name=self._endpoint_mapping["workload-tracing"].name,
-            protocols=workload_tracing_protocols,
+            tracing_relation_name=endpoint_mapping["charm-tracing"],
+            ca_relation_name=endpoint_mapping.get("cert-transfer", None),
         )
 
-        self._metrics_endpoint = MetricsEndpointProvider(
-            charm,
-            relation_name=self._endpoint_mapping["prometheus-scrape"].name,
-            jobs=prometheus_scrape_jobs,
-        )
-
-        self._grafana_dashboards = GrafanaDashboardProvider(
-            charm,
-            relation_name=self._endpoint_mapping["grafana-dashboard"].name,
-        )
-
-    def get_workload_tracing_endpoints(self, protocol: ReceiverProtocol) -> Tuple[str, ...]:
-        """Retrieve the workload tracing endpoint from the workload-tracing integration, if any."""
-        tracing = self._workload_tracing
-        return tuple(
-            filter(
-                None,
-                (
-                    tracing.get_endpoint(protocol, relation=relation)
-                    for relation in tracing.relations
-                ),
-            )
-        )
-
-    def _validate_endpoints(self, charm: ops.CharmBase):
-        # verify that the charm's metadata has declared all required endpoints
-        for endpoint in self._endpoint_mapping.values():
-            ep_meta = charm.meta.requires.get(
-                endpoint.name, charm.meta.provides.get(endpoint.name)
-            )
+    def _validate_endpoints(self, charm: ops.CharmBase, endpoint_mapping: Dict[str, str]):
+        # verify that the charm's metadata has declared all endpoints we're being given here
+        for internal_name, custom_name in endpoint_mapping.items():
+            ep_meta = charm.meta.requires.get(custom_name, charm.meta.provides.get(custom_name))
             if ep_meta is None:
-                raise ValueError(f"Charm is missing a required endpoint: {endpoint}")
-            if ep_meta.interface_name != endpoint.interface:
+                # probably you passed an endpoint name to endpoint_mapping,
+                # but forgot to add it to charmcraft.yaml or misspelled it
                 raise ValueError(
-                    f"Charm's endpoint {endpoint.name} has wrong interface name "
-                    f"(expected {endpoint.interface}, got {ep_meta.interface_name})"
+                    f"Charm metadata is missing a required endpoint: {custom_name}({internal_name})"
+                )
+
+            if ep_meta.interface_name != self._expected_interfaces[internal_name]:
+                raise ValueError(
+                    f"Declared charm endpoint {custom_name}({internal_name}) has wrong interface name in metadata.yaml "
+                    f"(expected {self._expected_interfaces[internal_name]}, got {ep_meta.interface_name})"
                 )

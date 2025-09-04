@@ -22,45 +22,43 @@ class MyCharm(CharmBase):
     META = {
         "name": "echo",
         "requires": {
-            "charm-tracing": {"interface": "tracing"},
-            "workload-tracing": {"interface": "tracing"},
+            "ch-tracing": {"interface": "tracing"},
             "logging": {"interface": "loki_push_api"},
-            "tls-certificates": {"interface": "tls_certificates"},
+            "cert-transfer": {"interface": "certificate_transfer"},
         },
-        "provides": {
-            "prometheus-scrape": {"interface": "prometheus_scrape"},
-            "grafana-dashboard": {"interface": "grafana_dashboard"},
-        },
-    }
-
-    BAD_META_1 = {
-        "name": "gecko",
-        "requires": {"logging": {"interface": "loki_push_api"}},
-    }
-
-    BAD_META_2 = {
-        "name": "gecko",
-        "requires": {"logging": {"interface": "something-weird"}},
     }
 
     def __init__(self, *a, **kw):
         super().__init__(*a, **kw)
         self._self_monitoring = SelfMonitoring(
             self,
-            workload_tracing_protocols=["otlp_grpc", "zipkin"],
-            prometheus_scrape_jobs=[{"foo": ["bar:baz"]}],
+            endpoint_overrides={
+                "charm-tracing": "ch-tracing",  # non-default!
+            },
         )
 
 
-def test_init_fails_if_meta_missing_relations():
+@pytest.mark.parametrize(
+    "bad_meta",
+    (
+        {
+            "name": "gecko",
+            # missing required charm-tracing
+            "requires": {"logging": {"interface": "loki_push_api"}},
+        },
+        {
+            "name": "gecko",
+            # logging has bad interface name
+            "requires": {
+                "logging": {"interface": "something-weird"},
+                "charm-tracing": {"interface": "tracing"},
+            },
+        },
+    ),
+)
+def test_init_fails_if_bad_meta(bad_meta):
     with pytest.raises(Exception):
-        ctx = Context(MyCharm, meta=MyCharm.BAD_META_1)
-        ctx.run(ctx.on.update_status(), State())
-
-
-def test_init_fails_if_meta_bad_interfaces():
-    with pytest.raises(Exception):
-        ctx = Context(MyCharm, meta=MyCharm.BAD_META_2)
+        ctx = Context(MyCharm, meta=bad_meta)
         ctx.run(ctx.on.update_status(), State())
 
 
@@ -71,7 +69,7 @@ def ctx():
 
 def test_tracing_integration(ctx):
     # GIVEN a tracing relation
-    tracing_relation = Relation("workload-tracing")
+    tracing_relation = Relation("ch-tracing")
     state = State(leader=True, relations=[tracing_relation])
     # WHEN we receive any event
     state_out = ctx.run(ctx.on.update_status(), state)
@@ -80,7 +78,7 @@ def test_tracing_integration(ctx):
 
     # GIVEN a tracing relation with remote data
     tracing_relation = Relation(
-        "workload-tracing",
+        "ch-tracing",
         remote_app_data={
             "receivers": '[{{"protocol": {{"name": "otlp_grpc", "type": "grpc"}}, "url": "hostname:4317"}}, '
             '{{"protocol": {{"name": "otlp_http", "type": "http"}}, "url": "http://hostname:4318"}}, '
@@ -88,18 +86,20 @@ def test_tracing_integration(ctx):
         },
     )
     state = State(leader=True, relations=[tracing_relation])
-    # WHEN we receive any event
-    with ctx(ctx.on.update_status(), state) as mgr:
-        charm: MyCharm = mgr.charm
-        # THEN the charm can access the endpoints
-        assert charm._self_monitoring.get_workload_tracing_endpoints("otlp_grpc")
+    # WHEN we receive any event, the charm doesn't error out
+    ctx.run(ctx.on.update_status(), state)
 
 
-def test_prometheus_scrape_integration(ctx):
-    # GIVEN a tracing relation
-    prom_scrape_relation = Relation("prometheus-scrape")
-    state = State(leader=True, relations=[prom_scrape_relation])
+def test_logging_integration(ctx):
+    # GIVEN a logging relation with remote data
+    logging_relation = Relation(
+        "logging",
+        remote_app_data={},
+    )
+    state = State(leader=True, relations=[logging_relation])
     # WHEN we receive any event
     state_out = ctx.run(ctx.on.update_status(), state)
-    # THEN we have published our requested endpoints
-    assert "alert_rules" in state_out.get_relation(prom_scrape_relation.id).local_app_data
+
+    # THEN all sidecars get injected with a log-forwarding layer
+    for container_out in state_out.containers:
+        assert container_out.plan.services["log-forwarding"]

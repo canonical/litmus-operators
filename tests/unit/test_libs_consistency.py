@@ -1,3 +1,4 @@
+import itertools
 import shlex
 import subprocess
 import re
@@ -7,9 +8,6 @@ REPO_ROOT = Path(__file__).parent.parent.parent
 PROJECTS = ["chaoscenter", "auth", "backend"]
 REQUIRED_CHARMLIBS = [
     "charms.loki_k8s.v1.loki_push_api",
-    "charms.tempo_coordinator_k8s.v0.tracing",
-    "charms.prometheus_k8s.v0.prometheus_scrape",
-    "charms.grafana_k8s.v0.grafana_dashboard",
 ]
 
 _LIBPATCH_RE = re.compile(r".*/lib/(.+)\.py:\d+:LIBPATCH = (\d+).*")
@@ -33,17 +31,13 @@ INSTALLED_CHARMLIBS = {
 
 def test_charmlibs_version_consistent():
     errors = []
-    for i in range(3):
-        projs = PROJECTS.copy()
-        p = projs.pop(i)
-
-        for lib, libv in INSTALLED_CHARMLIBS[p].items():
-            for other_project in projs:
-                other_libv = INSTALLED_CHARMLIBS[other_project].get(lib)
-                if other_libv is not None and other_libv != libv:
-                    errors.append(
-                        f"{lib} has revision {libv} in {p} but {other_libv} in {other_project}"
-                    )
+    for proj, other_proj in itertools.combinations(PROJECTS, r=2):
+        for lib, libv in INSTALLED_CHARMLIBS[proj].items():
+            other_libv = INSTALLED_CHARMLIBS[other_proj].get(lib)
+            if other_libv is not None and other_libv != libv:
+                errors.append(
+                    f"{lib} has revision {libv} in {proj} but {other_libv} in {other_proj}"
+                )
     if errors:
         raise AssertionError("\n".join(errors))
 
