@@ -16,7 +16,9 @@ readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.12, <4"
 dependencies = [
+    "ops[tracing]>=3",
     "pydantic",
+    "cosl"
 ]
 classifiers = [
     "Programming Language :: Python :: 3.12",
@@ -90,17 +92,6 @@ max-complexity = 15
 [tool.ruff.lint.pep8-naming]
 # Allow Pydantic's `@validator` decorator to trigger class method treatment.
 classmethod-decorators = ["classmethod", "pydantic.validator"]
-
-[tool.pyright]
-include = ["src"]
-
-pythonVersion = "3.12"
-pythonPlatform = "All"
-typeCheckingMode = "strict"
-reportIncompatibleMethodOverride = false
-reportImportCycles = false
-reportTypeCommentUsage = false
-
 
 [tool.hatch.metadata]
 # allow git+ dependencies in pyproject
