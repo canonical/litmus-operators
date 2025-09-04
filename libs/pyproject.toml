@@ -16,7 +16,9 @@ readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.12, <4"
 dependencies = [
+    "ops[tracing]>=3",
     "pydantic",
+    "cosl"
 ]
 classifiers = [
     "Programming Language :: Python :: 3.12",
