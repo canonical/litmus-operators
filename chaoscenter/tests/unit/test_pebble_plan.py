@@ -2,9 +2,9 @@
 # See LICENSE file for licensing details.
 from ops.testing import State
 
+
 def test_pebble_empty_plan(ctx, nginx_container):
-    expected_plan = {
-    }
+    expected_plan = {}
 
     # GIVEN no relations
     state = State(containers=[nginx_container], relations=[])
@@ -22,7 +22,9 @@ def test_pebble_empty_plan(ctx, nginx_container):
     assert state_out.unit_status.name == "blocked"
 
 
-def test_pebble_ready_plan(ctx, nginx_container, auth_http_api_relation, backend_http_api_relation):
+def test_pebble_ready_plan(
+    ctx, nginx_container, auth_http_api_relation, backend_http_api_relation
+):
     expected_plan = {
         "services": {
             "nginx": {
@@ -35,7 +37,10 @@ def test_pebble_ready_plan(ctx, nginx_container, auth_http_api_relation, backend
     }
 
     # GIVEN relations with auth and backend endpoints
-    state = State(containers=[nginx_container], relations=[auth_http_api_relation, backend_http_api_relation])
+    state = State(
+        containers=[nginx_container],
+        relations=[auth_http_api_relation, backend_http_api_relation],
+    )
 
     # WHEN a workload pebble ready event is fired
     state_out = ctx.run(ctx.on.pebble_ready(nginx_container), state=state)

@@ -5,7 +5,7 @@
 """Helper methods for creating Nginx configuration for Litmus."""
 
 import logging
-from typing import Dict, List, Set
+from typing import Dict, List, Optional, Set
 
 from coordinated_workers.nginx import NginxUpstream, NginxLocationConfig, NginxConfig
 
@@ -23,7 +23,9 @@ http_locations: List[NginxLocationConfig] = [
 http_server_port = 8185
 
 
-def get_config(hostname: str, auth_url: str, backend_url: str) -> NginxConfig:
+def get_config(
+    hostname: str, auth_url: Optional[str], backend_url: Optional[str]
+) -> str:
     if not hostname or not auth_url or not backend_url:
         raise ValueError(
             f"get_config was called with invalid arguments: {hostname=} {auth_url=} {backend_url=}"
@@ -43,7 +45,7 @@ def get_config(hostname: str, auth_url: str, backend_url: str) -> NginxConfig:
         enable_status_page=False,
     )
     return config.get_config(
-        _upstreams_to_addresses(auth_parsed_url.hostname, backend_parsed_url.hostname),
+        _upstreams_to_addresses(auth_parsed_url.hostname, backend_parsed_url.hostname),  # type: ignore[arg-type]
         listen_tls=False,
         root_path="/dist",
     )

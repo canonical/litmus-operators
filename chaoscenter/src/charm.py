@@ -17,7 +17,6 @@ from ops import (
 )
 from coordinated_workers.nginx import (
     Nginx,
-    NginxConfig,
 )
 
 from nginx_config import get_config
@@ -66,7 +65,7 @@ class LitmusChaoscenterCharm(CharmBase):
     # CONFIG METHODS #
     ##################
 
-    def _nginx_config(self, tls: bool) -> NginxConfig:
+    def _nginx_config(self, tls: bool) -> str:
         # TODO add support for TLS https://github.com/canonical/litmus-operators/issues/39
         return get_config(self.hostname, self.auth_url, self.backend_url)
 

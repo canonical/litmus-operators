@@ -125,14 +125,15 @@ def test_config_contains_auth_rewrite(ctx, nginx_container):
     assert "rewrite '^/auth(/.*)$' $1 break;" in config
 
 
-
 def test_calling_config_with_missing_hostname_raises():
     with pytest.raises(ValueError):
         nginx_config.get_config(None, "http://foo.bar:80", "http://foo.bar:3030")
 
+
 def test_calling_config_with_missing_auth_url_raises():
     with pytest.raises(ValueError):
         nginx_config.get_config("foo.bar", None, "http://foo.bar:3030")
+
 
 def test_calling_config_with_missing_backend_url_raises():
     with pytest.raises(ValueError):
