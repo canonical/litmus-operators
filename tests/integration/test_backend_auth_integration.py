@@ -14,23 +14,15 @@ from tests.integration.helpers import (
     AUTH_APP,
     MONGO_APP,
     get_unit_ip_address,
+    get_login_response
 )
 
-
-def _get_login_response(host: str):
-    cmd = (
-        'curl -X POST -H "Content-Type: application/json" '
-        # TODO: fetch from config options once https://github.com/canonical/litmus-operators/issues/18 is fixed
-        '-d \'{"username": "admin", "password": "litmus"}\' '
-        f"http://{host}:3000/login"
-    )
-    return subprocess.run(shlex.split(cmd), text=True, capture_output=True)
 
 
 @pytest.fixture(scope="function")
 def token(juju: Juju):
     auth_server_ip = get_unit_ip_address(juju, AUTH_APP, 0)
-    out = _get_login_response(auth_server_ip)
+    out = get_login_response(auth_server_ip, 3000, "")
     return json.loads(out.stdout)["accessToken"]
 
 
@@ -42,7 +34,7 @@ def test_setup(juju: Juju):
 @retry(stop=stop_after_attempt(6), wait=wait_fixed(10))
 def test_auth_server_login(juju: Juju):
     auth_ip = get_unit_ip_address(juju, AUTH_APP, 0)
-    response = _get_login_response(auth_ip)
+    response = get_login_response(auth_ip, 3000, "")
     assert response.returncode == 0
     response_json = json.loads(response.stdout)
     assert "accessToken" in response_json, f"No token found in response: {response}"
