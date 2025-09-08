@@ -7,7 +7,6 @@ requires-python = ">=3.12, <4"
 
 dependencies = [
     "ops",
-    "coordinated-workers",
     # for the reconciler
     "cosl",
     "litmus-libs",
