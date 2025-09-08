@@ -3,6 +3,8 @@
 
 import logging
 import os
+import shlex
+import subprocess
 from typing import Literal
 from jubilant import Juju, all_active, any_error
 from pytest_jubilant import pack, get_resources
@@ -84,3 +86,12 @@ def deploy_control_plane(juju: Juju, wait_for_idle: bool = True):
             delay=10,
             successes=6,
         )
+
+def get_login_response(host: str, port: int, subpath: str):
+    cmd = (
+        'curl -X POST -H "Content-Type: application/json" '
+        # TODO: fetch from config options once https://github.com/canonical/litmus-operators/issues/18 is fixed
+        '-d \'{"username": "admin", "password": "litmus"}\' '
+        f"http://{host}:{port}{subpath}/login"
+    )
+    return subprocess.run(shlex.split(cmd), text=True, capture_output=True)

@@ -1,5 +1,6 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
+import json
 from unittest.mock import patch
 
 from ops.testing import Container, Context
@@ -33,9 +34,21 @@ def ctx(chaoscenter_charm):
 
 @pytest.fixture
 def auth_http_api_relation():
-    return Relation("auth-http-api")
+    return Relation(
+        "auth-http-api",
+        remote_app_data={
+            "version": json.dumps(0),
+            "endpoint": json.dumps("http://foo.bar:3000"),
+        },
+    )
 
 
 @pytest.fixture
 def backend_http_api_relation():
-    return Relation("backend-http-api")
+    return Relation(
+        "backend-http-api",
+        remote_app_data={
+            "version": json.dumps(0),
+            "endpoint": json.dumps("http://foo.bar:8080"),
+        },
+    )
