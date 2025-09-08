@@ -79,7 +79,7 @@ wheels = [
 [[package]]
 name = "coordinated-workers"
 version = "2.0.13"
-source = { git = "https://github.com/canonical/cos-coordinated-workers.git?rev=feat%2Flocation-rewrite#324d9c426571611d48f059f15f4fe48535f7ce31" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cosl" },
     { name = "crossplane" },
@@ -87,6 +87,10 @@ dependencies = [
     { name = "lightkube" },
     { name = "ops", extra = ["tracing"] },
     { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9e/f8/4aab35837d8a3531d6adf61163af17dc17f2ab56dc690537ad10ba9e9ae8/coordinated_workers-2.0.13.tar.gz", hash = "sha256:677fb182e8b259bd1d7a41f7e3d19fda1e97fdc2b50d563e5c05cd9a21ab4076", size = 142175, upload-time = "2025-09-08T10:35:31.955Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0a/a8/ef877fa9865062f638505f05f1062fac6802bf87dbcf4478715423a8f99b/coordinated_workers-2.0.13-py3-none-any.whl", hash = "sha256:82ade80cc8f9e38ffd43c3ae110ac7f4ccb4d7f5f5bb15d5f25b43bc16d6e338", size = 46528, upload-time = "2025-09-08T10:35:30.273Z" },
 ]
 
 [[package]]
@@ -339,7 +343,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "coordinated-workers", git = "https://github.com/canonical/cos-coordinated-workers.git?rev=feat%2Flocation-rewrite" },
+    { name = "coordinated-workers" },
     { name = "coverage", extras = ["toml"], marker = "extra == 'dev'" },
     { name = "jubilant", marker = "extra == 'dev'" },
     { name = "litmus-libs" },

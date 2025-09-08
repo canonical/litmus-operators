@@ -47,6 +47,7 @@ class LitmusChaoscenterCharm(CharmBase):
         self.nginx = Nginx(
             self,
             config_getter=self._nginx_config,
+            # TODO https://github.com/canonical/litmus-operators/issues/39
             tls_config_getter=lambda: None,
             options=None,
         )
@@ -67,7 +68,7 @@ class LitmusChaoscenterCharm(CharmBase):
 
     def _nginx_config(self, tls: bool) -> str:
         # TODO add support for TLS https://github.com/canonical/litmus-operators/issues/39
-        return get_config(self.hostname, self.auth_url, self.backend_url)
+        return get_config(socket.getfqdn(), self.auth_url, self.backend_url)
 
     ##################
     # EVENT HANDLERS #
@@ -129,11 +130,6 @@ class LitmusChaoscenterCharm(CharmBase):
         """Run all logic that is independent of what event we're processing."""
         if self.backend_url and self.auth_url:
             self.nginx.reconcile()
-
-    @property
-    def hostname(self) -> str:
-        """Unit's hostname."""
-        return socket.getfqdn()
 
 
 if __name__ == "__main__":  # pragma: nocover
