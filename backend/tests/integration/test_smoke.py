@@ -11,6 +11,7 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 from conftest import APP, RESOURCES
 
 MONGO_APP = "mongodb-k8s"
+SELF_SIGNED_CERTIFICATES_APP = "self-signed-certificates"
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,26 @@ def test_backend_is_running(juju: Juju):
     )
     out = subprocess.run(shlex.split(cmd), text=True, capture_output=True)
     assert out.returncode == 0
+
+
+@retry(stop=stop_after_attempt(6), wait=wait_fixed(10))
+def test_tls_integration(juju: Juju):
+    juju.deploy(SELF_SIGNED_CERTIFICATES_APP)
+    juju.integrate(f"{APP}:tls-certificates", SELF_SIGNED_CERTIFICATES_APP)
+    juju.wait(
+        lambda status: all_active(status, MONGO_APP, SELF_SIGNED_CERTIFICATES_APP)
+        and all_blocked(status, APP),
+        error=lambda status: any_error(status, APP),
+        timeout=1000,
+        delay=10,
+        successes=5,
+    )
+
+    backend_ip = _get_unit_ip_address(juju, APP, 0)
+    cmd = f"openssl s_client -connect {backend_ip}:8081"
+    out = subprocess.run(shlex.split(cmd), text=True, capture_output=True)
+    assert f"subject=CN = {APP}" in out.stdout
+    assert "issuer=CN = self-signed-certificates-operator" in out.stdout
 
 
 @pytest.mark.teardown

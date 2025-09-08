@@ -34,8 +34,6 @@ class LitmusBackendCharm(CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
-        self.unit.set_ports(LitmusBackend.http_port, LitmusBackend.grpc_port)
-
         self._database = DatabaseRequires(
             self,
             relation_name=DATABASE_ENDPOINT,
@@ -55,6 +53,7 @@ class LitmusBackendCharm(CharmBase):
         )
 
         self.litmus_backend = LitmusBackend(
+            charm=self,
             container=self.unit.get_container(LitmusBackend.name),
             db_config=self.database_config,
             auth_grpc_endpoint=self.auth_grpc_endpoint,
