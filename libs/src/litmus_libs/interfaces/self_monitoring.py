@@ -15,7 +15,22 @@ _DEFAULT_ENDPOINT_MAPPING = {
 
 
 class SelfMonitoring:
-    """Self-monitoring relation integrator for all litmus charms."""
+    """Self-monitoring relation integrator for all litmus charms.
+
+    Automatically adds charm-tracing and pebble log forwarding (for all workload containers)
+    integrations
+
+    Usage:
+    >>>    class MyCharm(CharmBase):
+    >>>        def __init__(self, *a, **kw):
+    >>>            super().__init__(*a, **kw)
+    >>>            self._self_monitoring = SelfMonitoring(
+    >>>                 self,
+    >>>                 endpoint_overrides={
+    >>>                     "charm-tracing": "send-charm-traces",
+    >>>                 },
+    >>>             )
+    """
 
     _expected_interfaces = {
         "logging": "loki_push_api",
