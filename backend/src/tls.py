@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class TLSConfig:
-    """TLS configuration received over the `tls-certificates` relation."""
+    """TLS configuration."""
 
     server_cert: str
     server_cert_path: str

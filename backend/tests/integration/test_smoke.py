@@ -1,7 +1,7 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 import logging
-from subprocess import getoutput
+from subprocess import getstatusoutput
 
 import pytest
 from jubilant import Juju, all_blocked, all_active, any_error
@@ -37,8 +37,8 @@ def test_backend_is_running(juju: Juju):
         '-H "Content-Type: application/json" '
         '-d \'{"query": "{ listEnvironments(projectID:"test") {environments {name} } }"}\''
     )
-    out = getoutput(cmd)
-    assert out == 0
+    status, _ = getstatusoutput(cmd)
+    assert status == 0
 
 
 @pytest.mark.teardown

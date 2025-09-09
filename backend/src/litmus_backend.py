@@ -131,7 +131,7 @@ class LitmusBackend:
 
     @property
     def litmus_backend_ports(self) -> tuple[int, int]:
-        if self._tls_config:
+        if not self._tls_config:
             return self.http_port, self.grpc_port
         else:
             return self.https_port, self.grpc_tls_port
