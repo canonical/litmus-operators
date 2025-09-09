@@ -43,7 +43,7 @@ class Tls:
         ],
     ):
         self._container = container
-        self._certificates, self._private_key = tls_certs()
+        self._tls_certs = tls_certs
 
     def reconcile(self):
         if self._container.can_connect():
@@ -102,13 +102,14 @@ class Tls:
     @property
     def tls_config(self) -> Optional[TLSConfig]:
         """Returns the TLS configuration, including certificates and private key, if available; None otherwise."""
-        if not (self._certificates and self._private_key):
+        certificates, private_key = self._tls_certs()
+        if not (certificates and private_key):
             return None
         return TLSConfig(
-            server_cert=self._certificates.certificate.raw,
+            server_cert=certificates.certificate.raw,
             server_cert_path=self.tls_cert_path,
-            ca_cert=self._certificates.ca.raw,
+            ca_cert=certificates.ca.raw,
             ca_cert_path=self.ca_cert_tls_path,
-            private_key=self._private_key.raw,
+            private_key=private_key.raw,
             private_key_path=self.tls_key_path,
         )
