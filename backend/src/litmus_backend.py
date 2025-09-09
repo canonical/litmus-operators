@@ -7,7 +7,6 @@
 import logging
 
 from ops import Container
-from ops.charm import CharmBase
 from ops.pebble import Layer
 from typing import Optional
 from litmus_libs import DatabaseConfig
