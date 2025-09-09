@@ -10,10 +10,9 @@ from pathlib import Path
 
 from tenacity import retry, stop_after_attempt, wait_fixed
 
-from conftest import APP, RESOURCES
+from conftest import APP, MONGO_APP, RESOURCES
 from helpers import get_unit_ip_address
 
-MONGO_APP = "mongodb-k8s"
 SELF_SIGNED_CERTIFICATES_APP = "self-signed-certificates"
 
 logger = logging.getLogger(__name__)

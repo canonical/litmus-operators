@@ -18,10 +18,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class TLSConfig:
-    """TLS configuration received by the coordinator over the `certificates` relation.
-
-    This is an internal object that we use as facade so that the individual Coordinator charms don't have to know the API of the charm libs that implements the relation interface.
-    """
+    """TLS configuration received over the `tls-certificates` relation."""
 
     server_cert: str
     server_cert_path: str

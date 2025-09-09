@@ -8,10 +8,8 @@ from jubilant import Juju, all_blocked, all_active, any_error
 from pathlib import Path
 
 from tenacity import retry, stop_after_attempt, wait_fixed
-from conftest import APP, RESOURCES
+from conftest import APP, MONGO_APP, RESOURCES
 from helpers import get_unit_ip_address
-
-MONGO_APP = "mongodb-k8s"
 
 logger = logging.getLogger(__name__)
 
