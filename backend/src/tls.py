@@ -3,15 +3,14 @@
 # See LICENSE file for licensing details.
 
 import logging
-import socket
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, List
 
 from charms.tls_certificates_interface.v4.tls_certificates import (
-    CertificateRequestAttributes,
     TLSCertificatesRequiresV4,
+    CertificateRequestAttributes,
 )
-from ops import CharmBase, Container
+from ops import Container, Relation
 
 logger = logging.getLogger(__name__)
 
@@ -24,8 +23,11 @@ class TLSConfig:
     """
 
     server_cert: str
+    server_cert_path: str
     ca_cert: str
+    ca_cert_path: str
     private_key: str
+    private_key_path: str
 
 
 class Tls:
@@ -37,22 +39,19 @@ class Tls:
 
     def __init__(
         self,
-        charm: CharmBase,
-        relation_name: str,
         container: Container,
+        tls_certificates: TLSCertificatesRequiresV4,
+        certificate_request_attributes: CertificateRequestAttributes,
+        tls_certificates_relation: Optional[List[Relation]],
     ):
-        self._charm = charm
-        self._relation_name = relation_name
         self._container = container
-        self._certificates = TLSCertificatesRequiresV4(
-            charm=charm,
-            relationship_name=relation_name,
-            certificate_requests=[self._certificate_request_attributes],
-        )
+        self._tls_certificates = tls_certificates
+        self._certificate_request_attributes = certificate_request_attributes
+        self._tls_certificates_relation = tls_certificates_relation
 
     def reconcile(self):
-        self._certificates.sync()
-        self._reconcile_tls_config()
+        if self._container.can_connect():
+            self._reconcile_tls_config()
 
     def _reconcile_tls_config(self):
         if tls_config := self.tls_config:
@@ -107,18 +106,18 @@ class Tls:
     @property
     def tls_config(self) -> Optional[TLSConfig]:
         """Returns the TLS configuration, including certificates and private key, if available; None otherwise."""
-        if not self._charm.model.relations.get(self._relation_name):
+        if not self._tls_certificates_relation:
             return None
-        certificates, key = self._certificates.get_assigned_certificate(
+        certificates, key = self._tls_certificates.get_assigned_certificate(
             certificate_request=self._certificate_request_attributes
         )
         if not (key and certificates):
             return None
-        return TLSConfig(certificates.certificate.raw, certificates.ca.raw, key.raw)
-
-    @property
-    def _certificate_request_attributes(self) -> CertificateRequestAttributes:
-        return CertificateRequestAttributes(
-            common_name=self._charm.app.name,
-            sans_dns=frozenset(socket.getfqdn()),
+        return TLSConfig(
+            server_cert=certificates.certificate.raw,
+            server_cert_path=self.tls_cert_path,
+            ca_cert=certificates.ca.raw,
+            ca_cert_path=self.ca_cert_tls_path,
+            private_key=key.raw,
+            private_key_path=self.tls_key_path,
         )

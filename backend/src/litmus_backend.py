@@ -13,9 +13,7 @@ from typing import Optional
 from litmus_libs import DatabaseConfig
 from litmus_libs.interfaces.litmus_auth import Endpoint
 
-from tls import Tls
-
-TLS_CERTIFICATES_ENDPOINT = "tls-certificates"
+from tls import TLSConfig
 
 logger = logging.getLogger(__name__)
 
@@ -34,24 +32,20 @@ class LitmusBackend:
         charm: CharmBase,
         container: Container,
         db_config: Optional[DatabaseConfig],
+        tls_config: Optional[TLSConfig],
         auth_grpc_endpoint: Optional[Endpoint],
         frontend_url: Optional[str],
     ):
         self._charm = charm
         self._container = container
         self._db_config = db_config
+        self._tls_config = tls_config
         self._auth_grpc_endpoint = auth_grpc_endpoint
         self._frontend_url = frontend_url
-        self._tls = Tls(
-            charm=self._charm,
-            relation_name=TLS_CERTIFICATES_ENDPOINT,
-            container=self._container,
-        )
 
     def reconcile(self):
         """Unconditional control logic."""
         if self._container.can_connect():
-            self._tls.reconcile()
             self._reconcile_workload_config()
 
     def _reconcile_workload_config(self):
@@ -124,15 +118,15 @@ class LitmusBackend:
                     "CHAOS_CENTER_UI_ENDPOINT": frontend_url,
                 }
             )
-        if self._tls.tls_config:
+        if self._tls_config:
             env.update(
                 {
                     "ENABLE_INTERNAL_TLS": "true",
                     "REST_PORT": self.https_port,
                     "GRPC_PORT": self.grpc_tls_port,
-                    "TLS_CERT_PATH": self._tls.tls_cert_path,
-                    "TLS_KEY_PATH": self._tls.tls_key_path,
-                    "CA_CERT_TLS_PATH": self._tls.ca_cert_tls_path,
+                    "TLS_CERT_PATH": self._tls_config.server_cert_path,
+                    "TLS_KEY_PATH": self._tls_config.private_key_path,
+                    "CA_CERT_TLS_PATH": self._tls_config.ca_cert_path,
                 }
             )
 
@@ -140,7 +134,7 @@ class LitmusBackend:
 
     @property
     def litmus_backend_ports(self) -> tuple[int, int]:
-        if self._tls.tls_config:
+        if self._tls_config:
             return self.http_port, self.grpc_port
         else:
             return self.https_port, self.grpc_tls_port

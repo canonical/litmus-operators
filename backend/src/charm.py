@@ -4,10 +4,16 @@
 """Charmed Operator for Litmus Backend server; the backend layer for a chaos testing platform."""
 
 import logging
+import socket
 
 from ops.charm import CharmBase
 
+from charms.tls_certificates_interface.v4.tls_certificates import (
+    TLSCertificatesRequiresV4,
+    CertificateRequestAttributes,
+)
 from litmus_backend import LitmusBackend
+from tls import Tls
 from ops import ActiveStatus, CollectStatusEvent, BlockedStatus
 
 from litmus_libs.interfaces.litmus_auth import LitmusAuthRequirer, Endpoint
@@ -25,6 +31,7 @@ from litmus_libs.interfaces.http_api import LitmusBackendApiProvider
 
 DATABASE_ENDPOINT = "database"
 LITMUS_AUTH_ENDPOINT = "litmus-auth"
+TLS_CERTIFICATES_ENDPOINT = "tls-certificates"
 
 logger = logging.getLogger(__name__)
 
@@ -47,15 +54,29 @@ class LitmusBackendCharm(CharmBase):
             self.model.get_relation(LITMUS_AUTH_ENDPOINT),
             self.app,
         )
+        self._tls_certificates = TLSCertificatesRequiresV4(
+            charm=self,
+            relationship_name=TLS_CERTIFICATES_ENDPOINT,
+            certificate_requests=[self._certificate_request_attributes],
+        )
 
         self._send_http_api = LitmusBackendApiProvider(
             self.model.get_relation("http-api"), app=self.app
         )
 
+        self._tls = Tls(
+            container=self.unit.get_container(LitmusBackend.name),
+            tls_certificates=self._tls_certificates,
+            certificate_request_attributes=self._certificate_request_attributes,
+            tls_certificates_relation=self.model.relations.get(
+                TLS_CERTIFICATES_ENDPOINT
+            ),
+        )
         self.litmus_backend = LitmusBackend(
             charm=self,
             container=self.unit.get_container(LitmusBackend.name),
             db_config=self.database_config,
+            tls_config=self._tls.tls_config,
             auth_grpc_endpoint=self.auth_grpc_endpoint,
             frontend_url=self.frontend_url,
         )
@@ -132,8 +153,17 @@ class LitmusBackendCharm(CharmBase):
         # TODO: add support for HTTPS once https://github.com/canonical/litmus-operators/issues/23 is fixed
         return f"http://{get_app_hostname(self.app.name, self.model.name)}:{self.litmus_backend.http_port}"
 
+    @property
+    def _certificate_request_attributes(self) -> CertificateRequestAttributes:
+        return CertificateRequestAttributes(
+            common_name=self.app.name,
+            sans_dns=frozenset(socket.getfqdn()),
+        )
+
     def _reconcile(self):
         """Run all logic that is independent of what event we're processing."""
+        self._tls_certificates.sync()
+        self._tls.reconcile()
         self.litmus_backend.reconcile()
         self.unit.set_ports(*self.litmus_backend.litmus_backend_ports)
         if self.unit.is_leader():
