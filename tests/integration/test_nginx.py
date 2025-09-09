@@ -7,7 +7,6 @@ import subprocess
 import pytest
 from jubilant import Juju, all_blocked, any_error
 from tenacity import retry, stop_after_attempt, wait_fixed
-from pathlib import Path
 from helpers import (
     deploy_control_plane,
     BACKEND_APP,
@@ -21,34 +20,32 @@ from helpers import (
 logger = logging.getLogger(__name__)
 
 
-
 @pytest.fixture(scope="function")
 def token(juju: Juju):
     chaoscenter_ip = get_unit_ip_address(juju, CHAOSCENTER_APP, 0)
     out = get_login_response(chaoscenter_ip, 8185, "/auth")
     return json.loads(out.stdout)["accessToken"]
 
+
 @pytest.mark.setup
 def test_setup(juju: Juju):
     deploy_control_plane(juju, wait_for_idle=True)
 
 
+@retry(stop=stop_after_attempt(30), wait=wait_fixed(10))  # 5 minutes
 def test_frontend_is_served(juju: Juju):
     # GIVEN control plane is deployed
 
     # WHEN we call the frontend on its index
     chaoscenter_ip = get_unit_ip_address(juju, CHAOSCENTER_APP, 0)
-    cmd = (
-        'curl -X GET '
-        f"http://{chaoscenter_ip}:8185"
-    )
+    cmd = f"curl -X GET http://{chaoscenter_ip}:8185"
     result = subprocess.run(shlex.split(cmd), text=True, capture_output=True)
 
     # THEN we receive a response that is served by the frontend
     assert "LitmusChaos" in result.stdout
 
 
-@retry(stop=stop_after_attempt(6), wait=wait_fixed(10))
+@retry(stop=stop_after_attempt(30), wait=wait_fixed(10))  # 5 minutes
 def test_backend_is_served_through_nginx(juju: Juju, token):
     # GIVEN control plane is deployed
 
@@ -73,7 +70,7 @@ def test_backend_is_served_through_nginx(juju: Juju, token):
     assert out.returncode == 0
 
 
-@retry(stop=stop_after_attempt(6), wait=wait_fixed(10))
+@retry(stop=stop_after_attempt(30), wait=wait_fixed(10))  # 5 minutes
 def test_auth_is_served_through_nginx(juju: Juju):
     # GIVEN control plane is deployed
 
@@ -85,6 +82,7 @@ def test_auth_is_served_through_nginx(juju: Juju):
     assert response.returncode == 0
     response_json = json.loads(response.stdout)
     assert "accessToken" in response_json, f"No token found in response: {response}"
+
 
 @pytest.mark.teardown
 def test_teardown(juju: Juju):

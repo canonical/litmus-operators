@@ -87,6 +87,7 @@ def deploy_control_plane(juju: Juju, wait_for_idle: bool = True):
             successes=6,
         )
 
+
 def get_login_response(host: str, port: int, subpath: str):
     cmd = (
         'curl -X POST -H "Content-Type: application/json" '
