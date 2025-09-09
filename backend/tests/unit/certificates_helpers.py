@@ -13,7 +13,7 @@ from charms.tls_certificates_interface.v4.tls_certificates import (
 )
 
 
-def example_cert_and_key(
+def mock_cert_and_key(
     relation_id: int = 1,
 ) -> tuple[ProviderCertificate, PrivateKey]:
     private_key = generate_private_key()
