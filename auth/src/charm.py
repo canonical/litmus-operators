@@ -38,7 +38,6 @@ class LitmusAuthCharm(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
 
-        self.unit.set_ports(LitmusAuth.http_port, LitmusAuth.grpc_port)
         self._auth_provider = LitmusAuthProvider(
             self.model.get_relation(LITMUS_AUTH_ENDPOINT),
             self.app,
@@ -63,11 +62,6 @@ class LitmusAuthCharm(CharmBase):
             self.model.get_relation("http-api"), app=self.app
         )
 
-        self.litmus_auth = LitmusAuth(
-            container=self.unit.get_container(LitmusAuth.name),
-            db_config=self.database_config,
-            backend_grpc_endpoint=self.backend_grpc_endpoint,
-        )
         self._tls = Tls(
             container=self.unit.get_container(LitmusAuth.name),
             tls_certificates=self._tls_certificates,
@@ -75,6 +69,12 @@ class LitmusAuthCharm(CharmBase):
             tls_certificates_relation=self.model.relations.get(
                 TLS_CERTIFICATES_ENDPOINT
             ),
+        )
+        self.litmus_auth = LitmusAuth(
+            container=self.unit.get_container(LitmusAuth.name),
+            db_config=self.database_config,
+            tls_config=self._tls.tls_config,
+            backend_grpc_endpoint=self.backend_grpc_endpoint,
         )
 
         self.framework.observe(
@@ -141,9 +141,19 @@ class LitmusAuthCharm(CharmBase):
         # TODO: add support for HTTPS once https://github.com/canonical/litmus-operators/issues/23 is fixed
         return f"http://{get_app_hostname(self.app.name, self.model.name)}:{self.litmus_auth.http_port}"
 
+    @property
+    def _certificate_request_attributes(self) -> CertificateRequestAttributes:
+        return CertificateRequestAttributes(
+            common_name=self.app.name,
+            sans_dns=frozenset(socket.getfqdn()),
+        )
+
     def _reconcile(self):
         """Run all logic that is independent of what event we're processing."""
+        self._tls_certificates.sync()
+        self._tls.reconcile()
         self.litmus_auth.reconcile()
+        self.unit.set_ports(*self.litmus_auth.litmus_auth_ports)
         if self.unit.is_leader():
             self._auth_provider.publish_endpoint(
                 Endpoint(

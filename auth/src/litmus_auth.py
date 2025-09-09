@@ -12,6 +12,8 @@ from typing import Optional
 from litmus_libs import DatabaseConfig
 from litmus_libs.interfaces.litmus_auth import Endpoint
 
+from tls import TLSConfig
+
 logger = logging.getLogger(__name__)
 
 
@@ -20,16 +22,20 @@ class LitmusAuth:
 
     name = "auth"
     http_port = 3000
+    https_port = 3001
     grpc_port = 3030
+    grpc_tls_port = 3031
 
     def __init__(
         self,
         container: Container,
         db_config: Optional[DatabaseConfig],
+        tls_config: Optional[TLSConfig],
         backend_grpc_endpoint: Optional[Endpoint],
     ):
         self._container = container
         self._db_config = db_config
+        self._tls_config = tls_config
         self._backend_grpc_endpoint = backend_grpc_endpoint
 
     def reconcile(self):
@@ -48,6 +54,22 @@ class LitmusAuth:
     @property
     def _pebble_layer(self) -> Layer:
         """Return a Pebble layer for Litmus Auth server."""
+        return Layer(
+            {
+                "services": {
+                    self.name: {
+                        "override": "replace",
+                        "summary": "litmus auth server layer",
+                        "command": "/bin/server",
+                        "startup": "enabled",
+                        "environment": self._environment_vars,
+                    }
+                },
+            }
+        )
+
+    @property
+    def _environment_vars(self) -> dict:
         env = {
             "ALLOWED_ORIGINS": ".*",
             "REST_PORT": self.http_port,
@@ -72,16 +94,23 @@ class LitmusAuth:
                     "LITMUS_GQL_GRPC_PORT": backend_endpoint.grpc_server_port,
                 }
             )
-        return Layer(
-            {
-                "services": {
-                    self.name: {
-                        "override": "replace",
-                        "summary": "litmus auth server layer",
-                        "command": "/bin/server",
-                        "startup": "enabled",
-                        "environment": env,
-                    }
-                },
-            }
-        )
+        if self._tls_config:
+            env.update(
+                {
+                    "ENABLE_INTERNAL_TLS": "true",
+                    "REST_PORT": self.https_port,
+                    "GRPC_PORT": self.grpc_tls_port,
+                    "TLS_CERT_PATH": self._tls_config.server_cert_path,
+                    "TLS_KEY_PATH": self._tls_config.private_key_path,
+                    "CA_CERT_TLS_PATH": self._tls_config.ca_cert_path,
+                }
+            )
+
+        return env
+
+    @property
+    def litmus_auth_ports(self) -> tuple[int, int]:
+        if self._tls_config:
+            return self.http_port, self.grpc_port
+        else:
+            return self.https_port, self.grpc_tls_port

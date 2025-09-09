@@ -38,11 +38,11 @@ class Tls:
     ca_cert_tls_path = "/etc/tls/ca.crt"
 
     def __init__(
-            self,
-            container: Container,
-            tls_certificates: TLSCertificatesRequiresV4,
-            certificate_request_attributes: CertificateRequestAttributes,
-            tls_certificates_relation: Optional[List[Relation]],
+        self,
+        container: Container,
+        tls_certificates: TLSCertificatesRequiresV4,
+        certificate_request_attributes: CertificateRequestAttributes,
+        tls_certificates_relation: Optional[List[Relation]],
     ):
         self._container = container
         self._tls_certificates = tls_certificates
@@ -84,9 +84,9 @@ class Tls:
         )
 
         if (
-                current_server_cert == server_cert
-                and current_private_key == private_key
-                and current_ca_cert == ca_cert
+            current_server_cert == server_cert
+            and current_private_key == private_key
+            and current_ca_cert == ca_cert
         ):
             # No update needed
             logger.debug("TLS certificates up to date. Skipping update.")
