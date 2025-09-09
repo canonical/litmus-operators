@@ -73,7 +73,6 @@ class LitmusBackendCharm(CharmBase):
             ),
         )
         self.litmus_backend = LitmusBackend(
-            charm=self,
             container=self.unit.get_container(LitmusBackend.name),
             db_config=self.database_config,
             tls_config=self._tls.tls_config,

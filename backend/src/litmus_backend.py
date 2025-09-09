@@ -29,14 +29,12 @@ class LitmusBackend:
 
     def __init__(
         self,
-        charm: CharmBase,
         container: Container,
         db_config: Optional[DatabaseConfig],
         tls_config: Optional[TLSConfig],
         auth_grpc_endpoint: Optional[Endpoint],
         frontend_url: Optional[str],
     ):
-        self._charm = charm
         self._container = container
         self._db_config = db_config
         self._tls_config = tls_config
