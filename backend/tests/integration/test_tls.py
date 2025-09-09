@@ -2,6 +2,7 @@
 # See LICENSE file for licensing details.
 
 import logging
+from subprocess import getoutput
 
 import pytest
 from jubilant import all_active, all_blocked, any_error, Juju
@@ -10,7 +11,7 @@ from pathlib import Path
 from tenacity import retry, stop_after_attempt, wait_fixed
 
 from conftest import APP, RESOURCES
-from helpers import get_unit_ip_address, run_shell_command
+from helpers import get_unit_ip_address
 
 MONGO_APP = "mongodb-k8s"
 SELF_SIGNED_CERTIFICATES_APP = "self-signed-certificates"
@@ -40,6 +41,6 @@ def test_setup(juju: Juju, charm: Path):
 def test_tls_integration(juju: Juju):
     backend_ip = get_unit_ip_address(juju, APP, 0)
     cmd = f"openssl s_client -connect {backend_ip}:8081"
-    out = run_shell_command(cmd)
-    assert f"subject=CN = {APP}" in out.stdout
-    assert "issuer=CN = self-signed-certificates-operator" in out.stdout
+    out = getoutput(cmd)
+    assert f"subject=CN = {APP}" in out
+    assert "issuer=CN = self-signed-certificates-operator" in out

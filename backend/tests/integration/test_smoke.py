@@ -1,13 +1,15 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 import logging
+from subprocess import getoutput
+
 import pytest
 from jubilant import Juju, all_blocked, all_active, any_error
 from pathlib import Path
 
 from tenacity import retry, stop_after_attempt, wait_fixed
 from conftest import APP, RESOURCES
-from helpers import get_unit_ip_address, run_shell_command
+from helpers import get_unit_ip_address
 
 MONGO_APP = "mongodb-k8s"
 
@@ -37,8 +39,8 @@ def test_backend_is_running(juju: Juju):
         '-H "Content-Type: application/json" '
         '-d \'{"query": "{ listEnvironments(projectID:"test") {environments {name} } }"}\''
     )
-    out = run_shell_command(cmd)
-    assert out.returncode == 0
+    out = getoutput(cmd)
+    assert out == 0
 
 
 @pytest.mark.teardown
