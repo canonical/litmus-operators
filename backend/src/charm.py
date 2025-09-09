@@ -154,7 +154,12 @@ class LitmusBackendCharm(CharmBase):
     def _certificate_request_attributes(self) -> CertificateRequestAttributes:
         return CertificateRequestAttributes(
             common_name=self.app.name,
-            sans_dns=frozenset([socket.getfqdn(), get_app_hostname]),
+            sans_dns=frozenset(
+                (
+                    socket.getfqdn(),
+                    get_app_hostname(self.app.name, self.model.name),
+                )
+            ),
         )
 
     def _reconcile(self):
