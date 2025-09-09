@@ -4,11 +4,17 @@
 """Charmed Operator for Litmus Authentication server; the auth layer for a chaos testing platform."""
 
 import logging
+import socket
 from typing import Optional
 
 from ops.charm import CharmBase
 
+from charms.tls_certificates_interface.v4.tls_certificates import (
+    TLSCertificatesRequiresV4,
+    CertificateRequestAttributes,
+)
 from litmus_auth import LitmusAuth
+from tls import Tls
 from cosl.reconciler import all_events, observe_events
 from ops import ActiveStatus, CollectStatusEvent, BlockedStatus, WaitingStatus
 from pydantic_core import ValidationError
@@ -21,6 +27,7 @@ from litmus_libs.interfaces.http_api import LitmusAuthApiProvider
 
 DATABASE_ENDPOINT = "database"
 LITMUS_AUTH_ENDPOINT = "litmus-auth"
+TLS_CERTIFICATES_ENDPOINT = "tls-certificates"
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +53,12 @@ class LitmusAuthCharm(CharmBase):
             # cfr. https://github.com/canonical/mongo-single-kernel-library/blob/6/edge/single_kernel_mongo/utils/mongodb_users.py#L52
             extra_user_roles="admin",
         )
+        self._tls_certificates = TLSCertificatesRequiresV4(
+            charm=self,
+            relationship_name=TLS_CERTIFICATES_ENDPOINT,
+            certificate_requests=[self._certificate_request_attributes],
+        )
+
         self._send_http_api = LitmusAuthApiProvider(
             self.model.get_relation("http-api"), app=self.app
         )
@@ -54,6 +67,14 @@ class LitmusAuthCharm(CharmBase):
             container=self.unit.get_container(LitmusAuth.name),
             db_config=self.database_config,
             backend_grpc_endpoint=self.backend_grpc_endpoint,
+        )
+        self._tls = Tls(
+            container=self.unit.get_container(LitmusAuth.name),
+            tls_certificates=self._tls_certificates,
+            certificate_request_attributes=self._certificate_request_attributes,
+            tls_certificates_relation=self.model.relations.get(
+                TLS_CERTIFICATES_ENDPOINT
+            ),
         )
 
         self.framework.observe(
