@@ -127,7 +127,7 @@ def test_pebble_plan_with_backend_http_api_relation(
 
 
 def test_pebble_plan_with_tls_certificates_relation(
-    ctx, backend_container, tls_certificates_relation, get_assigned_certs
+    ctx, backend_container, tls_certificates_relation, patch_cert_and_key
 ):
     expected_env_vars = {
         "ENABLE_INTERNAL_TLS",

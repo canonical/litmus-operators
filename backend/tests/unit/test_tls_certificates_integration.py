@@ -8,7 +8,7 @@ from ops.testing import Mount, State
 
 
 def test_tls_certs_saved_to_the_disk_when_available_in_tls_certificates_relation_databag(
-    ctx, backend_container, tls_certificates_relation, get_assigned_certs
+    ctx, backend_container, tls_certificates_relation, patch_cert_and_key
 ):
     # GIVEN a running container with a tls-certificates relation
     state = State(containers=[backend_container], relations=[tls_certificates_relation])
@@ -29,7 +29,7 @@ def test_tls_certs_saved_to_the_disk_when_available_in_tls_certificates_relation
 
 
 def test_tls_certs_removed_from_disk_when_tls_certificates_relation_is_broken(
-    ctx, backend_container, tls_certificates_relation, get_assigned_certs
+    ctx, backend_container, tls_certificates_relation
 ):
     with tempfile.TemporaryDirectory() as tempdir:
         certs_mount = Mount(
@@ -60,7 +60,7 @@ def test_tls_certs_removed_from_disk_when_tls_certificates_relation_is_broken(
 
 
 def test_tls_certs_not_updated_if_stored_certs_match_these_from_the_relation_databag(
-    ctx, backend_container, tls_certificates_relation, get_assigned_certs
+    ctx, backend_container, tls_certificates_relation, cert_and_key, patch_cert_and_key
 ):
     with tempfile.TemporaryDirectory() as tempdir:
         certs_mount = Mount(
@@ -68,7 +68,7 @@ def test_tls_certs_not_updated_if_stored_certs_match_these_from_the_relation_dat
             source=tempdir,
         )
         backend_container.mounts["certs"] = certs_mount
-        certs, key = get_assigned_certs()
+        certs, key = cert_and_key
 
         # GIVEN a running container with a tls-certificates relation and up-to-date TLS certs stored on the disk
         state = State(
@@ -95,7 +95,7 @@ def test_tls_certs_not_updated_if_stored_certs_match_these_from_the_relation_dat
 
 
 def test_tls_certs_updated_if_stored_certs_dont_match_these_from_the_relation_databag(
-    ctx, backend_container, tls_certificates_relation, get_assigned_certs
+    ctx, backend_container, tls_certificates_relation, cert_and_key, patch_cert_and_key
 ):
     with tempfile.TemporaryDirectory() as tempdir:
         certs_mount = Mount(
@@ -103,7 +103,7 @@ def test_tls_certs_updated_if_stored_certs_dont_match_these_from_the_relation_da
             source=tempdir,
         )
         backend_container.mounts["certs"] = certs_mount
-        certs, key = get_assigned_certs()
+        certs, key = cert_and_key
 
         # GIVEN a running container with a tls-certificates relation and outdated TLS certs stored on the disk
         state = State(

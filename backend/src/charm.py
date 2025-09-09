@@ -66,10 +66,8 @@ class LitmusBackendCharm(CharmBase):
 
         self._tls = Tls(
             container=self.unit.get_container(LitmusBackend.name),
-            tls_certificates=self._tls_certificates,
-            certificate_request_attributes=self._certificate_request_attributes,
-            tls_certificates_relation=self.model.relations.get(
-                TLS_CERTIFICATES_ENDPOINT
+            tls_certs=lambda: self._tls_certificates.get_assigned_certificate(
+                self._certificate_request_attributes
             ),
         )
         self.litmus_backend = LitmusBackend(

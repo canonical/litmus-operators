@@ -4,13 +4,14 @@
 
 import logging
 from dataclasses import dataclass
-from typing import Optional, List
+from typing import Optional, Callable
+
+from ops import Container
 
 from charms.tls_certificates_interface.v4.tls_certificates import (
-    TLSCertificatesRequiresV4,
-    CertificateRequestAttributes,
+    ProviderCertificate,
+    PrivateKey,
 )
-from ops import Container, Relation
 
 logger = logging.getLogger(__name__)
 
@@ -40,14 +41,12 @@ class Tls:
     def __init__(
         self,
         container: Container,
-        tls_certificates: TLSCertificatesRequiresV4,
-        certificate_request_attributes: CertificateRequestAttributes,
-        tls_certificates_relation: Optional[List[Relation]],
+        tls_certs: Callable[
+            [], tuple[Optional[ProviderCertificate], Optional[PrivateKey]]
+        ],
     ):
         self._container = container
-        self._tls_certificates = tls_certificates
-        self._certificate_request_attributes = certificate_request_attributes
-        self._tls_certificates_relation = tls_certificates_relation
+        self._certificates, self._private_key = tls_certs()
 
     def reconcile(self):
         if self._container.can_connect():
@@ -106,18 +105,13 @@ class Tls:
     @property
     def tls_config(self) -> Optional[TLSConfig]:
         """Returns the TLS configuration, including certificates and private key, if available; None otherwise."""
-        if not self._tls_certificates_relation:
-            return None
-        certificates, key = self._tls_certificates.get_assigned_certificate(
-            certificate_request=self._certificate_request_attributes
-        )
-        if not (key and certificates):
+        if not (self._certificates and self._private_key):
             return None
         return TLSConfig(
-            server_cert=certificates.certificate.raw,
+            server_cert=self._certificates.certificate.raw,
             server_cert_path=self.tls_cert_path,
-            ca_cert=certificates.ca.raw,
+            ca_cert=self._certificates.ca.raw,
             ca_cert_path=self.ca_cert_tls_path,
-            private_key=key.raw,
+            private_key=self._private_key.raw,
             private_key_path=self.tls_key_path,
         )

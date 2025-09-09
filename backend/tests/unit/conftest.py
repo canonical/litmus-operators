@@ -18,14 +18,18 @@ def backend_charm():
         yield LitmusBackendCharm
 
 
+@pytest.fixture
+def cert_and_key():
+    return mock_cert_and_key()
+
+
 @pytest.fixture()
-def get_assigned_certs():
-    provider_certificate, private_key = mock_cert_and_key()
+def patch_cert_and_key(cert_and_key):
     with patch(
         "charms.tls_certificates_interface.v4.tls_certificates.TLSCertificatesRequiresV4.get_assigned_certificate",
-        return_value=(provider_certificate, private_key),
-    ) as get_cert:
-        yield get_cert
+        return_value=cert_and_key,
+    ):
+        yield
 
 
 @pytest.fixture
