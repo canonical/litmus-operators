@@ -27,7 +27,7 @@ class LitmusBackend:
     http_port = 8080
     https_port = 8081
     grpc_port = 8000
-    grpc_https_port = 8001
+    grpc_tls_port = 8001
 
     def __init__(
         self,
@@ -52,7 +52,6 @@ class LitmusBackend:
         """Unconditional control logic."""
         if self._container.can_connect():
             self._tls.reconcile()
-            self._charm.unit.set_ports(*self._litmus_backed_ports)
             self._reconcile_workload_config()
 
     def _reconcile_workload_config(self):
@@ -130,7 +129,7 @@ class LitmusBackend:
                 {
                     "ENABLE_INTERNAL_TLS": "true",
                     "REST_PORT": self.https_port,
-                    "GRPC_PORT": self.grpc_https_port,
+                    "GRPC_PORT": self.grpc_tls_port,
                     "TLS_CERT_PATH": self._tls.tls_cert_path,
                     "TLS_KEY_PATH": self._tls.tls_key_path,
                     "CA_CERT_TLS_PATH": self._tls.ca_cert_tls_path,
@@ -140,8 +139,8 @@ class LitmusBackend:
         return env
 
     @property
-    def _litmus_backed_ports(self) -> tuple[int, int]:
+    def litmus_backend_ports(self) -> tuple[int, int]:
         if self._tls.tls_config:
             return self.http_port, self.grpc_port
         else:
-            return self.https_port, self.grpc_https_port
+            return self.https_port, self.grpc_tls_port

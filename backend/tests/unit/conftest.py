@@ -6,7 +6,7 @@ import json
 from ops.testing import Container, Context, Relation
 import pytest
 from charm import LitmusBackendCharm
-from certificates_helpers import example_cert_and_key
+from certificates_helpers import mock_cert_and_key
 
 
 @pytest.fixture
@@ -20,7 +20,7 @@ def backend_charm():
 
 @pytest.fixture()
 def get_assigned_certs():
-    provider_certificate, private_key = example_cert_and_key()
+    provider_certificate, private_key = mock_cert_and_key()
     with patch(
         "charms.tls_certificates_interface.v4.tls_certificates.TLSCertificatesRequiresV4.get_assigned_certificate",
         return_value=(provider_certificate, private_key),

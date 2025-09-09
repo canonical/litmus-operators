@@ -120,10 +120,5 @@ class Tls:
     def _certificate_request_attributes(self) -> CertificateRequestAttributes:
         return CertificateRequestAttributes(
             common_name=self._charm.app.name,
-            sans_dns=frozenset(self._hostname),
+            sans_dns=frozenset(socket.getfqdn()),
         )
-
-    @property
-    def _hostname(self) -> str:
-        """Unit's hostname."""
-        return socket.getfqdn()

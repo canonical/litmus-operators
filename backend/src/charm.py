@@ -135,6 +135,7 @@ class LitmusBackendCharm(CharmBase):
     def _reconcile(self):
         """Run all logic that is independent of what event we're processing."""
         self.litmus_backend.reconcile()
+        self.unit.set_ports(*self.litmus_backend.litmus_backend_ports)
         if self.unit.is_leader():
             self._auth.publish_endpoint(
                 Endpoint(
