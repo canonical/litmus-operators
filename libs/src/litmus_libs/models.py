@@ -22,7 +22,7 @@ class DatabaseConfig(BaseModel):
 
 
 @dataclass
-class TLSConfig:
+class TLSConfigData:
     """Data structure encapsulating the TLS configuration received over the `tls-certificates` interface."""
 
     server_cert: str

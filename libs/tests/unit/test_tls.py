@@ -3,13 +3,13 @@
 
 from unittest.mock import Mock
 
-from litmus_libs.tls import Tls
+from litmus_libs.tls_reconciler import TlsReconciler
 
 
 def test_reconcile_tls_config_not_called_if_cant_connect_to_workload_container(
     workload_container, tls_paths, tls_config
 ):
-    tls = Tls(
+    tls = TlsReconciler(
         container=workload_container,
         tls_cert_path=tls_paths.get("server_cert_path"),
         tls_key_path=tls_paths.get("private_key_path"),
@@ -35,7 +35,7 @@ def test_certs_pushed_to_container_if_stored_certs_are_outdated(
     key_path = tls_paths.get("private_key_path")
     ca_path = tls_paths.get("ca_cert_path")
 
-    tls = Tls(
+    tls = TlsReconciler(
         container=workload_container,
         tls_cert_path=cert_path,
         tls_key_path=key_path,
@@ -67,7 +67,7 @@ def test_certs_not_pushed_to_container_if_stored_certs_are_up_to_date(
     key_path = tls_paths.get("private_key_path")
     ca_path = tls_paths.get("ca_cert_path")
 
-    tls = Tls(
+    tls = TlsReconciler(
         container=workload_container,
         tls_cert_path=cert_path,
         tls_key_path=key_path,
@@ -104,7 +104,7 @@ def test_configure_tls_is_called_if_valid_tls_config_is_provider(
     ca_path = tls_paths.get("ca_cert_path")
 
     # GIVEN valid TLS config
-    tls = Tls(
+    tls = TlsReconciler(
         container=workload_container,
         tls_cert_path=cert_path,
         tls_key_path=key_path,
@@ -126,7 +126,7 @@ def test_configure_tls_is_called_if_valid_tls_config_is_provider(
 
 def test_delete_certificates_called_if_tls_config_is_none(workload_container, tls_paths):
     # GIVEN TLS config is None
-    tls = Tls(
+    tls = TlsReconciler(
         container=workload_container,
         tls_cert_path=tls_paths.get("server_cert_path"),
         tls_key_path=tls_paths.get("private_key_path"),

@@ -9,12 +9,12 @@ from typing import Callable, Optional
 
 from ops import Container
 
-from litmus_libs.models import TLSConfig
+from litmus_libs.models import TLSConfigData
 
 logger = logging.getLogger(__name__)
 
 
-class Tls:
+class TlsReconciler:
     """Synchronize the tls configuration data received over an integration, with a container's filesystem."""
 
     def __init__(
@@ -23,7 +23,7 @@ class Tls:
         tls_cert_path: str,
         tls_key_path: str,
         tls_ca_path: str,
-        tls_config_getter: Callable[[], Optional[TLSConfig]],
+        tls_config_getter: Callable[[], Optional[TLSConfigData]],
     ):
         self._container = container
         self._tls_cert_path = tls_cert_path
@@ -48,34 +48,19 @@ class Tls:
 
     def _configure_tls(self, server_cert: str, private_key: str, ca_cert: str):
         """Save the certificates file to disk."""
-        # Read the current content of the files (if they exist)
-        current_server_cert = (
-            self._container.pull(self._tls_cert_path).read()
-            if self._container.exists(self._tls_cert_path)
-            else ""
-        )
-        current_private_key = (
-            self._container.pull(self._tls_key_path).read()
-            if self._container.exists(self._tls_key_path)
-            else ""
-        )
-        current_ca_cert = (
-            self._container.pull(self._tls_ca_path).read()
-            if self._container.exists(self._tls_ca_path)
-            else ""
-        )
-
-        if (
-            current_server_cert == server_cert
-            and current_private_key == private_key
-            and current_ca_cert == ca_cert
+        for contents, filepath in (
+            (server_cert, self._tls_cert_path),
+            (ca_cert, self._tls_ca_path),
+            (private_key, self._tls_key_path),
         ):
-            # No update needed
-            logger.debug("TLS certificates up to date. Skipping update.")
-            return
-        self._container.push(self._tls_cert_path, server_cert, make_dirs=True)
-        self._container.push(self._tls_key_path, private_key, make_dirs=True)
-        self._container.push(self._tls_ca_path, ca_cert, make_dirs=True)
+            current_contents = self._container.pull(filepath).read() if self._container.exists(filepath) else ""
+
+            if current_contents == contents:
+                # No update needed
+                logger.debug("%s unchanged; skipping update.", filepath)
+                continue
+
+            self._container.push(filepath, contents, make_dirs=True)
         logger.debug("TLS certificates pushed to the workload container.")
 
     def _delete_certificates(self) -> None:

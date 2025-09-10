@@ -5,7 +5,7 @@ from unittest.mock import Mock
 import pytest
 from ops.testing import Relation
 
-from litmus_libs.models import TLSConfig
+from litmus_libs.models import TLSConfigData
 
 
 @pytest.fixture(scope="function")
@@ -29,7 +29,7 @@ def tls_paths():
 
 @pytest.fixture
 def tls_config():
-    return TLSConfig(
+    return TLSConfigData(
         server_cert="test_cert",
         private_key="test_key",
         ca_cert="test_ca",
