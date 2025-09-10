@@ -29,12 +29,18 @@ class LitmusBackend:
     def __init__(
         self,
         container: Container,
+        tls_cert_path: str,
+        tls_key_path: str,
+        tls_ca_path: str,
         db_config: Optional[DatabaseConfig],
         tls_config: Optional[TLSConfig],
         auth_grpc_endpoint: Optional[Endpoint],
         frontend_url: Optional[str],
     ):
         self._container = container
+        self._tls_cert_path = tls_cert_path
+        self._tls_key_path = tls_key_path
+        self._tls_ca_path = tls_ca_path
         self._db_config = db_config
         self._tls_config = tls_config
         self._auth_grpc_endpoint = auth_grpc_endpoint
@@ -121,9 +127,9 @@ class LitmusBackend:
                     "ENABLE_INTERNAL_TLS": "true",
                     "REST_PORT": self.https_port,
                     "GRPC_PORT": self.grpc_tls_port,
-                    "TLS_CERT_PATH": self._tls_config.server_cert_path,
-                    "TLS_KEY_PATH": self._tls_config.private_key_path,
-                    "CA_CERT_TLS_PATH": self._tls_config.ca_cert_path,
+                    "TLS_CERT_PATH": self._tls_cert_path,
+                    "TLS_KEY_PATH": self._tls_key_path,
+                    "CA_CERT_TLS_PATH": self._tls_ca_path,
                 }
             )
 
