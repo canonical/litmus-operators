@@ -3,6 +3,7 @@
 
 import os
 import tempfile
+from pathlib import Path
 
 from ops.testing import Mount, State
 
@@ -72,55 +73,61 @@ from ops.testing import Mount, State
 #         )
 
 
-# def test_tls_certs_not_updated_if_stored_certs_match_these_from_the_relation_databag(
-#     ctx, backend_container, tls_certificates_relation, cert_and_key, patch_cert_and_key
-# ):
-#     with tempfile.TemporaryDirectory() as tempdir:
-#         certs_mount = Mount(
-#             location="/etc/tls",
-#             source=tempdir,
-#         )
-#         certs, key = cert_and_key
-#         backend_container.mounts["certs"] = certs_mount
-#         os.makedirs(
-#             f"{backend_container.get_filesystem(ctx)}/usr/local/share/ca-certificates",
-#             exist_ok=True,
-#         )
-#         with open(
-#                 f"{backend_container.get_filesystem(ctx)}/usr/local/share/ca-certificates/ca.crt",
-#                 "w+",
-#         ) as f:
-#             f.write(str(certs.ca))
-#
-#         # GIVEN a running container with a tls-certificates relation and up-to-date TLS certs stored on the disk
-#         state = State(
-#             containers=[backend_container], relations=[tls_certificates_relation]
-#         )
-#         os.makedirs(f"{tempdir}/etc/tls", exist_ok=True)
-#
-#         with open(f"{tempdir}/tls.crt", "w") as f:
-#             f.write(str(certs.certificate))
-#         with open(f"{tempdir}/tls.key", "w") as f:
-#             f.write(str(key))
-#         cert_modification_time = os.stat(f"{tempdir}/tls.crt").st_mtime
-#         key_modification_time = os.stat(f"{tempdir}/tls.key").st_mtime
-#         ca_modification_time = os.stat(
-#             f"{backend_container.get_filesystem(ctx)}/usr/local/share/ca-certificates/ca.crt"
-#         ).st_mtime
-#
-#         # WHEN a relation changed event is fired
-#         state_out = ctx.run(ctx.on.relation_changed(tls_certificates_relation), state=state)
-#
-#         # THEN TLS certs stored in the workload container aren't changed
-#         backend_container_out = state_out.get_container(backend_container.name)
-#         assert os.stat(f"{tempdir}/tls.crt").st_mtime == cert_modification_time
-#         assert os.stat(f"{tempdir}/tls.key").st_mtime == key_modification_time
-#         assert (
-#                 os.stat(
-#                     f"{backend_container_out.get_filesystem(ctx)}/usr/local/share/ca-certificates/ca.crt"
-#                 ).st_mtime
-#                 == ca_modification_time
-#         )
+def test_tls_certs_not_updated_if_stored_certs_match_these_from_the_relation_databag(
+    ctx, backend_container, tls_certificates_relation, cert_and_key, patch_cert_and_key
+):
+    with tempfile.TemporaryDirectory() as tempdir:
+        certs_mount = Mount(
+            location="/etc",
+            source=Path(tempdir) / 'etc',
+        )
+        usr_mount = Mount(
+            location="/usr",
+            source=Path(tempdir) / 'usr',
+        )
+        certs, key = cert_and_key
+        backend_container.mounts["certs"] = certs_mount
+        backend_container.mounts["usr"] = usr_mount
+
+        os.makedirs(
+            f"{tempdir}/usr/local/share/ca-certificates",
+            exist_ok=True,
+        )
+        with open(
+                f"{tempdir}/usr/local/share/ca-certificates/ca.crt",
+                "w+",
+        ) as f:
+            f.write(str(certs.ca))
+
+        # GIVEN a running container with a tls-certificates relation and up-to-date TLS certs stored on the disk
+        state = State(
+            containers=[backend_container], relations=[tls_certificates_relation]
+        )
+        os.makedirs(f"{tempdir}/etc/tls", exist_ok=True)
+
+        with open(f"{tempdir}/etc/tls/tls.crt", "w") as f:
+            f.write(str(certs.certificate))
+        with open(f"{tempdir}/etc/tls/tls.key", "w") as f:
+            f.write(str(key))
+        cert_modification_time = os.stat(f"{tempdir}/etc/tls/tls.crt").st_mtime
+        key_modification_time = os.stat(f"{tempdir}/etc/tls/tls.key").st_mtime
+        ca_modification_time = os.stat(
+            f"{tempdir}/usr/local/share/ca-certificates/ca.crt"
+        ).st_mtime
+
+        # WHEN a relation changed event is fired
+        state_out = ctx.run(ctx.on.relation_changed(tls_certificates_relation), state=state)
+
+        # THEN TLS certs stored in the workload container aren't changed
+        backend_container_out = state_out.get_container(backend_container.name)
+        assert os.stat(f"{tempdir}/etc/tls/tls.crt").st_mtime == cert_modification_time
+        assert os.stat(f"{tempdir}/etc/tls/tls.key").st_mtime == key_modification_time
+        assert (
+                os.stat(
+                    f"{tempdir}/usr/local/share/ca-certificates/ca.crt"
+                ).st_mtime
+                == ca_modification_time
+        )
 
 
 def test_tls_certs_updated_if_stored_certs_dont_match_these_from_the_relation_databag(
