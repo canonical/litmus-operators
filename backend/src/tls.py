@@ -49,6 +49,7 @@ class Tls:
                 ca_cert=tls_config.ca_cert,
             )
         else:
+            logger.error("Calling delete certificates")
             self._delete_certificates()
 
     def _configure_tls(self, server_cert: str, private_key: str, ca_cert: str):
@@ -70,6 +71,7 @@ class Tls:
             else ""
         )
         logger.error(f"Pulling from {self._tls_ca_path}")
+        logger.error(self._container.exists(self._tls_ca_path))
         logger.error(current_ca_cert)
         logger.error("==========================================================================")
         logger.error(ca_cert)
