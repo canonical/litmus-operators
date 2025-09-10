@@ -6,10 +6,6 @@ import logging
 from dataclasses import dataclass
 from typing import Optional, Callable
 
-from charms.tls_certificates_interface.v4.tls_certificates import (
-    ProviderCertificate,
-    PrivateKey,
-)
 from ops import Container
 
 logger = logging.getLogger(__name__)
@@ -17,65 +13,61 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class TLSConfig:
-    """TLS configuration received by the coordinator over the `certificates` relation.
-
-    This is an internal object that we use as facade so that the individual Coordinator charms don't have to know the API of the charm libs that implements the relation interface.
-    """
+    """TLS configuration."""
 
     server_cert: str
-    server_cert_path: str
-    ca_cert: str
-    ca_cert_path: str
     private_key: str
-    private_key_path: str
+    ca_cert: str
 
 
 class Tls:
     """Handle TLS certificates."""
 
-    tls_cert_path = "/etc/tls/tls.crt"
-    tls_key_path = "/etc/tls/tls.key"
-    ca_cert_tls_path = "/etc/tls/ca.crt"
-
     def __init__(
         self,
         container: Container,
-        tls_certs: Callable[[], tuple[Optional[ProviderCertificate], Optional[PrivateKey]]],
+        tls_cert_path: str,
+        tls_key_path: str,
+        tls_ca_path: str,
+        tls_config_getter: Callable[[], Optional[TLSConfig]],
     ):
         self._container = container
-        self._certificates, self._private_key = tls_certs()
+        self._tls_cert_path = tls_cert_path
+        self._tls_key_path = tls_key_path
+        self._tls_ca_path = tls_ca_path
+        self._tls_config_getter = tls_config_getter
 
     def reconcile(self):
         if self._container.can_connect():
             self._reconcile_tls_config()
 
     def _reconcile_tls_config(self):
-        if tls_config := self.tls_config:
+        if tls_config := self._tls_config_getter():
             self._configure_tls(
                 server_cert=tls_config.server_cert,
-                ca_cert=tls_config.ca_cert,
                 private_key=tls_config.private_key,
+                ca_cert=tls_config.ca_cert,
             )
-            logger.info("Configured TLS for Litmus Backend.")
         else:
+            logger.error("Calling delete certificates")
             self._delete_certificates()
 
-    def _configure_tls(self, private_key: str, server_cert: str, ca_cert: str):
+    def _configure_tls(self, server_cert: str, private_key: str, ca_cert: str):
         """Save the certificates file to disk."""
         # Read the current content of the files (if they exist)
         current_server_cert = (
-            self._container.pull(self.tls_cert_path).read()
-            if self._container.exists(self.tls_cert_path)
+            self._container.pull(self._tls_cert_path).read()
+            if self._container.exists(self._tls_cert_path)
             else ""
         )
         current_private_key = (
-            self._container.pull(self.tls_key_path).read()
-            if self._container.exists(self.tls_key_path)
+            self._container.pull(self._tls_key_path).read()
+            if self._container.exists(self._tls_key_path)
             else ""
         )
         current_ca_cert = (
-            self._container.pull(self.ca_cert_tls_path).read()
-            if self._container.exists(self.ca_cert_tls_path)
+            self._container.pull(self._tls_ca_path).read()
+            if self._container.exists(self._tls_ca_path)
             else ""
         )
 
@@ -87,28 +79,14 @@ class Tls:
             # No update needed
             logger.debug("TLS certificates up to date. Skipping update.")
             return
-        self._container.push(self.tls_key_path, private_key, make_dirs=True)
-        self._container.push(self.tls_cert_path, server_cert, make_dirs=True)
-        self._container.push(self.ca_cert_tls_path, ca_cert, make_dirs=True)
+        self._container.push(self._tls_cert_path, server_cert, make_dirs=True)
+        self._container.push(self._tls_key_path, private_key, make_dirs=True)
+        self._container.push(self._tls_ca_path, ca_cert, make_dirs=True)
         logger.debug("TLS certificates pushed to the workload container.")
 
     def _delete_certificates(self) -> None:
         """Delete the certificate files from disk."""
-        for path in (self.tls_cert_path, self.tls_key_path, self.ca_cert_tls_path):
+        for path in (self._tls_cert_path, self._tls_key_path, self._tls_ca_path):
             if self._container.exists(path):
                 self._container.remove_path(path, recursive=True)
                 logger.debug("TLS certificate removed: %s", path)
-
-    @property
-    def tls_config(self) -> Optional[TLSConfig]:
-        """Returns the TLS configuration, including certificates and private key, if available; None otherwise."""
-        if not (self._certificates and self._private_key):
-            return None
-        return TLSConfig(
-            server_cert=self._certificates.certificate.raw,
-            server_cert_path=self.tls_cert_path,
-            ca_cert=self._certificates.ca.raw,
-            ca_cert_path=self.ca_cert_tls_path,
-            private_key=self._private_key.raw,
-            private_key_path=self.tls_key_path,
-        )

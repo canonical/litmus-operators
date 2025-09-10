@@ -8,7 +8,7 @@ import logging
 
 from ops import Container
 from ops.pebble import Layer
-from typing import Optional
+from typing import Optional, Callable
 from litmus_libs import DatabaseConfig
 from litmus_libs.interfaces.litmus_auth import Endpoint
 
@@ -29,13 +29,19 @@ class LitmusAuth:
     def __init__(
         self,
         container: Container,
+        tls_cert_path: str,
+        tls_key_path: str,
+        tls_ca_path: str,
         db_config: Optional[DatabaseConfig],
-        tls_config: Optional[TLSConfig],
+        tls_config_getter: Callable[[], Optional[TLSConfig]],
         backend_grpc_endpoint: Optional[Endpoint],
     ):
         self._container = container
+        self._tls_cert_path = tls_cert_path
+        self._tls_key_path = tls_key_path
+        self._tls_ca_path = tls_ca_path
         self._db_config = db_config
-        self._tls_config = tls_config
+        self._tls_config_getter = tls_config_getter
         self._backend_grpc_endpoint = backend_grpc_endpoint
 
     def reconcile(self):
@@ -94,15 +100,15 @@ class LitmusAuth:
                     "LITMUS_GQL_GRPC_PORT": backend_endpoint.grpc_server_port,
                 }
             )
-        if self._tls_config:
+        if self._tls_config_getter():
             env.update(
                 {
                     "ENABLE_INTERNAL_TLS": "true",
                     "REST_PORT": self.https_port,
                     "GRPC_PORT": self.grpc_tls_port,
-                    "TLS_CERT_PATH": self._tls_config.server_cert_path,
-                    "TLS_KEY_PATH": self._tls_config.private_key_path,
-                    "CA_CERT_TLS_PATH": self._tls_config.ca_cert_path,
+                    "TLS_CERT_PATH": self._tls_cert_path,
+                    "TLS_KEY_PATH": self._tls_key_path,
+                    "CA_CERT_TLS_PATH": self._tls_ca_path,
                 }
             )
 
@@ -110,7 +116,7 @@ class LitmusAuth:
 
     @property
     def litmus_auth_ports(self) -> tuple[int, int]:
-        if self._tls_config:
+        if not self._tls_config_getter():
             return self.http_port, self.grpc_port
         else:
             return self.https_port, self.grpc_tls_port
