@@ -52,6 +52,9 @@ requires:
     limit: 1
     description: |
       Receive TLS certificates.
+  ingress:
+    interface: traefik_route
+    limit: 1
 
 
 links:
