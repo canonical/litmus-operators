@@ -32,7 +32,7 @@ class Tls:
         self._tls_config_getter = tls_config_getter
 
     def reconcile(self):
-        """If the workload container can be connected to, configure TLS."""
+        """If the workload container can be connected to, synchronize the TLS configuration."""
         if self._container.can_connect():
             self._reconcile_tls_config()
 
