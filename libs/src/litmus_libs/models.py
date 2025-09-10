@@ -23,7 +23,7 @@ class DatabaseConfig(BaseModel):
 
 @dataclass
 class TLSConfig:
-    """Class representing TLS configuration received by the charm over the `tls-certificates` charm relation."""
+    """Data structure encapsulating the TLS configuration received over the `tls-certificates` interface."""
 
     server_cert: str
     private_key: str
