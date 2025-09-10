@@ -1,8 +1,10 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
+from unittest.mock import Mock
 
 import pytest
-from ops.testing import Container, Relation
+from ops.testing import Relation
+
 from litmus_libs.models import TLSConfig
 
 
@@ -13,16 +15,22 @@ def litmus_auth():
 
 @pytest.fixture
 def workload_container():
-    return Container(
-        name="some-workload",
-        can_connect=True,
-    )
+    return Mock()
+
+
+@pytest.fixture
+def tls_paths():
+    return {
+        "server_cert_path": "/etc/tls/tls.crt",
+        "private_key_path": "/etc/tls/tls.key",
+        "ca_cert_path": "/usr/local/share/ca-certificates/ca.crt",
+    }
 
 
 @pytest.fixture
 def tls_config():
     return TLSConfig(
-        server_cert = "some_cert",
-        private_key = "some_key",
-        ca_cert = "some_ca",
+        server_cert="test_cert",
+        private_key="test_key",
+        ca_cert="test_ca",
     )

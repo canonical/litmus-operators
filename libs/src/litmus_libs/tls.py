@@ -2,12 +2,14 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+"""Shared module for handling TLS configuration in Charmed Litmus."""
+
 import logging
-from typing import Optional, Callable
+from typing import Callable, Optional
 
 from ops import Container
 
-from models import TLSConfig
+from litmus_libs.models import TLSConfig
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +32,7 @@ class Tls:
         self._tls_config_getter = tls_config_getter
 
     def reconcile(self):
+        """If the workload container can be connected to, configure TLS."""
         if self._container.can_connect():
             self._reconcile_tls_config()
 
