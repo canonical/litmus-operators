@@ -70,11 +70,6 @@ class Tls:
             if self._container.exists(self._tls_ca_path)
             else ""
         )
-        logger.error(f"Pulling from {self._tls_ca_path}")
-        logger.error(self._container.exists(self._tls_ca_path))
-        logger.error(current_ca_cert)
-        logger.error("==========================================================================")
-        logger.error(ca_cert)
 
         if (
             current_server_cert == server_cert
