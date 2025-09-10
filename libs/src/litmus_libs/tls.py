@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class Tls:
-    """Handle TLS certificates."""
+    """Synchronize the tls configuration data received over an integration, with a container's filesystem."""
 
     def __init__(
         self,
