@@ -60,6 +60,7 @@ class TlsReconciler:
                 logger.debug("%s unchanged; skipping update.", filepath)
                 continue
 
+            # TODO: For charm tracing TLS certs need to be pushed to charm container as well. Charm tracing implementation requires https://github.com/canonical/litmus-operators/pull/40
             self._container.push(filepath, contents, make_dirs=True)
         logger.debug("TLS certificates pushed to the workload container.")
 
