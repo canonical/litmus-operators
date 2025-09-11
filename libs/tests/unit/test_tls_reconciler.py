@@ -60,6 +60,35 @@ def test_certs_pushed_to_container_if_stored_certs_are_outdated(
     workload_container.push.assert_any_call(ca_path, "test_ca", make_dirs=True)
 
 
+def test_update_ca_certificates_is_run_after_certificates_are_pushed_to_workload_container(
+    workload_container, tls_paths, tls_config
+):
+    cert_path = tls_paths.get("server_cert_path")
+    key_path = tls_paths.get("private_key_path")
+    ca_path = tls_paths.get("ca_cert_path")
+
+    tls = TlsReconciler(
+        container=workload_container,
+        tls_cert_path=cert_path,
+        tls_key_path=key_path,
+        tls_ca_path=ca_path,
+        tls_config_getter=lambda: tls_config,
+    )
+
+    # GIVEN a workload container with outdated content
+    workload_container.exists.side_effect = lambda path: False
+
+    # WHEN _configure_tls called with new TLS config
+    tls._configure_tls(
+        server_cert=tls_config.server_cert,
+        private_key=tls_config.private_key,
+        ca_cert=tls_config.ca_cert,
+    )
+
+    # THEN update-ca-certificates is run in the workload container
+    workload_container.exec.assert_called_once_with(["update-ca-certificates", "--fresh"])
+
+
 def test_certs_not_pushed_to_container_if_stored_certs_are_up_to_date(
     workload_container, tls_paths, tls_config
 ):

@@ -63,6 +63,9 @@ class TlsReconciler:
             self._container.push(filepath, contents, make_dirs=True)
         logger.debug("TLS certificates pushed to the workload container.")
 
+        self._container.exec(["update-ca-certificates", "--fresh"]).wait()
+        logger.debug("CA certificates updated successfully.")
+
     def _delete_certificates(self) -> None:
         """Delete the certificate files from disk."""
         for path in (self._tls_cert_path, self._tls_key_path, self._tls_ca_path):
