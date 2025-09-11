@@ -24,7 +24,9 @@ from ops.testing import State, Model
         ),
     ),
 )
-def test_publish_endpoint_without_tls(ctx, auth_relation, authserver_container, leader, expected):
+def test_publish_endpoint_without_tls(
+    ctx, auth_relation, authserver_container, leader, expected
+):
     # GIVEN a litmus-auth integration
     auth_relation = dataclasses.replace(auth_relation)
 
@@ -47,18 +49,18 @@ def test_publish_endpoint_without_tls(ctx, auth_relation, authserver_container, 
 @pytest.mark.parametrize(
     "leader, expected",
     (
-            (False, {}),
-            (
-                    True,
-                    {
-                        "grpc_server_host": json.dumps(
-                            "litmus-auth-k8s.test.svc.cluster.local"
-                        ),
-                        "grpc_server_port": json.dumps(3031),
-                        "insecure": json.dumps(False),
-                        "version": json.dumps(0),
-                    },
-            ),
+        (False, {}),
+        (
+            True,
+            {
+                "grpc_server_host": json.dumps(
+                    "litmus-auth-k8s.test.svc.cluster.local"
+                ),
+                "grpc_server_port": json.dumps(3031),
+                "insecure": json.dumps(False),
+                "version": json.dumps(0),
+            },
+        ),
     ),
 )
 def test_publish_endpoint_with_tls(
