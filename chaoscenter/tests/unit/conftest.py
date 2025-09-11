@@ -22,7 +22,7 @@ def chaoscenter_charm():
 @pytest.fixture
 def nginx_container():
     return Container(
-        "nginx",
+        "chaoscenter",
         can_connect=True,
     )
 

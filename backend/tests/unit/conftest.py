@@ -20,7 +20,7 @@ def backend_charm():
 @pytest.fixture
 def backend_container():
     return Container(
-        "litmuschaos-server",
+        "backend",
         can_connect=True,
     )
 

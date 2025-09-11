@@ -50,6 +50,7 @@ class LitmusChaoscenterCharm(CharmBase):
             # TODO https://github.com/canonical/litmus-operators/issues/39
             tls_config_getter=lambda: None,
             options=None,
+            container_name="chaoscenter",
         )
 
         self.framework.observe(

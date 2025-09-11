@@ -16,7 +16,7 @@ summary: |
   Litmus Authentication Server is a component of the LitmusChaos solution, an open source platform used for chaos testing.
 
 containers:
-  authserver:
+  auth:
     resource: litmus-auth-image
 
 resources:

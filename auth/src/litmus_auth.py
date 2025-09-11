@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class LitmusAuth:
     """Litmus Authentication server workload."""
 
-    name = "authserver"
+    name = "auth"
     http_port = 3000
     grpc_port = 3030
 
