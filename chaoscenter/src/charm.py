@@ -37,9 +37,6 @@ logger = logging.getLogger(__name__)
 AUTH_HTTP_API_ENDPOINT = "auth-http-api"
 BACKEND_HTTP_API_ENDPOINT = "backend-http-api"
 TLS_CERTIFICATES_ENDPOINT = "tls-certificates"
-TLS_CERT_PATH = "/etc/tls/tls.crt"
-TLS_KEY_PATH = "/etc/tls/tls.key"
-TLS_CA_PATH = "/usr/local/share/ca-certificates/ca.crt"
 
 
 class LitmusChaoscenterCharm(CharmBase):
@@ -82,7 +79,6 @@ class LitmusChaoscenterCharm(CharmBase):
     ##################
 
     def _nginx_config(self, tls: bool) -> str:
-        # TODO add support for TLS https://github.com/canonical/litmus-operators/issues/39
         return get_config(socket.getfqdn(), self.auth_url, self.backend_url)
 
     ##################
@@ -91,8 +87,8 @@ class LitmusChaoscenterCharm(CharmBase):
     @property
     def _frontend_url(self):
         """Internal (i.e. not ingressed) url."""
-        # TODO: add support for HTTPS once https://github.com/canonical/litmus-operators/issues/23 is fixed
-        return f"http://{get_app_hostname(self.app.name, self.model.name)}:8185"
+        protocol = "https" if self._tls_config else "http"
+        return f"{protocol}://{get_app_hostname(self.app.name, self.model.name)}:8185"
 
     @property
     def backend_url(self):
