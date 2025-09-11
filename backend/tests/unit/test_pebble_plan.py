@@ -147,12 +147,12 @@ def test_pebble_plan_with_tls_certificates_relation(
     # THEN litmus backend server pebble plan is generated with extra TLS env vars
     backend_container_out = state_out.get_container(backend_container.name)
     actual_env_vars = backend_container_out.plan.to_dict()["services"][
-        "litmuschaos-server"
+        "backend"
     ]["environment"]
     assert expected_env_vars.issubset(actual_env_vars.keys())
 
     # AND the pebble service is NOT running
-    assert not backend_container_out.services.get("litmuschaos-server").is_running()
+    assert not backend_container_out.services.get("backend").is_running()
 
 
 def test_pebble_service_running(
