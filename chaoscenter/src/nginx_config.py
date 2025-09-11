@@ -14,14 +14,6 @@ from urllib.parse import urlparse, ParseResult
 
 logger = logging.getLogger(__name__)
 
-
-http_locations: List[NginxLocationConfig] = [
-    NginxLocationConfig(
-        path="/auth", backend="auth", rewrite=["^/auth(/.*)$", "$1", "break"]
-    ),
-    NginxLocationConfig(path="/api", backend="backend"),
-]
-
 http_server_port = 8185
 
 
@@ -38,14 +30,17 @@ def get_config(
     auth_parsed_url = urlparse(auth_url)
     backend_parsed_url = urlparse(backend_url)
     # TODO how about we check the port and if it's not there, deduce the port from the scheme
+    auth_scheme = _get_scheme_from_url(auth_parsed_url)
     auth_port = _get_port_from_url(auth_parsed_url)
+    backend_scheme = _get_scheme_from_url(backend_parsed_url)
     backend_port = _get_port_from_url(backend_parsed_url)
 
     config = NginxConfig(
         server_name=hostname,
         upstream_configs=_upstreams(auth_port, backend_port),
         server_ports_to_locations=_server_ports_to_locations(
-            tls_available=tls_available,
+            auth_scheme=auth_scheme,
+            backend_scheme=backend_scheme,
         ),
         enable_status_page=False,
     )
@@ -54,6 +49,12 @@ def get_config(
         listen_tls=tls_available,
         root_path="/dist",
     )
+
+
+def _get_scheme_from_url(url: ParseResult) -> str:
+    if url.scheme:
+        return url.scheme
+    return "http"
 
 
 def _get_port_from_url(url: ParseResult) -> int:
@@ -65,13 +66,29 @@ def _get_port_from_url(url: ParseResult) -> int:
 
 
 def _server_ports_to_locations(
-    tls_available: bool,
+    auth_scheme: str, backend_scheme: str,
 ) -> Dict[int, List[NginxLocationConfig]]:
     """Generate a mapping from server ports to a list of Nginx location configurations."""
 
     return {
-        http_server_port: http_locations,
+        http_server_port: _generate_http_locations(auth_scheme, backend_scheme),
     }
+
+
+def _generate_http_locations(auth_scheme: str, backend_scheme: str) -> List[NginxLocationConfig]:
+    return [
+        NginxLocationConfig(
+            path="/auth",
+            backend="auth",
+            rewrite=["^/auth(/.*)$", "$1", "break"],
+            upstream_tls=True if auth_scheme == "https" else None,
+        ),
+        NginxLocationConfig(
+            path="/api",
+            backend="backend",
+            upstream_tls=True if backend_scheme == "https" else None,
+        ),
+    ]
 
 
 def _upstreams_to_addresses(auth_url: str, backend_url: str) -> Dict[str, Set[str]]:
