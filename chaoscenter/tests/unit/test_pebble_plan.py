@@ -16,7 +16,7 @@ def test_pebble_empty_plan(ctx, nginx_container):
     nginx_container_out = state_out.get_container(nginx_container.name)
     assert nginx_container_out.plan.to_dict() == expected_plan
     # AND the pebble service is NOT present
-    assert not nginx_container_out.services.get("nginx")
+    assert not nginx_container_out.services.get("chaoscenter")
 
     # AND the charm status is waiting
     assert state_out.unit_status.name == "blocked"
@@ -27,7 +27,7 @@ def test_pebble_ready_plan(
 ):
     expected_plan = {
         "services": {
-            "nginx": {
+            "chaoscenter": {
                 "override": "replace",
                 "summary": "nginx",
                 "command": "nginx -g 'daemon off;'",
@@ -49,7 +49,7 @@ def test_pebble_ready_plan(
     nginx_container_out = state_out.get_container(nginx_container.name)
     assert nginx_container_out.plan.to_dict() == expected_plan
     # AND the pebble service is running
-    assert nginx_container_out.services.get("nginx").is_running()
+    assert nginx_container_out.services.get("chaoscenter").is_running()
 
     # AND the charm status is blocked
     assert state_out.unit_status.name == "active"

@@ -20,7 +20,7 @@ def auth_charm():
 @pytest.fixture
 def authserver_container():
     return Container(
-        "authserver",
+        "auth",
         can_connect=True,
     )
 

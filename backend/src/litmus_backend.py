@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class LitmusBackend:
     """Litmus Backend server workload."""
 
-    name = "litmuschaos-server"
+    name = "backend"
     http_port = 8080
     grpc_port = 8000
 

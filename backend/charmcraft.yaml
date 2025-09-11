@@ -16,7 +16,7 @@ summary: |
   Litmus Backend Server is a component of the LitmusChaos solution, an open source platform used for chaos testing.
 
 containers:
-  litmuschaos-server:
+  backend:
     resource: litmus-backend-image
 
 resources:
