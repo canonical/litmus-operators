@@ -5,15 +5,19 @@ from unittest.mock import Mock
 
 from litmus_libs.tls_reconciler import TlsReconciler
 
+SERVER_CERT_PATH = "/etc/tls/tls.crt"
+PRIVATE_KEY_PATH = "/etc/tls/tls.key"
+CA_CERT_PATH = "/usr/local/share/ca-certificates/ca.crt"
+
 
 def test_reconcile_tls_config_not_called_if_cant_connect_to_workload_container(
-    workload_container, tls_paths, tls_config
+    workload_container, tls_config
 ):
     tls = TlsReconciler(
         container=workload_container,
-        tls_cert_path=tls_paths.get("server_cert_path"),
-        tls_key_path=tls_paths.get("private_key_path"),
-        tls_ca_path=tls_paths.get("ca_cert_path"),
+        tls_cert_path=SERVER_CERT_PATH,
+        tls_key_path=PRIVATE_KEY_PATH,
+        tls_ca_path=CA_CERT_PATH,
         tls_config_getter=lambda: tls_config,
     )
     tls._reconcile_tls_config = Mock()
@@ -29,17 +33,13 @@ def test_reconcile_tls_config_not_called_if_cant_connect_to_workload_container(
 
 
 def test_certs_pushed_to_container_if_stored_certs_are_outdated(
-    workload_container, tls_paths, tls_config
+    workload_container, tls_config
 ):
-    cert_path = tls_paths.get("server_cert_path")
-    key_path = tls_paths.get("private_key_path")
-    ca_path = tls_paths.get("ca_cert_path")
-
     tls = TlsReconciler(
         container=workload_container,
-        tls_cert_path=cert_path,
-        tls_key_path=key_path,
-        tls_ca_path=ca_path,
+        tls_cert_path=SERVER_CERT_PATH,
+        tls_key_path=PRIVATE_KEY_PATH,
+        tls_ca_path=CA_CERT_PATH,
         tls_config_getter=lambda: tls_config,
     )
 
@@ -55,23 +55,19 @@ def test_certs_pushed_to_container_if_stored_certs_are_outdated(
     )
 
     # THEN certs are updated in the workload container
-    workload_container.push.assert_any_call(cert_path, "test_cert", make_dirs=True)
-    workload_container.push.assert_any_call(key_path, "test_key", make_dirs=True)
-    workload_container.push.assert_any_call(ca_path, "test_ca", make_dirs=True)
+    workload_container.push.assert_any_call(SERVER_CERT_PATH, "test_cert", make_dirs=True)
+    workload_container.push.assert_any_call(PRIVATE_KEY_PATH, "test_key", make_dirs=True)
+    workload_container.push.assert_any_call(CA_CERT_PATH, "test_ca", make_dirs=True)
 
 
 def test_update_ca_certificates_is_run_after_certificates_are_pushed_to_workload_container(
-    workload_container, tls_paths, tls_config
+    workload_container, tls_config
 ):
-    cert_path = tls_paths.get("server_cert_path")
-    key_path = tls_paths.get("private_key_path")
-    ca_path = tls_paths.get("ca_cert_path")
-
     tls = TlsReconciler(
         container=workload_container,
-        tls_cert_path=cert_path,
-        tls_key_path=key_path,
-        tls_ca_path=ca_path,
+        tls_cert_path=SERVER_CERT_PATH,
+        tls_key_path=PRIVATE_KEY_PATH,
+        tls_ca_path=CA_CERT_PATH,
         tls_config_getter=lambda: tls_config,
     )
 
@@ -90,17 +86,13 @@ def test_update_ca_certificates_is_run_after_certificates_are_pushed_to_workload
 
 
 def test_certs_not_pushed_to_container_if_stored_certs_are_up_to_date(
-    workload_container, tls_paths, tls_config
+    workload_container, tls_config
 ):
-    cert_path = tls_paths.get("server_cert_path")
-    key_path = tls_paths.get("private_key_path")
-    ca_path = tls_paths.get("ca_cert_path")
-
     tls = TlsReconciler(
         container=workload_container,
-        tls_cert_path=cert_path,
-        tls_key_path=key_path,
-        tls_ca_path=ca_path,
+        tls_cert_path=SERVER_CERT_PATH,
+        tls_key_path=PRIVATE_KEY_PATH,
+        tls_ca_path=CA_CERT_PATH,
         tls_config_getter=lambda: tls_config,
     )
 
@@ -108,9 +100,9 @@ def test_certs_not_pushed_to_container_if_stored_certs_are_up_to_date(
     workload_container.exists.side_effect = lambda path: True
     workload_container.pull.side_effect = lambda path: Mock(
         read=lambda: {
-            cert_path: "test_cert",
-            key_path: "test_key",
-            ca_path: "test_ca",
+            SERVER_CERT_PATH: "test_cert",
+            PRIVATE_KEY_PATH: "test_key",
+            CA_CERT_PATH: "test_ca",
         }[path]
     )
 
@@ -126,18 +118,14 @@ def test_certs_not_pushed_to_container_if_stored_certs_are_up_to_date(
 
 
 def test_configure_tls_is_called_if_valid_tls_config_is_provider(
-    workload_container, tls_paths, tls_config
+    workload_container, tls_config
 ):
-    cert_path = tls_paths.get("server_cert_path")
-    key_path = tls_paths.get("private_key_path")
-    ca_path = tls_paths.get("ca_cert_path")
-
     # GIVEN valid TLS config
     tls = TlsReconciler(
         container=workload_container,
-        tls_cert_path=cert_path,
-        tls_key_path=key_path,
-        tls_ca_path=ca_path,
+        tls_cert_path=SERVER_CERT_PATH,
+        tls_key_path=PRIVATE_KEY_PATH,
+        tls_ca_path=CA_CERT_PATH,
         tls_config_getter=lambda: tls_config,
     )
     tls._configure_tls = Mock()
@@ -153,13 +141,13 @@ def test_configure_tls_is_called_if_valid_tls_config_is_provider(
     )
 
 
-def test_delete_certificates_called_if_tls_config_is_none(workload_container, tls_paths):
+def test_delete_certificates_called_if_tls_config_is_none(workload_container):
     # GIVEN TLS config is None
     tls = TlsReconciler(
         container=workload_container,
-        tls_cert_path=tls_paths.get("server_cert_path"),
-        tls_key_path=tls_paths.get("private_key_path"),
-        tls_ca_path=tls_paths.get("ca_cert_path"),
+        tls_cert_path=SERVER_CERT_PATH,
+        tls_key_path=PRIVATE_KEY_PATH,
+        tls_ca_path=CA_CERT_PATH,
         tls_config_getter=lambda: None,
     )
     tls._configure_tls = Mock()

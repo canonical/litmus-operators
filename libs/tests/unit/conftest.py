@@ -19,15 +19,6 @@ def workload_container():
 
 
 @pytest.fixture
-def tls_paths():
-    return {
-        "server_cert_path": "/etc/tls/tls.crt",
-        "private_key_path": "/etc/tls/tls.key",
-        "ca_cert_path": "/usr/local/share/ca-certificates/ca.crt",
-    }
-
-
-@pytest.fixture
 def tls_config():
     return TLSConfigData(
         server_cert="test_cert",
