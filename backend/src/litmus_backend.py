@@ -8,7 +8,7 @@ import logging
 
 from ops import Container
 from ops.pebble import Layer
-from typing import Optional
+from typing import Optional, Callable
 from litmus_libs import DatabaseConfig
 from litmus_libs.interfaces.litmus_auth import Endpoint
 
@@ -33,7 +33,7 @@ class LitmusBackend:
         tls_key_path: str,
         tls_ca_path: str,
         db_config: Optional[DatabaseConfig],
-        tls_config: Optional[TLSConfig],
+        tls_config_getter: Callable[[], Optional[TLSConfig]],
         auth_grpc_endpoint: Optional[Endpoint],
         frontend_url: Optional[str],
     ):
@@ -42,7 +42,7 @@ class LitmusBackend:
         self._tls_key_path = tls_key_path
         self._tls_ca_path = tls_ca_path
         self._db_config = db_config
-        self._tls_config = tls_config
+        self.tls_config_getter = tls_config_getter
         self._auth_grpc_endpoint = auth_grpc_endpoint
         self._frontend_url = frontend_url
 
@@ -121,7 +121,7 @@ class LitmusBackend:
                     "CHAOS_CENTER_UI_ENDPOINT": frontend_url,
                 }
             )
-        if self._tls_config:
+        if self.tls_config_getter():
             env.update(
                 {
                     "ENABLE_INTERNAL_TLS": "true",
@@ -137,7 +137,7 @@ class LitmusBackend:
 
     @property
     def litmus_backend_ports(self) -> tuple[int, int]:
-        if not self._tls_config:
+        if not self.tls_config_getter():
             return self.http_port, self.grpc_port
         else:
             return self.https_port, self.grpc_tls_port

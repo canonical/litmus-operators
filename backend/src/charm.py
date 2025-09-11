@@ -77,7 +77,7 @@ class LitmusBackendCharm(CharmBase):
         self.litmus_backend = LitmusBackend(
             container=self.unit.get_container(LitmusBackend.name),
             db_config=self.database_config,
-            tls_config=self._tls_config,
+            tls_config_getter=lambda: self._tls_config,
             tls_cert_path=TLS_CERT_PATH,
             tls_key_path=TLS_KEY_PATH,
             tls_ca_path=TLS_CA_PATH,
