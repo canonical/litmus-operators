@@ -81,12 +81,12 @@ def _generate_http_locations(auth_scheme: str, backend_scheme: str) -> List[Ngin
             path="/auth",
             backend="auth",
             rewrite=["^/auth(/.*)$", "$1", "break"],
-            upstream_tls=True if auth_scheme == "https" else None,
+            upstream_tls=True if auth_scheme == "https" else False,
         ),
         NginxLocationConfig(
             path="/api",
             backend="backend",
-            upstream_tls=True if backend_scheme == "https" else None,
+            upstream_tls=True if backend_scheme == "https" else False,
         ),
     ]
 
