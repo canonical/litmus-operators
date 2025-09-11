@@ -9,6 +9,7 @@ dependencies = [
     "litmus-libs",
     "ops",
     "coordinated-workers",
+    "cryptography>=45.0.7",
 ]
 
 [project.optional-dependencies]
