@@ -13,11 +13,15 @@ from charms.tls_certificates_interface.v4.tls_certificates import (
     CertificateRequestAttributes,
 )
 from litmus_backend import LitmusBackend
-from tls import TLSConfig, Tls
 from ops import ActiveStatus, CollectStatusEvent, BlockedStatus
 
 from litmus_libs.interfaces.litmus_auth import LitmusAuthRequirer, Endpoint
-from litmus_libs import DatabaseConfig, get_app_hostname
+from litmus_libs import (
+    DatabaseConfig,
+    TLSConfigData,
+    TlsReconciler,
+    get_app_hostname,
+)
 from cosl.reconciler import all_events, observe_events
 
 from ops import WaitingStatus
@@ -67,7 +71,7 @@ class LitmusBackendCharm(CharmBase):
             self.model.get_relation("http-api"), app=self.app
         )
 
-        self._tls = Tls(
+        self._tls = TlsReconciler(
             container=self.unit.get_container(LitmusBackend.name),
             tls_cert_path=TLS_CERT_PATH,
             tls_key_path=TLS_KEY_PATH,
@@ -152,14 +156,14 @@ class LitmusBackendCharm(CharmBase):
     # UTILITY METHODS #
     ###################
     @property
-    def _tls_config(self) -> Optional[TLSConfig]:
+    def _tls_config(self) -> Optional[TLSConfigData]:
         """Returns the TLS configuration, including certificates and private key, if available; None otherwise."""
         certificates, private_key = self._tls_certificates.get_assigned_certificate(
             self._certificate_request_attributes
         )
         if not (certificates and private_key):
             return None
-        return TLSConfig(
+        return TLSConfigData(
             server_cert=certificates.certificate.raw,
             private_key=private_key.raw,
             ca_cert=certificates.ca.raw,

@@ -9,10 +9,8 @@ import logging
 from ops import Container
 from ops.pebble import Layer
 from typing import Optional, Callable
-from litmus_libs import DatabaseConfig
+from litmus_libs import DatabaseConfig, TLSConfigData
 from litmus_libs.interfaces.litmus_auth import Endpoint
-
-from tls import TLSConfig
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +31,7 @@ class LitmusBackend:
         tls_key_path: str,
         tls_ca_path: str,
         db_config: Optional[DatabaseConfig],
-        tls_config_getter: Callable[[], Optional[TLSConfig]],
+        tls_config_getter: Callable[[], Optional[TLSConfigData]],
         auth_grpc_endpoint: Optional[Endpoint],
         frontend_url: Optional[str],
     ):
