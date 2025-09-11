@@ -168,8 +168,7 @@ class LitmusBackendCharm(CharmBase):
     @property
     def _http_api_endpoint(self):
         """Internal (i.e. not ingressed) url."""
-        # TODO: add support for HTTPS once https://github.com/canonical/litmus-operators/issues/23 is fixed
-        return f"http://{get_app_hostname(self.app.name, self.model.name)}:{self.litmus_backend.http_port}"
+        return f"{self._http_api_protocol}://{get_app_hostname(self.app.name, self.model.name)}:{self._http_api_port}"
 
     @property
     def _certificate_request_attributes(self) -> CertificateRequestAttributes:
@@ -193,12 +192,31 @@ class LitmusBackendCharm(CharmBase):
             self._auth.publish_endpoint(
                 Endpoint(
                     grpc_server_host=get_app_hostname(self.app.name, self.model.name),
-                    grpc_server_port=LitmusBackend.grpc_port,
-                    # TODO: check if TLS is enabled once https://github.com/canonical/litmus-operators/issues/23 is fixed
-                    insecure=True,
+                    grpc_server_port=self._grpc_port,
+                    insecure=False if self._tls_config else True,
                 )
             )
             self._send_http_api.publish_endpoint(self._http_api_endpoint)
+
+    @property
+    def _http_api_protocol(self):
+        return "https" if self._tls_config else "http"
+
+    @property
+    def _http_api_port(self):
+        return (
+            self.litmus_backend.https_port
+            if self._tls_config
+            else self.litmus_backend.http_port
+        )
+
+    @property
+    def _grpc_port(self):
+        return (
+            self.litmus_backend.grpc_tls_port
+            if self._tls_config
+            else self.litmus_backend.grpc_port
+        )
 
 
 if __name__ == "__main__":  # pragma: nocover

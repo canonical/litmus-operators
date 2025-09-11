@@ -62,7 +62,9 @@ def test_tls_certs_removed_from_disk_when_tls_certificates_relation_is_broken(
             f.write("CA certificate")
 
         # WHEN a relation broken event is fired
-        state_out = ctx.run(ctx.on.relation_broken(tls_certificates_relation), state=state)
+        state_out = ctx.run(
+            ctx.on.relation_broken(tls_certificates_relation), state=state
+        )
 
         # THEN TLS certs are removed from the workload container
         backend_container_out = state_out.get_container(backend_container.name)
