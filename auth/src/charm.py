@@ -14,7 +14,6 @@ from charms.tls_certificates_interface.v4.tls_certificates import (
     CertificateRequestAttributes,
 )
 from litmus_auth import LitmusAuth
-from tls import TLSConfig, Tls
 from cosl.reconciler import all_events, observe_events
 from ops import ActiveStatus, CollectStatusEvent, BlockedStatus, WaitingStatus
 from pydantic_core import ValidationError
@@ -22,7 +21,7 @@ from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseRequires,
 )
 from litmus_libs.interfaces.litmus_auth import LitmusAuthProvider, Endpoint
-from litmus_libs import get_app_hostname, DatabaseConfig
+from litmus_libs import DatabaseConfig, TLSConfigData, TlsReconciler, get_app_hostname
 from litmus_libs.interfaces.http_api import LitmusAuthApiProvider
 
 DATABASE_ENDPOINT = "database"
@@ -65,7 +64,7 @@ class LitmusAuthCharm(CharmBase):
             self.model.get_relation("http-api"), app=self.app
         )
 
-        self._tls = Tls(
+        self._tls = TlsReconciler(
             container=self.unit.get_container(LitmusAuth.name),
             tls_cert_path=TLS_CERT_PATH,
             tls_key_path=TLS_KEY_PATH,
@@ -141,14 +140,14 @@ class LitmusAuthCharm(CharmBase):
     # UTILITY METHODS #
     ###################
     @property
-    def _tls_config(self) -> Optional[TLSConfig]:
+    def _tls_config(self) -> Optional[TLSConfigData]:
         """Returns the TLS configuration, including certificates and private key, if available; None otherwise."""
         certificates, private_key = self._tls_certificates.get_assigned_certificate(
             self._certificate_request_attributes
         )
         if not (certificates and private_key):
             return None
-        return TLSConfig(
+        return TLSConfigData(
             server_cert=certificates.certificate.raw,
             private_key=private_key.raw,
             ca_cert=certificates.ca.raw,
@@ -157,8 +156,7 @@ class LitmusAuthCharm(CharmBase):
     @property
     def _http_api_endpoint(self):
         """Internal (i.e. not ingressed) url."""
-        # TODO: add support for HTTPS once https://github.com/canonical/litmus-operators/issues/23 is fixed
-        return f"http://{get_app_hostname(self.app.name, self.model.name)}:{self.litmus_auth.http_port}"
+        return f"{self._http_api_protocol}://{get_app_hostname(self.app.name, self.model.name)}:{self._http_api_port}"
 
     @property
     def _certificate_request_attributes(self) -> CertificateRequestAttributes:
@@ -182,12 +180,31 @@ class LitmusAuthCharm(CharmBase):
             self._auth_provider.publish_endpoint(
                 Endpoint(
                     grpc_server_host=get_app_hostname(self.app.name, self.model.name),
-                    grpc_server_port=LitmusAuth.grpc_port,
-                    # TODO: check if TLS is enabled once https://github.com/canonical/litmus-operators/issues/25 is fixed
-                    insecure=True,
+                    grpc_server_port=self._grpc_port,
+                    insecure=False if self._tls_config else True,
                 )
             )
             self._send_http_api.publish_endpoint(self._http_api_endpoint)
+
+    @property
+    def _http_api_protocol(self):
+        return "https" if self._tls_config else "http"
+
+    @property
+    def _http_api_port(self):
+        return (
+            self.litmus_auth.https_port
+            if self._tls_config
+            else self.litmus_auth.http_port
+        )
+
+    @property
+    def _grpc_port(self):
+        return (
+            self.litmus_auth.grpc_tls_port
+            if self._tls_config
+            else self.litmus_auth.grpc_port
+        )
 
 
 if __name__ == "__main__":  # pragma: nocover

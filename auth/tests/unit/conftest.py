@@ -1,6 +1,6 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 import json
 from ops.testing import Container, Context, Relation
@@ -28,6 +28,15 @@ def patch_cert_and_key(cert_and_key):
     with patch(
         "charms.tls_certificates_interface.v4.tls_certificates.TLSCertificatesRequiresV4.get_assigned_certificate",
         return_value=cert_and_key,
+    ):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def patch_container_exec():
+    with patch(
+        "ops.model.Container.exec",
+        Mock(),
     ):
         yield
 
