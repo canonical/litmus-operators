@@ -20,10 +20,10 @@ from ops import (
     WaitingStatus,
     ActiveStatus,
 )
+from coordinated_workers.models import TLSConfig
 from coordinated_workers.nginx import (
     Nginx,
 )
-from tls import TLSConfig
 
 from nginx_config import get_config
 
@@ -79,7 +79,12 @@ class LitmusChaoscenterCharm(CharmBase):
     ##################
 
     def _nginx_config(self, tls: bool) -> str:
-        return get_config(socket.getfqdn(), self.auth_url, self.backend_url)
+        return get_config(
+            hostname=socket.getfqdn(),
+            auth_url=self.auth_url,
+            backend_url=self.backend_url,
+            tls_available=bool(self._tls_config),
+        )
 
     ##################
     # EVENT HANDLERS #

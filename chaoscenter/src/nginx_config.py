@@ -26,7 +26,10 @@ http_server_port = 8185
 
 
 def get_config(
-    hostname: str, auth_url: Optional[str], backend_url: Optional[str]
+    hostname: str,
+    auth_url: Optional[str],
+    backend_url: Optional[str],
+    tls_available: bool = False,
 ) -> str:
     if not hostname or not auth_url or not backend_url:
         raise ValueError(
@@ -42,13 +45,13 @@ def get_config(
         server_name=hostname,
         upstream_configs=_upstreams(auth_port, backend_port),
         server_ports_to_locations=_server_ports_to_locations(
-            tls_available=False,
+            tls_available=tls_available,
         ),
         enable_status_page=False,
     )
     return config.get_config(
         _upstreams_to_addresses(auth_parsed_url.hostname, backend_parsed_url.hostname),  # type: ignore[arg-type]
-        listen_tls=False,
+        listen_tls=tls_available,
         root_path="/dist",
     )
 
