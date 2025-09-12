@@ -1,7 +1,8 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 import logging
-from subprocess import getstatusoutput
+import shlex
+from subprocess import check_call
 
 import pytest
 from jubilant import Juju, all_blocked, all_active, any_error
@@ -37,8 +38,7 @@ def test_backend_is_running(juju: Juju):
         '-H "Content-Type: application/json" '
         '-d \'{"query": "{ listEnvironments(projectID:"test") {environments {name} } }"}\''
     )
-    status, _ = getstatusoutput(cmd)
-    assert status == 0
+    check_call(shlex.split(cmd))
 
 
 @pytest.mark.teardown

@@ -13,6 +13,7 @@ from charms.tls_certificates_interface.v4.tls_certificates import (
 )
 
 
+# TODO: Move this under litmus-libs, i.e. litmus_libs.integrations.tls.testing
 def mock_cert_and_key(
     relation_id: int = 1,
 ) -> tuple[ProviderCertificate, PrivateKey]:

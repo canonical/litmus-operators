@@ -36,6 +36,7 @@ from litmus_libs.interfaces.http_api import LitmusBackendApiProvider
 DATABASE_ENDPOINT = "database"
 LITMUS_AUTH_ENDPOINT = "litmus-auth"
 TLS_CERTIFICATES_ENDPOINT = "tls-certificates"
+# TODO: Put cert paths in the tls_reconciler module in litmus-libs
 TLS_CERT_PATH = "/etc/tls/tls.crt"
 TLS_KEY_PATH = "/etc/tls/tls.key"
 TLS_CA_PATH = "/usr/local/share/ca-certificates/ca.crt"
@@ -197,20 +198,24 @@ class LitmusBackendCharm(CharmBase):
                 Endpoint(
                     grpc_server_host=get_app_hostname(self.app.name, self.model.name),
                     grpc_server_port=self._grpc_port,
-                    insecure=False if self._tls_config else True,
+                    insecure=False if self._tls_ready else True,
                 )
             )
             self._send_http_api.publish_endpoint(self._http_api_endpoint)
 
     @property
+    def _tls_ready(self) -> bool:
+        return bool(self._tls_config)
+
+    @property
     def _http_api_protocol(self):
-        return "https" if self._tls_config else "http"
+        return "https" if self._tls_ready else "http"
 
     @property
     def _http_api_port(self):
         return (
             self.litmus_backend.https_port
-            if self._tls_config
+            if self._tls_ready
             else self.litmus_backend.http_port
         )
 
@@ -218,7 +223,7 @@ class LitmusBackendCharm(CharmBase):
     def _grpc_port(self):
         return (
             self.litmus_backend.grpc_tls_port
-            if self._tls_config
+            if self._tls_ready
             else self.litmus_backend.grpc_port
         )
 
