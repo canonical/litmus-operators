@@ -37,9 +37,9 @@ def test_pebble_plan_minimal(ctx, backend_container):
 
     # THEN litmus backend server pebble plan is generated with the right env vars
     backend_container_out = state_out.get_container(backend_container.name)
-    actual_env_vars = backend_container_out.plan.to_dict()["services"][
-        "backend"
-    ]["environment"]
+    actual_env_vars = backend_container_out.plan.to_dict()["services"]["backend"][
+        "environment"
+    ]
     assert actual_env_vars.keys() == expected_env_vars
 
     # AND the pebble service is NOT running
@@ -64,9 +64,9 @@ def test_pebble_plan_with_database_relation(ctx, backend_container, database_rel
 
     # THEN litmus backend server pebble plan is generated with extra db env vars
     backend_container_out = state_out.get_container(backend_container.name)
-    actual_env_vars = backend_container_out.plan.to_dict()["services"][
-        "backend"
-    ]["environment"]
+    actual_env_vars = backend_container_out.plan.to_dict()["services"]["backend"][
+        "environment"
+    ]
     assert expected_env_vars.issubset(actual_env_vars.keys())
 
     # AND the pebble service is running
@@ -90,9 +90,9 @@ def test_pebble_plan_with_auth_relation(ctx, backend_container, auth_relation):
 
     # THEN litmus backend server pebble plan is generated with extra db env vars
     backend_container_out = state_out.get_container(backend_container.name)
-    actual_env_vars = backend_container_out.plan.to_dict()["services"][
-        "backend"
-    ]["environment"]
+    actual_env_vars = backend_container_out.plan.to_dict()["services"]["backend"][
+        "environment"
+    ]
     assert expected_env_vars.issubset(actual_env_vars.keys())
 
     # AND the pebble service is NOT running
@@ -117,9 +117,38 @@ def test_pebble_plan_with_backend_http_api_relation(
 
     # THEN litmus backend server pebble plan is generated with extra db env vars
     backend_container_out = state_out.get_container(backend_container.name)
-    actual_env_vars = backend_container_out.plan.to_dict()["services"][
-        "backend"
-    ]["environment"]
+    actual_env_vars = backend_container_out.plan.to_dict()["services"]["backend"][
+        "environment"
+    ]
+    assert expected_env_vars.issubset(actual_env_vars.keys())
+
+    # AND the pebble service is NOT running
+    assert not backend_container_out.services.get("backend").is_running()
+
+
+def test_pebble_plan_with_tls_certificates_relation(
+    ctx, backend_container, tls_certificates_relation, patch_cert_and_key
+):
+    expected_env_vars = {
+        "ENABLE_INTERNAL_TLS",
+        "REST_PORT",
+        "GRPC_PORT",
+        "TLS_CERT_PATH",
+        "TLS_KEY_PATH",
+        "CA_CERT_TLS_PATH",
+    }
+
+    # GIVEN a running container with a tls-certificates relation
+    state = State(containers=[backend_container], relations=[tls_certificates_relation])
+
+    # WHEN a relation changed event is fired
+    state_out = ctx.run(ctx.on.relation_changed(tls_certificates_relation), state=state)
+
+    # THEN litmus backend server pebble plan is generated with extra TLS env vars
+    backend_container_out = state_out.get_container(backend_container.name)
+    actual_env_vars = backend_container_out.plan.to_dict()["services"]["backend"][
+        "environment"
+    ]
     assert expected_env_vars.issubset(actual_env_vars.keys())
 
     # AND the pebble service is NOT running

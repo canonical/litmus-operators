@@ -18,6 +18,9 @@ summary: |
 containers:
   backend:
     resource: litmus-backend-image
+    mounts:
+      - storage: certs
+        location: /etc/tls
 
 resources:
   litmus-backend-image:
@@ -25,6 +28,10 @@ resources:
     description: OCI image for Litmus Backend server 
     upstream-source: ubuntu/litmuschaos-server:3-24.04_edge
 
+storage:
+  certs:
+    type: filesystem
+    minimum-size: 1M
 
 links:
   documentation: https://discourse.charmhub.io/t/18790
@@ -48,6 +55,12 @@ requires:
     limit: 1
     description: |
       Exchange the gRPC server endpoints of the auth and backend components.
+  tls-certificates:
+    optional: true
+    interface: tls-certificates
+    limit: 1
+    description: |
+      Receive TLS certificates.
 
 provides:
   http-api:
@@ -64,7 +77,14 @@ parts:
   charm:
     source: .
     plugin: uv
-    build-packages: [git] # handy for git+ dependencies during development
+    build-packages:
+      - git # handy for git+ dependencies during development
+      # Required by the tls_certificates_interface
+      - cargo
+      - libffi-dev
+      - libssl-dev
+      - pkg-config
+      - rustc
     build-snaps: [astral-uv]
     # FIXME: override-build with "git describe --always > $CRAFT_PART_INSTALL/version" causes
     # charm pack to fail "fatal: not a git repository (or any of the parent directories): .git"

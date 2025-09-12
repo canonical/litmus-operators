@@ -8,10 +8,9 @@ import logging
 
 from ops import Container
 from ops.pebble import Layer
-from typing import Optional
-from litmus_libs import DatabaseConfig
+from typing import Optional, Callable
+from litmus_libs import DatabaseConfig, TLSConfigData
 from litmus_libs.interfaces.litmus_auth import Endpoint
-
 
 logger = logging.getLogger(__name__)
 
@@ -21,17 +20,27 @@ class LitmusBackend:
 
     name = "backend"
     http_port = 8080
+    https_port = 8081
     grpc_port = 8000
+    grpc_tls_port = 8001
 
     def __init__(
         self,
         container: Container,
+        tls_cert_path: str,
+        tls_key_path: str,
+        tls_ca_path: str,
         db_config: Optional[DatabaseConfig],
+        tls_config_getter: Callable[[], Optional[TLSConfigData]],
         auth_grpc_endpoint: Optional[Endpoint],
         frontend_url: Optional[str],
     ):
         self._container = container
+        self._tls_cert_path = tls_cert_path
+        self._tls_key_path = tls_key_path
+        self._tls_ca_path = tls_ca_path
         self._db_config = db_config
+        self.tls_config_getter = tls_config_getter
         self._auth_grpc_endpoint = auth_grpc_endpoint
         self._frontend_url = frontend_url
 
@@ -51,6 +60,22 @@ class LitmusBackend:
     @property
     def _pebble_layer(self) -> Layer:
         """Return a Pebble layer for Litmus backend server."""
+        return Layer(
+            {
+                "services": {
+                    self.name: {
+                        "override": "replace",
+                        "summary": "litmus backend server layer",
+                        "command": "/bin/server",
+                        "startup": "enabled",
+                        "environment": self._environment_vars,
+                    }
+                },
+            }
+        )
+
+    @property
+    def _environment_vars(self) -> dict:
         env = {
             "REST_PORT": self.http_port,
             "GRPC_PORT": self.grpc_port,
@@ -72,6 +97,7 @@ class LitmusBackend:
             "LITMUS_CHAOS_RUNNER_IMAGE": "litmuschaos/chaos-runner:3.20.0",
             "LITMUS_CHAOS_EXPORTER_IMAGE": "litmuschaos/chaos-exporter:3.20.0",
         }
+
         if db_config := self._db_config:
             env.update(
                 {
@@ -87,24 +113,28 @@ class LitmusBackend:
                     "LITMUS_AUTH_GRPC_PORT": auth_endpoint.grpc_server_port,
                 }
             )
-
         if frontend_url := self._frontend_url:
             env.update(
                 {
                     "CHAOS_CENTER_UI_ENDPOINT": frontend_url,
                 }
             )
+        if self.tls_config_getter():
+            env.update(
+                {
+                    "ENABLE_INTERNAL_TLS": "true",
+                    "REST_PORT": self.https_port,
+                    "GRPC_PORT": self.grpc_tls_port,
+                    "TLS_CERT_PATH": self._tls_cert_path,
+                    "TLS_KEY_PATH": self._tls_key_path,
+                    "CA_CERT_TLS_PATH": self._tls_ca_path,
+                }
+            )
 
-        return Layer(
-            {
-                "services": {
-                    self.name: {
-                        "override": "replace",
-                        "summary": "litmus backend server layer",
-                        "command": "/bin/server",
-                        "startup": "enabled",
-                        "environment": env,
-                    }
-                },
-            }
-        )
+        return env
+
+    @property
+    def litmus_backend_ports(self) -> tuple[int, int]:
+        if not self.tls_config_getter():
+            return self.http_port, self.grpc_port
+        return self.https_port, self.grpc_tls_port

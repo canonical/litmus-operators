@@ -4,14 +4,24 @@
 """Charmed Operator for Litmus Backend server; the backend layer for a chaos testing platform."""
 
 import logging
+import socket
 
 from ops.charm import CharmBase
 
+from charms.tls_certificates_interface.v4.tls_certificates import (
+    TLSCertificatesRequiresV4,
+    CertificateRequestAttributes,
+)
 from litmus_backend import LitmusBackend
 from ops import ActiveStatus, CollectStatusEvent, BlockedStatus
 
 from litmus_libs.interfaces.litmus_auth import LitmusAuthRequirer, Endpoint
-from litmus_libs import DatabaseConfig, get_app_hostname
+from litmus_libs import (
+    DatabaseConfig,
+    TLSConfigData,
+    TlsReconciler,
+    get_app_hostname,
+)
 from cosl.reconciler import all_events, observe_events
 
 from ops import WaitingStatus
@@ -25,6 +35,11 @@ from litmus_libs.interfaces.http_api import LitmusBackendApiProvider
 
 DATABASE_ENDPOINT = "database"
 LITMUS_AUTH_ENDPOINT = "litmus-auth"
+TLS_CERTIFICATES_ENDPOINT = "tls-certificates"
+# TODO: Put cert paths in the tls_reconciler module in litmus-libs
+TLS_CERT_PATH = "/etc/tls/tls.crt"
+TLS_KEY_PATH = "/etc/tls/tls.key"
+TLS_CA_PATH = "/usr/local/share/ca-certificates/ca.crt"
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +49,6 @@ class LitmusBackendCharm(CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
-        self.unit.set_ports(LitmusBackend.http_port, LitmusBackend.grpc_port)
-
         self._database = DatabaseRequires(
             self,
             relation_name=DATABASE_ENDPOINT,
@@ -49,14 +62,30 @@ class LitmusBackendCharm(CharmBase):
             self.model.get_relation(LITMUS_AUTH_ENDPOINT),
             self.app,
         )
+        self._tls_certificates = TLSCertificatesRequiresV4(
+            charm=self,
+            relationship_name=TLS_CERTIFICATES_ENDPOINT,
+            certificate_requests=[self._certificate_request_attributes],
+        )
 
         self._send_http_api = LitmusBackendApiProvider(
             self.model.get_relation("http-api"), app=self.app
         )
 
+        self._tls = TlsReconciler(
+            container=self.unit.get_container(LitmusBackend.name),
+            tls_cert_path=TLS_CERT_PATH,
+            tls_key_path=TLS_KEY_PATH,
+            tls_ca_path=TLS_CA_PATH,
+            tls_config_getter=lambda: self._tls_config,
+        )
         self.litmus_backend = LitmusBackend(
             container=self.unit.get_container(LitmusBackend.name),
             db_config=self.database_config,
+            tls_config_getter=lambda: self._tls_config,
+            tls_cert_path=TLS_CERT_PATH,
+            tls_key_path=TLS_KEY_PATH,
+            tls_ca_path=TLS_CA_PATH,
             auth_grpc_endpoint=self.auth_grpc_endpoint,
             frontend_url=self.frontend_url,
         )
@@ -128,24 +157,75 @@ class LitmusBackendCharm(CharmBase):
     # UTILITY METHODS #
     ###################
     @property
+    def _tls_config(self) -> Optional[TLSConfigData]:
+        """Returns the TLS configuration, including certificates and private key, if available; None otherwise."""
+        certificates, private_key = self._tls_certificates.get_assigned_certificate(
+            self._certificate_request_attributes
+        )
+        if not (certificates and private_key):
+            return None
+        return TLSConfigData(
+            server_cert=certificates.certificate.raw,
+            private_key=private_key.raw,
+            ca_cert=certificates.ca.raw,
+        )
+
+    @property
     def _http_api_endpoint(self):
         """Internal (i.e. not ingressed) url."""
-        # TODO: add support for HTTPS once https://github.com/canonical/litmus-operators/issues/23 is fixed
-        return f"http://{get_app_hostname(self.app.name, self.model.name)}:{self.litmus_backend.http_port}"
+        return f"{self._http_api_protocol}://{get_app_hostname(self.app.name, self.model.name)}:{self._http_api_port}"
+
+    @property
+    def _certificate_request_attributes(self) -> CertificateRequestAttributes:
+        return CertificateRequestAttributes(
+            common_name=self.app.name,
+            sans_dns=frozenset(
+                (
+                    socket.getfqdn(),
+                    get_app_hostname(self.app.name, self.model.name),
+                )
+            ),
+        )
 
     def _reconcile(self):
         """Run all logic that is independent of what event we're processing."""
+        self._tls_certificates.sync()
+        self._tls.reconcile()
         self.litmus_backend.reconcile()
+        self.unit.set_ports(*self.litmus_backend.litmus_backend_ports)
         if self.unit.is_leader():
             self._auth.publish_endpoint(
                 Endpoint(
                     grpc_server_host=get_app_hostname(self.app.name, self.model.name),
-                    grpc_server_port=LitmusBackend.grpc_port,
-                    # TODO: check if TLS is enabled once https://github.com/canonical/litmus-operators/issues/23 is fixed
-                    insecure=True,
+                    grpc_server_port=self._grpc_port,
+                    insecure=False if self._tls_ready else True,
                 )
             )
             self._send_http_api.publish_endpoint(self._http_api_endpoint)
+
+    @property
+    def _tls_ready(self) -> bool:
+        return bool(self._tls_config)
+
+    @property
+    def _http_api_protocol(self):
+        return "https" if self._tls_ready else "http"
+
+    @property
+    def _http_api_port(self):
+        return (
+            self.litmus_backend.https_port
+            if self._tls_ready
+            else self.litmus_backend.http_port
+        )
+
+    @property
+    def _grpc_port(self):
+        return (
+            self.litmus_backend.grpc_tls_port
+            if self._tls_ready
+            else self.litmus_backend.grpc_port
+        )
 
 
 if __name__ == "__main__":  # pragma: nocover
