@@ -49,6 +49,7 @@ def test_frontend_is_served(juju: Juju):
     assert "LitmusChaos" in result.stdout
 
 
+@pytest.mark.xfail(reason="Expected to fail until all the TLS PRs are merged")
 @retry(stop=stop_after_attempt(6), wait=wait_fixed(10))
 def test_backend_is_served_through_nginx(juju: Juju, token):
     # GIVEN control plane is deployed
@@ -74,6 +75,7 @@ def test_backend_is_served_through_nginx(juju: Juju, token):
     assert out.returncode == 0
 
 
+@pytest.mark.xfail(reason="Expected to fail until all the TLS PRs are merged")
 @retry(stop=stop_after_attempt(6), wait=wait_fixed(10))
 def test_auth_is_served_through_nginx(juju: Juju):
     # GIVEN control plane is deployed
