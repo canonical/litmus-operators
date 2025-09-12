@@ -27,6 +27,7 @@ from litmus_libs.interfaces.http_api import LitmusAuthApiProvider
 DATABASE_ENDPOINT = "database"
 LITMUS_AUTH_ENDPOINT = "litmus-auth"
 TLS_CERTIFICATES_ENDPOINT = "tls-certificates"
+# TODO: Put cert paths in the tls_reconciler module in litmus-libs
 TLS_CERT_PATH = "/etc/tls/tls.crt"
 TLS_KEY_PATH = "/etc/tls/tls.key"
 TLS_CA_PATH = "/usr/local/share/ca-certificates/ca.crt"

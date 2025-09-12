@@ -13,13 +13,14 @@ from charms.tls_certificates_interface.v4.tls_certificates import (
 )
 
 
+# TODO: Move this under litmus-libs, i.e. litmus_libs.integrations.tls.testing
 def mock_cert_and_key(
     relation_id: int = 1,
 ) -> tuple[ProviderCertificate, PrivateKey]:
     private_key = generate_private_key()
     csr = generate_csr(
         private_key=private_key,
-        common_name="litmus-backend.test",
+        common_name="litmus-auth.test",
     )
     ca_private_key = generate_private_key()
     ca_certificate = generate_ca(
