@@ -181,20 +181,24 @@ class LitmusAuthCharm(CharmBase):
                 Endpoint(
                     grpc_server_host=get_app_hostname(self.app.name, self.model.name),
                     grpc_server_port=self._grpc_port,
-                    insecure=False if self._tls_config else True,
+                    insecure=False if self._tls_ready else True,
                 )
             )
             self._send_http_api.publish_endpoint(self._http_api_endpoint)
 
     @property
+    def _tls_ready(self) -> bool:
+        return bool(self._tls_config)
+
+    @property
     def _http_api_protocol(self):
-        return "https" if self._tls_config else "http"
+        return "https" if self._tls_ready else "http"
 
     @property
     def _http_api_port(self):
         return (
             self.litmus_auth.https_port
-            if self._tls_config
+            if self._tls_ready
             else self.litmus_auth.http_port
         )
 
@@ -202,7 +206,7 @@ class LitmusAuthCharm(CharmBase):
     def _grpc_port(self):
         return (
             self.litmus_auth.grpc_tls_port
-            if self._tls_config
+            if self._tls_ready
             else self.litmus_auth.grpc_port
         )
 
