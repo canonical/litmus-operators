@@ -18,12 +18,20 @@ summary: |
 containers:
   chaoscenter:
     resource: litmus-chaoscenter-image
+    mounts:
+      - storage: certs
+        location: /etc/tls
 
 resources:
   litmus-chaoscenter-image:
     type: oci-image
     description: OCI image for Litmus frontend server 
     upstream-source: ubuntu/litmuschaos-frontend:3-24.04_edge
+
+storage:
+  certs:
+    type: filesystem
+    minimum-size: 1M
 
 requires:
   backend-http-api:
@@ -38,6 +46,12 @@ requires:
     limit: 1
     description: |
       Receive the litmus auth HTTP API.
+  tls-certificates:
+    optional: true
+    interface: tls-certificates
+    limit: 1
+    description: |
+      Receive TLS certificates.
 
 
 links:
@@ -53,7 +67,14 @@ parts:
   charm:
     source: .
     plugin: uv
-    build-packages: [git] # handy for git+ dependencies during development
+    build-packages:
+      - git # handy for git+ dependencies during development
+      # Required by the tls_certificates_interface
+      - cargo
+      - libffi-dev
+      - libssl-dev
+      - pkg-config
+      - rustc
     build-snaps: [astral-uv]
     # FIXME: override-build with "git describe --always > $CRAFT_PART_INSTALL/version" causes
     # charm pack to fail "fatal: not a git repository (or any of the parent directories): .git"

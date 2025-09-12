@@ -14,9 +14,8 @@ from tests.integration.helpers import (
     AUTH_APP,
     MONGO_APP,
     get_unit_ip_address,
-    get_login_response
+    get_login_response,
 )
-
 
 
 @pytest.fixture(scope="function")

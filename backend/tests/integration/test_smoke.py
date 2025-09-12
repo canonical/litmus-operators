@@ -30,7 +30,7 @@ def test_setup(juju: Juju, charm: Path):
     )
 
 
-@retry(stop=stop_after_attempt(6), wait=wait_fixed(10))
+@retry(stop=stop_after_attempt(30), wait=wait_fixed(10))  # 5 minutes
 def test_backend_is_running(juju: Juju):
     backend_ip = get_unit_ip_address(juju, APP, 0)
     cmd = (

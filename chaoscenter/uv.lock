@@ -349,6 +349,7 @@ version = "0.1"
 source = { virtual = "." }
 dependencies = [
     { name = "coordinated-workers" },
+    { name = "cryptography" },
     { name = "litmus-libs" },
     { name = "ops" },
 ]
@@ -369,6 +370,7 @@ dev = [
 requires-dist = [
     { name = "coordinated-workers" },
     { name = "coverage", extras = ["toml"], marker = "extra == 'dev'" },
+    { name = "cryptography", specifier = ">=45.0.7" },
     { name = "jubilant", marker = "extra == 'dev'" },
     { name = "litmus-libs" },
     { name = "ops" },
