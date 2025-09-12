@@ -38,8 +38,8 @@ def test_setup(juju: Juju, charm: Path):
 
 @retry(stop=stop_after_attempt(6), wait=wait_fixed(10))
 def test_tls_integration(juju: Juju):
-    backend_ip = get_unit_ip_address(juju, APP, 0)
-    cmd = f"openssl s_client -connect {backend_ip}:8081"
+    auth_ip = get_unit_ip_address(juju, APP, 0)
+    cmd = f'openssl s_client -connect {auth_ip}:3001 | openssl x509 -noout -text | grep -A1 "Subject Alternative Name"'
     out = getoutput(cmd)
-    assert f"subject=CN = {APP}" in out
-    assert "issuer=CN = self-signed-certificates-operator" in out
+    assert f"DNS:{APP}.{juju.model}.svc.cluster.local" in out
+    assert f"DNS:{APP}-0.{APP}-endpoints.{juju.model}.svc.cluster.local" in out

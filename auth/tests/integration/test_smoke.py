@@ -34,7 +34,7 @@ def test_setup(juju: Juju, charm: Path):
 @retry(stop=stop_after_attempt(6), wait=wait_fixed(10))
 def test_auth_server__is_running(juju: Juju):
     auth_ip = get_unit_ip_address(juju, APP, 0)
-    cmd = f"curl {auth_ip}:3000/readiness"
+    cmd = f"curl -sS {auth_ip}:3000/readiness"
     out = getoutput(cmd)
     response = json.loads(out)
     assert response == {"database": "up", "collections": "up"}
