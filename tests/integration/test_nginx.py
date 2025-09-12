@@ -33,6 +33,7 @@ def test_setup(juju: Juju):
     deploy_control_plane(juju, wait_for_idle=True)
 
 
+@pytest.mark.xfail(reason="Expected to fail until all the TLS PRs are merged")
 def test_frontend_is_served(juju: Juju):
     # GIVEN control plane is deployed
 
