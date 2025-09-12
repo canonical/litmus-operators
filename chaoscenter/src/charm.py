@@ -155,6 +155,7 @@ class LitmusChaoscenterCharm(CharmBase):
                 (
                     socket.getfqdn(),
                     get_app_hostname(self.app.name, self.model.name),
+                    # TODO: Once Ingress is in use, its address should also be added here
                 )
             ),
         )
