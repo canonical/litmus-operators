@@ -5,7 +5,12 @@
 
 import logging
 import socket
+from typing import Optional
 
+from charms.tls_certificates_interface.v4.tls_certificates import (
+    TLSCertificatesRequiresV4,
+    CertificateRequestAttributes,
+)
 from ops.charm import CharmBase
 from ops import (
     LifecycleEvent,
@@ -15,6 +20,7 @@ from ops import (
     WaitingStatus,
     ActiveStatus,
 )
+from coordinated_workers.models import TLSConfig
 from coordinated_workers.nginx import (
     Nginx,
 )
@@ -30,6 +36,7 @@ from litmus_libs.interfaces.http_api import (
 logger = logging.getLogger(__name__)
 AUTH_HTTP_API_ENDPOINT = "auth-http-api"
 BACKEND_HTTP_API_ENDPOINT = "backend-http-api"
+TLS_CERTIFICATES_ENDPOINT = "tls-certificates"
 
 
 class LitmusChaoscenterCharm(CharmBase):
@@ -43,12 +50,16 @@ class LitmusChaoscenterCharm(CharmBase):
         self._receive_backend_http_api = LitmusBackendApiRequirer(
             relation=self.model.get_relation(BACKEND_HTTP_API_ENDPOINT), app=self.app
         )
+        self._tls_certificates = TLSCertificatesRequiresV4(
+            charm=self,
+            relationship_name=TLS_CERTIFICATES_ENDPOINT,
+            certificate_requests=[self._certificate_request_attributes],
+        )
 
         self.nginx = Nginx(
             self,
             config_getter=self._nginx_config,
-            # TODO https://github.com/canonical/litmus-operators/issues/39
-            tls_config_getter=lambda: None,
+            tls_config_getter=lambda: self._tls_config,
             options=None,
             container_name="chaoscenter",
         )
@@ -68,8 +79,12 @@ class LitmusChaoscenterCharm(CharmBase):
     ##################
 
     def _nginx_config(self, tls: bool) -> str:
-        # TODO add support for TLS https://github.com/canonical/litmus-operators/issues/39
-        return get_config(socket.getfqdn(), self.auth_url, self.backend_url)
+        return get_config(
+            hostname=socket.getfqdn(),
+            auth_url=self.auth_url,
+            backend_url=self.backend_url,
+            tls_available=bool(self._tls_config),
+        )
 
     ##################
     # EVENT HANDLERS #
@@ -77,8 +92,8 @@ class LitmusChaoscenterCharm(CharmBase):
     @property
     def _frontend_url(self):
         """Internal (i.e. not ingressed) url."""
-        # TODO: add support for HTTPS once https://github.com/canonical/litmus-operators/issues/23 is fixed
-        return f"http://{get_app_hostname(self.app.name, self.model.name)}:8185"
+        protocol = "https" if self._tls_config else "http"
+        return f"{protocol}://{get_app_hostname(self.app.name, self.model.name)}:8185"
 
     @property
     def backend_url(self):
@@ -131,6 +146,33 @@ class LitmusChaoscenterCharm(CharmBase):
         """Run all logic that is independent of what event we're processing."""
         if self.backend_url and self.auth_url:
             self.nginx.reconcile()
+
+    @property
+    def _certificate_request_attributes(self) -> CertificateRequestAttributes:
+        return CertificateRequestAttributes(
+            common_name=self.app.name,
+            sans_dns=frozenset(
+                (
+                    socket.getfqdn(),
+                    get_app_hostname(self.app.name, self.model.name),
+                    # TODO: Once Ingress is in use, its address should also be added here
+                )
+            ),
+        )
+
+    @property
+    def _tls_config(self) -> Optional[TLSConfig]:
+        """Returns the TLS configuration, including certificates and private key, if available; None otherwise."""
+        certificates, private_key = self._tls_certificates.get_assigned_certificate(
+            self._certificate_request_attributes
+        )
+        if not (certificates and private_key):
+            return None
+        return TLSConfig(
+            server_cert=certificates.certificate.raw,
+            private_key=private_key.raw,
+            ca_cert=certificates.ca.raw,
+        )
 
 
 if __name__ == "__main__":  # pragma: nocover
