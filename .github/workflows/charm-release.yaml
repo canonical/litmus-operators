@@ -61,7 +61,7 @@ jobs:
   release-auth:
     needs: charms-changed
     if: needs.charms-changed.outputs.auth_changed == 'true'
-    uses: canonical/observability/.github/workflows/charm-release.yaml@v1
+    uses: ./.github/workflows/temp-charm-release.yaml
     secrets: inherit
     with:
       default-track: 2
@@ -70,7 +70,7 @@ jobs:
   release-chaoscenter:
     needs: charms-changed
     if: needs.charms-changed.outputs.chaoscenter_changed == 'true'
-    uses: canonical/observability/.github/workflows/charm-release.yaml@v1
+    uses: ./.github/workflows/temp-charm-release.yaml
     secrets: inherit
     with:
       default-track: 2
@@ -79,7 +79,7 @@ jobs:
   release-backend:
     needs: charms-changed
     if: needs.charms-changed.outputs.backend_changed == 'true'
-    uses: canonical/observability/.github/workflows/charm-release.yaml@v1
+    uses: ./.github/workflows/temp-charm-release.yaml
     secrets: inherit
     with:
       default-track: 2
