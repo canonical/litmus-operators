@@ -7,7 +7,13 @@
 import logging
 from typing import Dict, List, Optional, Set
 
-from coordinated_workers.nginx import NginxUpstream, NginxLocationConfig, NginxConfig
+from coordinated_workers.nginx import (
+    CERT_PATH,
+    KEY_PATH,
+    NginxUpstream,
+    NginxLocationConfig,
+    NginxConfig,
+)
 
 from urllib.parse import urlparse, ParseResult
 
@@ -66,7 +72,8 @@ def _get_port_from_url(url: ParseResult) -> int:
 
 
 def _server_ports_to_locations(
-    auth_scheme: str, backend_scheme: str,
+    auth_scheme: str,
+    backend_scheme: str,
 ) -> Dict[int, List[NginxLocationConfig]]:
     """Generate a mapping from server ports to a list of Nginx location configurations."""
 
@@ -75,20 +82,35 @@ def _server_ports_to_locations(
     }
 
 
-def _generate_http_locations(auth_scheme: str, backend_scheme: str) -> List[NginxLocationConfig]:
+def _generate_http_locations(
+    auth_scheme: str, backend_scheme: str
+) -> List[NginxLocationConfig]:
     return [
         NginxLocationConfig(
             path="/auth",
             backend="auth",
             rewrite=["^/auth(/.*)$", "$1", "break"],
             upstream_tls=True if auth_scheme == "https" else False,
+            extra_directives=_extra_directives(auth_scheme),
         ),
         NginxLocationConfig(
             path="/api",
             backend="backend",
             upstream_tls=True if backend_scheme == "https" else False,
+            extra_directives=_extra_directives(backend_scheme),
         ),
     ]
+
+
+def _extra_directives(scheme: str) -> Dict[str, List[str]]:
+    if scheme == "https":
+        return {
+            "proxy_ssl_verify": ["off"],
+            "proxy_ssl_session_reuse": ["on"],
+            "proxy_ssl_certificate": [CERT_PATH],
+            "proxy_ssl_certificate_key": [KEY_PATH],
+        }
+    return {}
 
 
 def _upstreams_to_addresses(auth_url: str, backend_url: str) -> Dict[str, Set[str]]:

@@ -8,8 +8,8 @@ requires-python = ">=3.12, <4"
 dependencies = [
     "litmus-libs",
     "ops",
-    "coordinated-workers",
     "cryptography>=45.0.7",
+    "coordinated-workers>=2.0.17",
 ]
 
 [project.optional-dependencies]
