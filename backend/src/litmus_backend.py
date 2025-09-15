@@ -80,7 +80,7 @@ class LitmusBackend:
             "REST_PORT": self.http_port,
             "GRPC_PORT": self.grpc_port,
             "INFRA_DEPLOYMENTS": '["app=chaos-exporter", "name=chaos-operator", "app=workflow-controller", "app=event-tracker"]',
-            "DEFAULT_HUB_BRANCH_NAME": "master",
+            "DEFAULT_HUB_BRANCH_NAME": "master",  # wokeignore:rule=master
             "ALLOWED_ORIGINS": ".*",
             "CONTAINER_RUNTIME_EXECUTOR": "k8sapi",
             # TODO: is there a way to provide the version instead of hardcoding it below?
