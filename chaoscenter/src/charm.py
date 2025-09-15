@@ -128,7 +128,7 @@ class LitmusChaoscenterCharm(CharmBase):
     def _on_any_event(self, _: EventBase):
         """Common entry hook."""
         self._reconcile()
-        self._receive_backend_http_api.publish_endpoint(self._internal_frontend_url)
+        self._receive_backend_http_api.publish_endpoint(self._most_external_frontend_url)
 
     def _on_collect_unit_status(self, e: CollectStatusEvent):
         missing_relations = [
