@@ -7,7 +7,7 @@ EntryPoint = namedtuple("Port", "name, port")
 
 
 def entrypoints() -> Sequence[EntryPoint]:
-    return (EntryPoint("parca-http", 8185),)
+    return (EntryPoint("litmus-chaoscenter", 8185),)
 
 
 def static_ingress_config() -> dict:

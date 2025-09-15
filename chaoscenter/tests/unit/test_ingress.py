@@ -10,7 +10,7 @@ def test_ingressed_url_present_in_status(
     backend_http_api_relation,
     ingress_relation,
 ):
-    # GIVEN http api relations with auth and backend
+    # GIVEN http api relations with auth and backend and ingress
     # WHEN any event happens
     state_out = ctx.run(
         ctx.on.update_status(),

@@ -98,7 +98,7 @@ class LitmusChaoscenterCharm(CharmBase):
     # EVENT HANDLERS #
     ##################
     @property
-    def frontend_url(self):
+    def _most_external_frontend_url(self):
         """Http server url; ingressed if available, else over fqdn."""
         """Ingressed URL, if related to ingress, otherwise internal url."""
         if (
@@ -157,7 +157,7 @@ class LitmusChaoscenterCharm(CharmBase):
 
         # TODO: add pebble check to verify frontend is up
         #  https://github.com/canonical/litmus-operators/issues/36
-        e.add_status(ActiveStatus(f"Ready at {self.frontend_url}."))
+        e.add_status(ActiveStatus(f"Ready at {self._most_external_frontend_url}."))
 
     ###################
     # UTILITY METHODS #
