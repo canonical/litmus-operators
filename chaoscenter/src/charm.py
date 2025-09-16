@@ -168,7 +168,7 @@ class LitmusChaoscenterCharm(CharmBase):
             self.nginx.reconcile()
         if self.unit.is_leader() and self.ingress.is_ready():
             self.ingress.submit_to_traefik(
-                ingress_config(self.model.name, self.app.name),
+                ingress_config(self.model.name, self.app.name, self._tls_config is not None),
                 static=static_ingress_config(),
             )
 

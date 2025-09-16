@@ -23,7 +23,7 @@ def _build_lb_server_config(scheme: str, port: int) -> Dict[str, str]:
     return {"url": f"{scheme}://{socket.getfqdn()}:{port}"}
 
 
-def ingress_config(model_name: str, app_name: str) -> dict:
+def ingress_config(model_name: str, app_name: str, tls: bool) -> dict:
     """Build a raw ingress configuration for Traefik."""
     http_routers = {}
     http_services = {}
@@ -32,13 +32,13 @@ def ingress_config(model_name: str, app_name: str) -> dict:
             "entryPoints": [name],
             "service": f"juju-{model_name}-{app_name}-service-{name}",
             "rule": "ClientIP(`0.0.0.0/0`)",
+            # TODO do we need middlewares?
         }
         # ref https://doc.traefik.io/traefik/v2.0/user-guides/grpc/#with-https
         http_services[f"juju-{model_name}-{app_name}-service-{name}"] = {
             "loadBalancer": {
                 "servers": [
-                    # TODO TLS: after https://github.com/canonical/litmus-operators/pull/44
-                    _build_lb_server_config("http", port)
+                    _build_lb_server_config("https" if tls else "http", port)
                 ]
             }
         }

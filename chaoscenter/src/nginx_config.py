@@ -106,6 +106,7 @@ def _generate_http_locations(
         NginxLocationConfig(
             path="/api",
             backend="backend",
+            rewrite=["^/api(/.*)$", "$1", "break"],
             upstream_tls=True if backend_scheme == "https" else False,
             extra_directives=_extra_directives(backend_scheme),
         ),

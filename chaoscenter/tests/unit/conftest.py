@@ -97,3 +97,9 @@ def ingress_relation():
     return Relation(
         "ingress", remote_app_data={"external_host": "1.2.3.4", "scheme": "http"}
     )
+
+@pytest.fixture
+def ingress_over_https_relation():
+    return Relation(
+        "ingress", remote_app_data={"external_host": "1.2.3.4", "scheme": "https"}
+    )
