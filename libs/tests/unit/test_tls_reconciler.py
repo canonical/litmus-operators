@@ -32,9 +32,7 @@ def test_reconcile_tls_config_not_called_if_cant_connect_to_workload_container(
     tls._reconcile_tls_config.assert_not_called()
 
 
-def test_certs_pushed_to_container_if_stored_certs_are_outdated(
-    workload_container, tls_config
-):
+def test_certs_pushed_to_container_if_stored_certs_are_outdated(workload_container, tls_config):
     tls = TlsReconciler(
         container=workload_container,
         tls_cert_path=SERVER_CERT_PATH,
@@ -117,9 +115,7 @@ def test_certs_not_pushed_to_container_if_stored_certs_are_up_to_date(
     workload_container.push.assert_not_called()
 
 
-def test_configure_tls_is_called_if_valid_tls_config_is_provider(
-    workload_container, tls_config
-):
+def test_configure_tls_is_called_if_valid_tls_config_is_provider(workload_container, tls_config):
     # GIVEN valid TLS config
     tls = TlsReconciler(
         container=workload_container,
