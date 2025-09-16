@@ -83,7 +83,7 @@ class LitmusChaoscenterCharm(CharmBase):
             hostname=socket.getfqdn(),
             auth_url=self.auth_url,
             backend_url=self.backend_url,
-            tls_available=bool(self._tls_config),
+            tls_available=tls,
         )
 
     ##################
