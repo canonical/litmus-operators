@@ -51,6 +51,7 @@ def patch_cert_and_key(cert_and_key):
 @pytest.fixture()
 def patch_write_to_ca_path():
     pathlib_write_text = pathlib.Path.write_text
+
     def selective_write_to_ca_path(path, content, *args, **kwargs):
         if path == pathlib.Path(CA_CERT_PATH):
             return None
