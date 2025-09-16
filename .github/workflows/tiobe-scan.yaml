@@ -1,0 +1,32 @@
+name: Tiobe TiCS Analysis
+
+on:
+    workflow_dispatch:
+    schedule:
+    - cron: "0 0 * * 1"  # Runs at midnight UTC every Monday
+    # DO NOT MERGE: here only to test the workflow
+    pull_request:
+        branches:
+        - main
+jobs:
+    tiobe-scan-auth:
+        name: TiCs-auth
+        uses: canonical/observability/.github/workflows/charm-tiobe-scan.yaml@v1
+        with:
+            charm-path: ./auth
+            tiobe-project-name: litmus-auth-k8s
+        secrets: inherit
+    tiobe-scan-backend:
+        name: TiCs-backend
+        uses: canonical/observability/.github/workflows/charm-tiobe-scan.yaml@v1
+        with:
+            charm-path: ./backend
+            tiobe-project-name: litmus-backend-k8s
+        secrets: inherit
+    tiobe-scan-chaoscenter:
+        name: TiCs-backend
+        uses: canonical/observability/.github/workflows/charm-tiobe-scan.yaml@v1
+        with:
+            charm-path: ./chaoscenter
+            tiobe-project-name: litmus-chaoscenter-k8s
+        secrets: inherit
