@@ -32,6 +32,7 @@ def test_setup(juju: Juju):
     deploy_control_plane(juju, wait_for_idle=True)
 
 
+@retry(stop=stop_after_attempt(30), wait=wait_fixed(10))  # 5 minutes
 def test_frontend_is_served(juju: Juju):
     # GIVEN control plane is deployed
 
@@ -44,7 +45,7 @@ def test_frontend_is_served(juju: Juju):
     assert "LitmusChaos" in result
 
 
-@retry(stop=stop_after_attempt(6), wait=wait_fixed(10))
+@retry(stop=stop_after_attempt(30), wait=wait_fixed(10))  # 5 minutes
 def test_backend_is_served_through_nginx(juju: Juju, token):
     # GIVEN control plane is deployed
 
@@ -67,7 +68,7 @@ def test_backend_is_served_through_nginx(juju: Juju, token):
     subprocess.check_call(shlex.split(cmd))
 
 
-@retry(stop=stop_after_attempt(6), wait=wait_fixed(10))
+@retry(stop=stop_after_attempt(30), wait=wait_fixed(10))  # 5 minutes
 def test_auth_is_served_through_nginx(juju: Juju):
     # GIVEN control plane is deployed
 

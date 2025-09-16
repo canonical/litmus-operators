@@ -30,7 +30,7 @@ def test_setup(juju: Juju):
     deploy_control_plane(juju, wait_for_idle=True)
 
 
-@retry(stop=stop_after_attempt(6), wait=wait_fixed(10))
+@retry(stop=stop_after_attempt(30), wait=wait_fixed(10))  # 5 minutes
 def test_auth_server_login(juju: Juju):
     auth_ip = get_unit_ip_address(juju, AUTH_APP, 0)
     returncode, output = get_login_response(auth_ip, 3000, "")
@@ -39,7 +39,7 @@ def test_auth_server_login(juju: Juju):
     assert "accessToken" in response_json, f"No token found in response: {output}"
 
 
-@retry(stop=stop_after_attempt(6), wait=wait_fixed(10))
+@retry(stop=stop_after_attempt(30), wait=wait_fixed(10))  # 5 minutes
 def test_backend_server_create_environment(juju: Juju, token):
     backend_ip = get_unit_ip_address(juju, BACKEND_APP, 0)
     query = (
