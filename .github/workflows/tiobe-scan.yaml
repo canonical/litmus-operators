@@ -24,7 +24,7 @@ jobs:
             tiobe-project-name: litmus-backend-k8s
         secrets: inherit
     tiobe-scan-chaoscenter:
-        name: TiCs-backend
+        name: TiCs-chaoscenter
         uses: canonical/observability/.github/workflows/charm-tiobe-scan.yaml@v1
         with:
             charm-path: ./chaoscenter
