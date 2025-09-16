@@ -297,6 +297,6 @@ def test_generated_ssl_config_matches_expected_config(
 
     # THEN the config contains the expected directives
     sample_config_path = (
-        Path(__file__).parent / "resources" / "sample_litmus_ssl_conf.conf"
+        Path(__file__).parent / "resources" / "sample_nginx_litmus_ssl.conf"
     )
     assert sample_config_path.read_text() == generated_config
