@@ -29,6 +29,8 @@ type-checking = [
 integration-tests = [
     "requests",
 ]
+[tool.coverage.run]
+branch = true
 
 [tool.pytest.ini_options]
 minversion = "6.0"
