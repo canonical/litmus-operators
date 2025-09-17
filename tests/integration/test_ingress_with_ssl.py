@@ -65,7 +65,7 @@ def test_backend_is_served_through_nginx_with_ssl(juju: Juju, token):
     subprocess.check_call(shlex.split(cmd))
 
 
-def test_auth_is_served_through_nginx_with_ssl(juju: Juju):
+def test_auth_is_served_through_traefik_with_ssl(juju: Juju):
     # GIVEN control plane is deployed and TLS is enabled
 
     # WHEN we call the nginx redirect for auth server
