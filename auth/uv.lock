@@ -288,7 +288,7 @@ requires-dist = [
     { name = "coverage", extras = ["toml"], marker = "extra == 'dev'" },
     { name = "cryptography" },
     { name = "jubilant", marker = "extra == 'dev'" },
-    { name = "litmus-libs" },
+    { name = "litmus-libs", specifier = ">=0.0.4" },
     { name = "ops" },
     { name = "ops", extras = ["testing"], marker = "extra == 'dev'" },
     { name = "pyright", marker = "extra == 'dev'" },

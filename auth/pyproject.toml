@@ -10,7 +10,7 @@ dependencies = [
     # for the reconciler
     "cosl",
     "cryptography",
-    "litmus-libs",
+    "litmus-libs>=0.0.4",
 ]
 
 [project.optional-dependencies]
