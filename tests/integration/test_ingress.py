@@ -18,7 +18,6 @@ def test_litmus_is_served_over_ingress(juju: Juju):
     # GIVEN a deployment of control plane with traefik
 
     # WHEN traefik and litmus are related
-    juju.integrate(f"{CHAOSCENTER_APP}:ingress", TRAEFIK_APP)
 
     # THEN it's possible to reach Litmus through the ingress
     juju.wait(
