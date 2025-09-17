@@ -99,8 +99,10 @@ class LitmusChaoscenterCharm(CharmBase):
     ##################
     @property
     def _most_external_frontend_url(self):
-        """Http server url; ingressed if available, else over fqdn."""
-        """Ingressed URL, if related to ingress, otherwise internal url."""
+        """Litmus ChaosCenter URL.
+        
+        Ingressed URL, if related to ingress, otherwise internal url.
+        """
         if (
             self.ingress.is_ready()
             and self.ingress.scheme
