@@ -24,6 +24,9 @@ type-checking = [
     "ops[tracing]"
 ]
 
+[project.optional-dependencies]
+dev = []
+
 [tool.coverage.run]
 branch = true
 
