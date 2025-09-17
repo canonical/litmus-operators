@@ -12,7 +12,7 @@ from charms.tls_certificates_interface.v4.tls_certificates import (
     TLSCertificatesRequiresV4,
     CertificateRequestAttributes,
 )
-from litmus_backend import LitmusBackend
+from litmus_backend import LitmusBackend, VERSION_FILE_PATH
 from ops import ActiveStatus, CollectStatusEvent, BlockedStatus
 
 from litmus_libs.interfaces.litmus_auth import LitmusAuthRequirer, Endpoint
@@ -22,6 +22,7 @@ from litmus_libs import (
     TlsReconciler,
     get_app_hostname,
 )
+from litmus_libs.utils import get_litmus_version
 from cosl.reconciler import all_events, observe_events
 
 from ops import WaitingStatus
@@ -193,6 +194,11 @@ class LitmusBackendCharm(CharmBase):
         self._tls.reconcile()
         self.litmus_backend.reconcile()
         self.unit.set_ports(*self.litmus_backend.litmus_backend_ports)
+        self.unit.set_workload_version(
+            get_litmus_version(
+                self.unit.get_container(LitmusBackend.name), VERSION_FILE_PATH
+            )
+        )
         if self.unit.is_leader():
             self._auth.publish_endpoint(
                 Endpoint(

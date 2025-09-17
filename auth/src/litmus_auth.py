@@ -13,6 +13,7 @@ from litmus_libs import DatabaseConfig, TLSConfigData
 from litmus_libs.interfaces.litmus_auth import Endpoint
 
 logger = logging.getLogger(__name__)
+VERSION_FILE_PATH = "/VERSION"
 
 
 class LitmusAuth:

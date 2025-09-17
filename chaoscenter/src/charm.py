@@ -25,7 +25,7 @@ from coordinated_workers.nginx import (
     Nginx,
 )
 
-from nginx_config import get_config
+from nginx_config import get_config, http_server_port
 from traefik_config import ingress_config, static_ingress_config
 
 from charms.traefik_k8s.v0.traefik_route import TraefikRouteRequirer
@@ -35,6 +35,9 @@ from litmus_libs.interfaces.http_api import (
     LitmusAuthApiRequirer,
     LitmusBackendApiRequirer,
 )
+
+from litmus_libs.utils import get_litmus_version
+
 
 logger = logging.getLogger(__name__)
 AUTH_HTTP_API_ENDPOINT = "auth-http-api"
@@ -168,6 +171,13 @@ class LitmusChaoscenterCharm(CharmBase):
     ###################
     def _reconcile(self):
         """Run all logic that is independent of what event we're processing."""
+        self.unit.set_ports(http_server_port)
+        self.unit.set_workload_version(
+            get_litmus_version(
+                container=self.unit.get_container("chaoscenter"),
+                version_file_path="/VERSION",
+            )
+        )
         if self.backend_url and self.auth_url:
             self.nginx.reconcile()
         if self.unit.is_leader() and self.ingress.is_ready():

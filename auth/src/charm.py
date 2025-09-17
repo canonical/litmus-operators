@@ -23,6 +23,7 @@ from charms.data_platform_libs.v0.data_interfaces import (
 from litmus_libs.interfaces.litmus_auth import LitmusAuthProvider, Endpoint
 from litmus_libs import DatabaseConfig, TLSConfigData, TlsReconciler, get_app_hostname
 from litmus_libs.interfaces.http_api import LitmusAuthApiProvider
+from litmus_libs.utils import get_litmus_version
 
 DATABASE_ENDPOINT = "database"
 LITMUS_AUTH_ENDPOINT = "litmus-auth"
@@ -177,6 +178,9 @@ class LitmusAuthCharm(CharmBase):
         self._tls.reconcile()
         self.litmus_auth.reconcile()
         self.unit.set_ports(*self.litmus_auth.litmus_auth_ports)
+        self.unit.set_workload_version(
+            get_litmus_version(self.unit.get_container(LitmusAuth.name), "/VERSION")
+        )
         if self.unit.is_leader():
             self._auth_provider.publish_endpoint(
                 Endpoint(

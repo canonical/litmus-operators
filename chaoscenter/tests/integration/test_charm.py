@@ -22,6 +22,10 @@ def test_deploy_litmus_auth_server(juju: Juju, charm: Path):
     )
 
 
+def test_workload_version_is_set(juju: Juju):
+    assert juju.status().apps[CHAOSCENTER_APP].version
+
+
 @pytest.mark.teardown
 def test_teardown(juju: Juju):
     juju.remove_application(CHAOSCENTER_APP)

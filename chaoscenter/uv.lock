@@ -393,7 +393,7 @@ requires-dist = [
     { name = "coverage", extras = ["toml"], marker = "extra == 'dev'" },
     { name = "cryptography", specifier = ">=45.0.7" },
     { name = "jubilant", marker = "extra == 'dev'" },
-    { name = "litmus-libs" },
+    { name = "litmus-libs", git = "https://github.com/canonical/litmus-operators?subdirectory=libs&rev=get-version-util" },
     { name = "ops" },
     { name = "ops", extras = ["testing"], marker = "extra == 'dev'" },
     { name = "pyright", marker = "extra == 'dev'" },

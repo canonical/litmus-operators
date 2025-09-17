@@ -10,7 +10,8 @@ dependencies = [
     # for the reconciler
     "cosl",
     "cryptography",
-    "litmus-libs>=0.0.4",
+    # FIXME: use package from pypi
+    "litmus-libs@git+https://github.com/canonical/litmus-operators@get-version-util#subdirectory=libs",
 ]
 
 [project.optional-dependencies]

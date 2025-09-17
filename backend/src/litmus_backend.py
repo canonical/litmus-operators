@@ -4,6 +4,7 @@
 
 """Control Litmus Backend server running in a container under Pebble. Provides a LitmusBackend class."""
 
+import json
 import logging
 
 from ops import Container
@@ -11,8 +12,10 @@ from ops.pebble import Layer
 from typing import Optional, Callable
 from litmus_libs import DatabaseConfig, TLSConfigData
 from litmus_libs.interfaces.litmus_auth import Endpoint
+from litmus_libs.utils import get_litmus_version
 
 logger = logging.getLogger(__name__)
+VERSION_FILE_PATH = "/VERSION"
 
 
 class LitmusBackend:
@@ -76,6 +79,7 @@ class LitmusBackend:
 
     @property
     def _environment_vars(self) -> dict:
+        workload_version = get_litmus_version(self._container, VERSION_FILE_PATH)
         env = {
             "REST_PORT": self.http_port,
             "GRPC_PORT": self.grpc_port,
@@ -83,19 +87,18 @@ class LitmusBackend:
             "DEFAULT_HUB_BRANCH_NAME": "master",  # wokeignore:rule=master
             "ALLOWED_ORIGINS": ".*",
             "CONTAINER_RUNTIME_EXECUTOR": "k8sapi",
-            # TODO: is there a way to provide the version instead of hardcoding it below?
-            # https://github.com/canonical/litmus-operators/issues/16
-            "WORKFLOW_HELPER_IMAGE_VERSION": "3.20.0",
-            "INFRA_COMPATIBLE_VERSIONS": '["3.20.0"]',
-            "VERSION": "3.20.0",
+            "WORKFLOW_HELPER_IMAGE_VERSION": workload_version,
+            # are there other versions we should set along with the current workload version?
+            "INFRA_COMPATIBLE_VERSIONS": json.dumps([workload_version]),
+            "VERSION": workload_version,
             # TODO: use the rocks https://github.com/canonical/litmus-operators/issues/15
-            "SUBSCRIBER_IMAGE": "litmuschaos/litmusportal-subscriber:3.20.0",
-            "EVENT_TRACKER_IMAGE": "litmuschaos/litmusportal-event-tracker:3.20.0",
+            "SUBSCRIBER_IMAGE": f"litmuschaos/litmusportal-subscriber:{workload_version}",
+            "EVENT_TRACKER_IMAGE": f"litmuschaos/litmusportal-event-tracker:{workload_version}",
             "ARGO_WORKFLOW_CONTROLLER_IMAGE": "litmuschaos/workflow-controller:v3.3.1",
             "ARGO_WORKFLOW_EXECUTOR_IMAGE": "litmuschaos/argoexec:v3.3.1",
-            "LITMUS_CHAOS_OPERATOR_IMAGE": "litmuschaos/chaos-operator:3.20.0",
-            "LITMUS_CHAOS_RUNNER_IMAGE": "litmuschaos/chaos-runner:3.20.0",
-            "LITMUS_CHAOS_EXPORTER_IMAGE": "litmuschaos/chaos-exporter:3.20.0",
+            "LITMUS_CHAOS_OPERATOR_IMAGE": f"litmuschaos/chaos-operator:{workload_version}",
+            "LITMUS_CHAOS_RUNNER_IMAGE": f"litmuschaos/chaos-runner:{workload_version}",
+            "LITMUS_CHAOS_EXPORTER_IMAGE": f"litmuschaos/chaos-exporter:{workload_version}",
         }
 
         if db_config := self._db_config:
