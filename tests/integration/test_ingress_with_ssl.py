@@ -31,7 +31,7 @@ def test_setup(juju: Juju):
     deploy_control_plane(juju, with_tls=True, with_traefik=True, wait_for_idle=True)
 
 
-def test_frontend_is_served_with_ssl(juju: Juju):
+def test_frontend_is_served_through_traefik_with_ssl(juju: Juju):
     # GIVEN control plane is deployed and TLS is enabled
 
     # WHEN we call the frontend over https
