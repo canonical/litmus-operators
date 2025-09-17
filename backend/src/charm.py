@@ -21,7 +21,7 @@ from litmus_libs import (
     TLSConfigData,
     TlsReconciler,
     get_app_hostname,
-    get_running_litmus_version,
+    get_litmus_version,
 )
 from cosl.reconciler import all_events, observe_events
 
@@ -195,7 +195,7 @@ class LitmusBackendCharm(CharmBase):
         self.litmus_backend.reconcile()
         self.unit.set_ports(*self.litmus_backend.litmus_backend_ports)
         self.unit.set_workload_version(
-            get_running_litmus_version(self.unit.get_container(LitmusBackend.name))
+            get_litmus_version(self.unit.get_container(LitmusBackend.name)) or ""
         )
         if self.unit.is_leader():
             self._auth.publish_endpoint(

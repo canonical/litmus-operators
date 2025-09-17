@@ -6,8 +6,7 @@ version = "0.1"  # this is in fact irrelevant
 requires-python = ">=3.12, <4"
 
 dependencies = [
-    # FIXME: use package from pypi
-    "litmus-libs@git+https://github.com/canonical/litmus-operators@get-version-util#subdirectory=libs",
+    "litmus-libs",
     "ops",
     "cryptography>=45.0.7",
     "coordinated-workers",

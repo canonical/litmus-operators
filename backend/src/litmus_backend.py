@@ -10,7 +10,7 @@ import logging
 from ops import Container
 from ops.pebble import Layer
 from typing import Optional, Callable
-from litmus_libs import DatabaseConfig, TLSConfigData, get_running_litmus_version
+from litmus_libs import DatabaseConfig, TLSConfigData, get_litmus_version
 from litmus_libs.interfaces.litmus_auth import Endpoint
 
 logger = logging.getLogger(__name__)
@@ -77,7 +77,7 @@ class LitmusBackend:
 
     @property
     def _environment_vars(self) -> dict:
-        workload_version = get_running_litmus_version(self._container)
+        workload_version = get_litmus_version(self._container) or ""
         env = {
             "REST_PORT": self.http_port,
             "GRPC_PORT": self.grpc_port,

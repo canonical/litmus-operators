@@ -30,7 +30,7 @@ from traefik_config import ingress_config, static_ingress_config
 
 from charms.traefik_k8s.v0.traefik_route import TraefikRouteRequirer
 
-from litmus_libs import get_app_hostname, get_running_litmus_version
+from litmus_libs import get_app_hostname, get_litmus_version
 from litmus_libs.interfaces.http_api import (
     LitmusAuthApiRequirer,
     LitmusBackendApiRequirer,
@@ -171,9 +171,10 @@ class LitmusChaoscenterCharm(CharmBase):
         """Run all logic that is independent of what event we're processing."""
         self.unit.set_ports(http_server_port)
         self.unit.set_workload_version(
-            get_running_litmus_version(
+            get_litmus_version(
                 container=self.unit.get_container("chaoscenter"),
             )
+            or ""
         )
         if self.backend_url and self.auth_url:
             self.nginx.reconcile()
