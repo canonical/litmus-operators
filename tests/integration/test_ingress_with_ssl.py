@@ -43,7 +43,7 @@ def test_frontend_is_served_with_ssl(juju: Juju):
     assert "LitmusChaos" in result
 
 
-def test_backend_is_served_through_nginx_with_ssl(juju: Juju, token):
+def test_backend_is_served_through_traefik_with_ssl(juju: Juju, token):
     # GIVEN control plane is deployed and TLS is enabled
 
     # WHEN we call the nginx redirect for backend iver traefik
