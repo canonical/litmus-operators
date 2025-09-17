@@ -21,15 +21,6 @@ from urllib.parse import urlparse, ParseResult
 logger = logging.getLogger(__name__)
 
 
-http_locations: List[NginxLocationConfig] = [
-    NginxLocationConfig(
-        path="/auth", backend="auth", rewrite=["^/auth(/.*)$", "$1", "break"]
-    ),
-    NginxLocationConfig(
-        path="/api", backend="backend", rewrite=["^/api(/.*)$", "$1", "break"]
-    ),
-]
-
 http_server_port = 8185
 
 
