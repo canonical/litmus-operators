@@ -53,7 +53,9 @@ class TlsReconciler:
             (ca_cert, self._tls_ca_path),
             (private_key, self._tls_key_path),
         ):
-            current_contents = self._container.pull(filepath).read() if self._container.exists(filepath) else ""
+            current_contents = (
+                self._container.pull(filepath).read() if self._container.exists(filepath) else ""
+            )
 
             if current_contents == contents:
                 # No update needed
