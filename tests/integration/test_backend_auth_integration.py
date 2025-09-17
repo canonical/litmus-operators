@@ -49,7 +49,7 @@ def test_backend_server_create_environment(juju: Juju, token):
     )
 
     cmd = (
-        'curl -X POST -H "Content-Type: application/json" '
+        'curl -sS -X POST -H "Content-Type: application/json" '
         f'-H "Authorization: Bearer {token}" '
         f'-d \'{{"query": "{query}"}}\' '
         f"http://{backend_ip}:8080/query"

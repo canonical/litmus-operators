@@ -58,7 +58,7 @@ def test_backend_is_served_through_nginx(juju: Juju, token):
     )
 
     cmd = (
-        'curl -X POST -H "Content-Type: application/json" '
+        'curl -sS -X POST -H "Content-Type: application/json" '
         f'-H "Authorization: Bearer {token}" '
         f'-d \'{{"query": "{query}"}}\' '
         f"http://{chaoscenter_ip}:8185/backend/query"
