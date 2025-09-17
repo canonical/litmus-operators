@@ -112,7 +112,6 @@ def get_login_response(
     allow_insecure = "-k" if use_ssl else ""
     cmd = (
         f'curl {allow_insecure} -sS -X POST -H "Content-Type: application/json" '
-        # TODO: fetch from config options once https://github.com/canonical/litmus-operators/issues/18 is fixed
         '-d \'{"username": "admin", "password": "litmus"}\' '
         f"{protocol}://{host}:{port}{subpath}/login"
     )
