@@ -9,8 +9,7 @@ dependencies = [
     "litmus-libs",
     "ops",
     "cryptography>=45.0.7",
-    # FIXME: use package from pypi
-    "coordinated-workers@git+https://github.com/canonical/cos-coordinated-workers@TAP-750",
+    "coordinated-workers",
 ]
 
 [project.optional-dependencies]

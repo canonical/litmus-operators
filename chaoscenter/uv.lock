@@ -103,7 +103,7 @@ wheels = [
 [[package]]
 name = "coordinated-workers"
 version = "2.0.18"
-source = { git = "https://github.com/canonical/cos-coordinated-workers?rev=TAP-750#06eae4fb25f89d272380f3ad4110dbbf30e4c6d5" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cosl" },
     { name = "crossplane" },
@@ -111,6 +111,10 @@ dependencies = [
     { name = "lightkube" },
     { name = "ops", extra = ["tracing"] },
     { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a9/35/2b6ec43eff3a054e1b2eb6aecb63ea23f248ef56f916580b55a5851eaf6d/coordinated_workers-2.0.18.tar.gz", hash = "sha256:34d1220c5aba74044f5351868d0b13e264fc9ed1f8dd4e57f2434e4dd1d93209", size = 151109, upload_time = "2025-09-17T12:53:34.012Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c7/32/eb3121fa0fd9ea471f875a13f416f68bb1295bb0cd781555d4f227f5345c/coordinated_workers-2.0.18-py3-none-any.whl", hash = "sha256:9c865f1337ec4763db5317482a8ec4a1cb3e69ccb07363d4515d87ca95d41340", size = 46513, upload_time = "2025-09-17T12:53:32.51Z" },
 ]
 
 [[package]]
@@ -385,7 +389,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "coordinated-workers", git = "https://github.com/canonical/cos-coordinated-workers?rev=TAP-750" },
+    { name = "coordinated-workers" },
     { name = "coverage", extras = ["toml"], marker = "extra == 'dev'" },
     { name = "cryptography", specifier = ">=45.0.7" },
     { name = "jubilant", marker = "extra == 'dev'" },
