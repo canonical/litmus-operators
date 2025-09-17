@@ -23,6 +23,18 @@ def _build_lb_server_config(scheme: str, port: int) -> Dict[str, str]:
     return {"url": f"{scheme}://{socket.getfqdn()}:{port}"}
 
 
+def _redirect_middleware(name: str, port: int):
+    return {
+        f"{name}-redirect": {
+            "redirectScheme": {
+                "permanent": True,
+                "port": port,
+                "scheme": "https",
+            }
+        }
+    }
+
+
 def ingress_config(model_name: str, app_name: str, tls: bool) -> dict:
     """Build a raw ingress configuration for Traefik."""
     http_routers = {}
@@ -32,6 +44,7 @@ def ingress_config(model_name: str, app_name: str, tls: bool) -> dict:
             "entryPoints": [name],
             "service": f"juju-{model_name}-{app_name}-service-{name}",
             "rule": "ClientIP(`0.0.0.0/0`)",
+            **({"middlewares": [_redirect_middleware(name, port)]} if tls else {}),
             # TODO do we need middlewares?
         }
         # ref https://doc.traefik.io/traefik/v2.0/user-guides/grpc/#with-https
