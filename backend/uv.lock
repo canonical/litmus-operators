@@ -303,7 +303,7 @@ provides-extras = ["dev"]
 [[package]]
 name = "litmus-libs"
 version = "0.0+dev"
-source = { git = "https://github.com/canonical/litmus-operators?subdirectory=libs&rev=get-version-util#b8043be721cc2eb95d419a6ee27b5bffc2410189" }
+source = { git = "https://github.com/canonical/litmus-operators?subdirectory=libs&rev=get-version-util#4e51a3178ed89d34cb4444a53230b8b86db2fd09" }
 dependencies = [
     { name = "cosl" },
     { name = "ops", extra = ["tracing"] },
