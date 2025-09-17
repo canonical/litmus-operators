@@ -8,7 +8,7 @@ data "juju_model" "charmed-litmus" {
 module "auth" {
   source    = "git::https://github.com/canonical/litmus-operators//auth/terraform"
   model     = data.juju_model.charmed-litmus.name
-  channel   = var.charmed_litmus_channel
+  channel   = var.litmus_channel
   revision  = var.auth_revision
   resources = var.auth_resources
 }
@@ -16,7 +16,7 @@ module "auth" {
 module "backend" {
   source    = "git::https://github.com/canonical/litmus-operators//backend/terraform"
   model     = data.juju_model.charmed-litmus.name
-  channel   = var.charmed_litmus_channel
+  channel   = var.litmus_channel
   revision  = var.backend_revision
   resources = var.backend_resources
 }
@@ -24,7 +24,7 @@ module "backend" {
 module "chaoscenter" {
   source    = "git::https://github.com/canonical/litmus-operators//chaoscenter/terraform"
   model     = data.juju_model.charmed-litmus.name
-  channel   = var.charmed_litmus_channel
+  channel   = var.litmus_channel
   revision  = var.chaoscenter_revision
   resources = var.chaoscenter_resources
 }

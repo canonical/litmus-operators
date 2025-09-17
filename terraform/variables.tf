@@ -6,7 +6,7 @@ variable "model" {
   type        = string
 }
 
-variable "charmed_litmus_channel" {
+variable "litmus_channel" {
   description = "Charmhub channel to use when deploying Charmed Litmus charms."
   type        = string
   default     = "2/edge"
