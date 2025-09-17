@@ -29,6 +29,9 @@ type-checking = [
 integration-tests = [
     "requests",
 ]
+[project.optional-dependencies]
+dev = []
+
 [tool.coverage.run]
 branch = true
 
