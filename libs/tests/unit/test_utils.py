@@ -9,6 +9,8 @@ from litmus_libs.utils import get_running_litmus_version
 
 
 class MockContainer:
+    """A lightweight mock of `ops.Container` used for testing."""
+
     def __init__(self, can_connect=True, exists=True, file_content="fake_version"):
         self._can_connect = can_connect
         self._exists = exists
@@ -32,7 +34,7 @@ def test_litmus_version_empty(can_connect):
     # WHEN get_litmus_version is called with that container
     version = get_running_litmus_version(container=test_container)
 
-    # THEN twe get an empty version string
+    # THEN we get an empty version string
     assert not version
 
 
@@ -43,5 +45,5 @@ def test_litmus_version_not_empty():
     # WHEN get_litmus_version is called with that container
     version = get_running_litmus_version(container=test_container)
 
-    # THEN twe get a non empty version string
+    # THEN we get a non empty version string
     assert version
