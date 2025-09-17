@@ -128,7 +128,9 @@ class LitmusChaoscenterCharm(CharmBase):
     def _on_any_event(self, _: EventBase):
         """Common entry hook."""
         self._reconcile()
-        self._receive_backend_http_api.publish_endpoint(self._most_external_frontend_url)
+        self._receive_backend_http_api.publish_endpoint(
+            self._most_external_frontend_url
+        )
 
     def _on_collect_unit_status(self, e: CollectStatusEvent):
         missing_relations = [
@@ -168,7 +170,9 @@ class LitmusChaoscenterCharm(CharmBase):
             self.nginx.reconcile()
         if self.unit.is_leader() and self.ingress.is_ready():
             self.ingress.submit_to_traefik(
-                ingress_config(self.model.name, self.app.name, self._tls_config is not None),
+                ingress_config(
+                    self.model.name, self.app.name, self._tls_config is not None
+                ),
                 static=static_ingress_config(),
             )
 

@@ -14,6 +14,7 @@ CHAOSCENTER_APP = "chaoscenter"
 BACKEND_APP = "backend"
 MONGO_APP = "mongodb"
 SELF_SIGNED_CERTIFICATES_APP = "self-signed-certificates"
+TRAEFIK_APP = "traefik"
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,10 @@ def _charm_and_channel_and_resources(
 
 
 def deploy_control_plane(
-    juju: Juju, with_tls: bool = False, wait_for_idle: bool = True
+    juju: Juju,
+    with_tls: bool = False,
+    with_traefik: bool = False,
+    wait_for_idle: bool = True,
 ):
     for component in (AUTH_APP, BACKEND_APP, CHAOSCENTER_APP):
         charm_url, channel, resources = _charm_and_channel_and_resources(
@@ -70,6 +74,18 @@ def deploy_control_plane(
 
     # deploy mongodb
     juju.deploy("mongodb-k8s", app=MONGO_APP, trust=True)
+    apps_to_wait_for = [
+        MONGO_APP,
+        CHAOSCENTER_APP,
+        AUTH_APP,
+        BACKEND_APP,
+        CHAOSCENTER_APP,
+    ]
+
+    if with_traefik:
+        juju.deploy("traefik-k8s", channel="latest/edge", app=TRAEFIK_APP, trust=True)
+        juju.integrate(TRAEFIK_APP, f"{CHAOSCENTER_APP}:ingress")
+        apps_to_wait_for.append(TRAEFIK_APP)
 
     if with_tls:
         juju.deploy(SELF_SIGNED_CERTIFICATES_APP, app=SELF_SIGNED_CERTIFICATES_APP)
@@ -78,6 +94,9 @@ def deploy_control_plane(
         juju.integrate(
             f"{CHAOSCENTER_APP}:tls-certificates", SELF_SIGNED_CERTIFICATES_APP
         )
+        if with_traefik:
+            juju.integrate(f"{TRAEFIK_APP}:certificates", SELF_SIGNED_CERTIFICATES_APP)
+        apps_to_wait_for.append(SELF_SIGNED_CERTIFICATES_APP)
 
     juju.integrate(f"{AUTH_APP}:database", MONGO_APP)
     juju.integrate(f"{AUTH_APP}:http-api", CHAOSCENTER_APP)
@@ -90,15 +109,9 @@ def deploy_control_plane(
         juju.wait(
             lambda status: all_active(
                 status,
-                MONGO_APP,
-                CHAOSCENTER_APP,
-                AUTH_APP,
-                BACKEND_APP,
-                CHAOSCENTER_APP,
+                *apps_to_wait_for,
             ),
-            error=lambda status: any_error(
-                status, AUTH_APP, BACKEND_APP, CHAOSCENTER_APP
-            ),
+            error=lambda status: any_error(status, *apps_to_wait_for),
             timeout=1000,
             delay=10,
             successes=6,

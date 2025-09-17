@@ -37,9 +37,7 @@ def ingress_config(model_name: str, app_name: str, tls: bool) -> dict:
         # ref https://doc.traefik.io/traefik/v2.0/user-guides/grpc/#with-https
         http_services[f"juju-{model_name}-{app_name}-service-{name}"] = {
             "loadBalancer": {
-                "servers": [
-                    _build_lb_server_config("https" if tls else "http", port)
-                ]
+                "servers": [_build_lb_server_config("https" if tls else "http", port)]
             }
         }
     return {
