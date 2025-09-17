@@ -9,24 +9,10 @@ on:
         branches:
         - main
 jobs:
-    tiobe-scan-auth:
-        name: TiCs-auth
+    tiobe-scan:
+        name: TiCs
         uses: canonical/observability/.github/workflows/charm-tiobe-scan.yaml@v1
         with:
-            charm-path: ./auth
-            tiobe-project-name: litmus-auth-k8s
-        secrets: inherit
-    tiobe-scan-backend:
-        name: TiCs-backend
-        uses: canonical/observability/.github/workflows/charm-tiobe-scan.yaml@v1
-        with:
-            charm-path: ./backend
-            tiobe-project-name: litmus-backend-k8s
-        secrets: inherit
-    tiobe-scan-chaoscenter:
-        name: TiCs-chaoscenter
-        uses: canonical/observability/.github/workflows/charm-tiobe-scan.yaml@v1
-        with:
-            charm-path: ./chaoscenter
+            # FIXME: should be updated to litmus-operators once the project is onboarded
             tiobe-project-name: litmus-chaoscenter-k8s
         secrets: inherit
