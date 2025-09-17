@@ -32,7 +32,7 @@ def get_app_hostname(app_name: str, model_name: str) -> str:
     return f"{app_name}.{model_name}.{dns_name}"  # 'app.model.svc.cluster.local'
 
 
-def get_running_litmus_version(container: Container) -> Optional[str]:
+def get_litmus_version(container: Container) -> Optional[str]:
     """Get the running litmus version."""
     if not container.can_connect():
         return None
