@@ -5,6 +5,12 @@
 
 from .models import DatabaseConfig, TLSConfigData
 from .tls_reconciler import TlsReconciler
-from .utils import get_app_hostname
+from .utils import get_app_hostname, get_running_litmus_version
 
-__all__ = ["DatabaseConfig", "TLSConfigData", "TlsReconciler", "get_app_hostname"]
+__all__ = [
+    "DatabaseConfig",
+    "TLSConfigData",
+    "TlsReconciler",
+    "get_app_hostname",
+    "get_running_litmus_version",
+]

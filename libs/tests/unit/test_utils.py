@@ -5,7 +5,7 @@ import io
 
 import pytest
 
-from litmus_libs.utils import get_litmus_version
+from litmus_libs.utils import get_running_litmus_version
 
 
 class MockContainer:
@@ -20,7 +20,7 @@ class MockContainer:
     def exists(self, _):
         return self._exists
 
-    def pull(self, _, __=None):
+    def pull(self, _, encoding=None):
         return io.StringIO(self._file_content)
 
 
@@ -30,7 +30,7 @@ def test_litmus_version_empty(can_connect):
     test_container = MockContainer(can_connect=can_connect, exists=False)
 
     # WHEN get_litmus_version is called with that container
-    version = get_litmus_version(container=test_container, version_file_path="/VERSION")
+    version = get_running_litmus_version(container=test_container)
 
     # THEN twe get an empty version string
     assert not version
@@ -41,7 +41,7 @@ def test_litmus_version_not_empty():
     test_container = MockContainer(can_connect=True, exists=True)
 
     # WHEN get_litmus_version is called with that container
-    version = get_litmus_version(container=test_container, version_file_path="/VERSION")
+    version = get_running_litmus_version(container=test_container)
 
     # THEN twe get a non empty version string
     assert version
