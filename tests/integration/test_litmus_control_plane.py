@@ -23,8 +23,8 @@ logger = logging.getLogger(__name__)
 @pytest.fixture(scope="function")
 def token(juju: Juju):
     chaoscenter_ip = get_unit_ip_address(juju, CHAOSCENTER_APP, 0)
-    out = get_login_response(chaoscenter_ip, 8185, "/auth")
-    return json.loads(out.stdout)["accessToken"]
+    _, out = get_login_response(chaoscenter_ip, 8185, "/auth")
+    return json.loads(out)["accessToken"]
 
 
 @pytest.mark.setup
@@ -39,10 +39,10 @@ def test_frontend_is_served(juju: Juju):
     # WHEN we call the frontend on its index
     chaoscenter_ip = get_unit_ip_address(juju, CHAOSCENTER_APP, 0)
     cmd = f"curl -X GET http://{chaoscenter_ip}:8185"
-    result = subprocess.run(shlex.split(cmd), text=True, capture_output=True)
+    result = subprocess.getoutput(cmd)
 
     # THEN we receive a response that is served by the frontend
-    assert "LitmusChaos" in result.stdout
+    assert "LitmusChaos" in result
 
 
 @retry(stop=stop_after_attempt(30), wait=wait_fixed(10))  # 5 minutes
@@ -58,16 +58,14 @@ def test_backend_is_served_through_nginx(juju: Juju, token):
     )
 
     cmd = (
-        'curl -X POST -H "Content-Type: application/json" '
+        'curl -sS -X POST -H "Content-Type: application/json" '
         f'-H "Authorization: Bearer {token}" '
         f'-d \'{{"query": "{query}"}}\' '
         f"http://{chaoscenter_ip}:8185/backend/query"
     )
 
-    out = subprocess.run(shlex.split(cmd), capture_output=True, text=True)
-
     # THEN we receive a response from the backend
-    assert out.returncode == 0
+    subprocess.check_call(shlex.split(cmd))
 
 
 @retry(stop=stop_after_attempt(30), wait=wait_fixed(10))  # 5 minutes
@@ -76,12 +74,12 @@ def test_auth_is_served_through_nginx(juju: Juju):
 
     # WHEN we call the nginx redirect for auth server
     chaoscenter_ip = get_unit_ip_address(juju, CHAOSCENTER_APP, 0)
-    response = get_login_response(chaoscenter_ip, 8185, "/auth")
+    returncode, output = get_login_response(chaoscenter_ip, 8185, "/auth")
 
     # THEN we receive a response from the auth server
-    assert response.returncode == 0
-    response_json = json.loads(response.stdout)
-    assert "accessToken" in response_json, f"No token found in response: {response}"
+    assert returncode == 0
+    response_json = json.loads(output)
+    assert "accessToken" in response_json, f"No token found in response: {output}"
 
 
 @pytest.mark.teardown

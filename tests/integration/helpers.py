@@ -3,7 +3,6 @@
 
 import logging
 import os
-import shlex
 import subprocess
 from typing import Literal
 from jubilant import Juju, all_active, any_error
@@ -14,6 +13,7 @@ AUTH_APP = "auth"
 CHAOSCENTER_APP = "chaoscenter"
 BACKEND_APP = "backend"
 MONGO_APP = "mongodb"
+SELF_SIGNED_CERTIFICATES_APP = "self-signed-certificates"
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,9 @@ def get_unit_ip_address(juju: Juju, app_name: str, unit_no: int):
 
 
 def _charm_and_channel_and_resources(
-    role: Literal["auth", "backend"], charm_path_key: str, charm_channel_key: str
+    role: Literal["auth", "backend", "chaoscenter"],
+    charm_path_key: str,
+    charm_channel_key: str,
 ):
     """Litmus charms used for integration testing.
 
@@ -48,7 +50,9 @@ def _charm_and_channel_and_resources(
     return pack(Path() / role), None, get_resources(Path().parent / role)
 
 
-def deploy_control_plane(juju: Juju, wait_for_idle: bool = True):
+def deploy_control_plane(
+    juju: Juju, with_tls: bool = False, wait_for_idle: bool = True
+):
     for component in (AUTH_APP, BACKEND_APP, CHAOSCENTER_APP):
         charm_url, channel, resources = _charm_and_channel_and_resources(
             component,
@@ -67,6 +71,14 @@ def deploy_control_plane(juju: Juju, wait_for_idle: bool = True):
     # deploy mongodb
     juju.deploy("mongodb-k8s", app=MONGO_APP, trust=True)
 
+    if with_tls:
+        juju.deploy(SELF_SIGNED_CERTIFICATES_APP, app=SELF_SIGNED_CERTIFICATES_APP)
+        juju.integrate(f"{AUTH_APP}:tls-certificates", SELF_SIGNED_CERTIFICATES_APP)
+        juju.integrate(f"{BACKEND_APP}:tls-certificates", SELF_SIGNED_CERTIFICATES_APP)
+        juju.integrate(
+            f"{CHAOSCENTER_APP}:tls-certificates", SELF_SIGNED_CERTIFICATES_APP
+        )
+
     juju.integrate(f"{AUTH_APP}:database", MONGO_APP)
     juju.integrate(f"{AUTH_APP}:http-api", CHAOSCENTER_APP)
     juju.integrate(f"{BACKEND_APP}:http-api", CHAOSCENTER_APP)
@@ -77,7 +89,12 @@ def deploy_control_plane(juju: Juju, wait_for_idle: bool = True):
         logger.info("waiting for the control plane to be active/idle...")
         juju.wait(
             lambda status: all_active(
-                status, MONGO_APP, AUTH_APP, BACKEND_APP, CHAOSCENTER_APP
+                status,
+                MONGO_APP,
+                CHAOSCENTER_APP,
+                AUTH_APP,
+                BACKEND_APP,
+                CHAOSCENTER_APP,
             ),
             error=lambda status: any_error(
                 status, AUTH_APP, BACKEND_APP, CHAOSCENTER_APP
@@ -88,11 +105,15 @@ def deploy_control_plane(juju: Juju, wait_for_idle: bool = True):
         )
 
 
-def get_login_response(host: str, port: int, subpath: str):
+def get_login_response(
+    host: str, port: int, subpath: str, use_ssl: bool = False
+) -> tuple[int, str]:
+    protocol = "https" if use_ssl else "http"
+    allow_insecure = "-k" if use_ssl else ""
     cmd = (
-        'curl -X POST -H "Content-Type: application/json" '
+        f'curl {allow_insecure} -sS -X POST -H "Content-Type: application/json" '
         # TODO: fetch from config options once https://github.com/canonical/litmus-operators/issues/18 is fixed
         '-d \'{"username": "admin", "password": "litmus"}\' '
-        f"http://{host}:{port}{subpath}/login"
+        f"{protocol}://{host}:{port}{subpath}/login"
     )
-    return subprocess.run(shlex.split(cmd), text=True, capture_output=True)
+    return subprocess.getstatusoutput(cmd)
