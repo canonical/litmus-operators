@@ -79,7 +79,8 @@ class LitmusAuth:
             "REST_PORT": self.http_port,
             "GRPC_PORT": self.grpc_port,
             # default admin credentials to login to the litmus portal for the 1st time
-            # TODO: perhaps these should come from config options https://github.com/canonical/litmus-operators/issues/18
+            # Users are prompted to change the password after their first login, so we document
+            # this behavior instead of managing state ourselves.
             "ADMIN_USERNAME": "admin",
             "ADMIN_PASSWORD": "litmus",
         }
