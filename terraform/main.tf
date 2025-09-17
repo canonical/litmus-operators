@@ -6,7 +6,7 @@ data "juju_model" "charmed-litmus" {
 }
 
 module "auth" {
-  source    = "git::https://github.com/canonical/litmus-operators/auth//terraform"
+  source    = "git::https://github.com/canonical/litmus-operators//auth/terraform"
   model     = data.juju_model.charmed-litmus.name
   channel   = var.charmed_litmus_channel
   revision  = var.auth_revision
@@ -14,7 +14,7 @@ module "auth" {
 }
 
 module "backend" {
-  source    = "git::https://github.com/canonical/litmus-operators/backend//terraform"
+  source    = "git::https://github.com/canonical/litmus-operators//backend/terraform"
   model     = data.juju_model.charmed-litmus.name
   channel   = var.charmed_litmus_channel
   revision  = var.backend_revision
@@ -22,7 +22,7 @@ module "backend" {
 }
 
 module "chaoscenter" {
-  source    = "git::https://github.com/canonical/litmus-operators/chaoscenter//terraform"
+  source    = "git::https://github.com/canonical/litmus-operators//chaoscenter/terraform"
   model     = data.juju_model.charmed-litmus.name
   channel   = var.charmed_litmus_channel
   revision  = var.chaoscenter_revision
