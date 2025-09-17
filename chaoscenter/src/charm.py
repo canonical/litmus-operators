@@ -26,6 +26,9 @@ from coordinated_workers.nginx import (
 )
 
 from nginx_config import get_config
+from traefik_config import ingress_config, static_ingress_config
+
+from charms.traefik_k8s.v0.traefik_route import TraefikRouteRequirer
 
 from litmus_libs import get_app_hostname
 from litmus_libs.interfaces.http_api import (
@@ -54,6 +57,11 @@ class LitmusChaoscenterCharm(CharmBase):
             charm=self,
             relationship_name=TLS_CERTIFICATES_ENDPOINT,
             certificate_requests=[self._certificate_request_attributes],
+        )
+        self.ingress = TraefikRouteRequirer(
+            self,
+            self.model.get_relation("ingress"),  # type: ignore
+            "ingress",
         )
 
         self.nginx = Nginx(
@@ -90,7 +98,21 @@ class LitmusChaoscenterCharm(CharmBase):
     # EVENT HANDLERS #
     ##################
     @property
-    def _frontend_url(self):
+    def _most_external_frontend_url(self):
+        """Litmus ChaosCenter URL.
+        
+        Ingressed URL, if related to ingress, otherwise internal url.
+        """
+        if (
+            self.ingress.is_ready()
+            and self.ingress.scheme
+            and self.ingress.external_host
+        ):
+            return f"{self.ingress.scheme}://{self.ingress.external_host}:8185"
+        return self._internal_frontend_url
+
+    @property
+    def _internal_frontend_url(self):
         """Internal (i.e. not ingressed) url."""
         protocol = "https" if self._tls_config else "http"
         return f"{protocol}://{get_app_hostname(self.app.name, self.model.name)}:8185"
@@ -108,7 +130,9 @@ class LitmusChaoscenterCharm(CharmBase):
     def _on_any_event(self, _: EventBase):
         """Common entry hook."""
         self._reconcile()
-        self._receive_backend_http_api.publish_endpoint(self._frontend_url)
+        self._receive_backend_http_api.publish_endpoint(
+            self._most_external_frontend_url
+        )
 
     def _on_collect_unit_status(self, e: CollectStatusEvent):
         missing_relations = [
@@ -137,7 +161,7 @@ class LitmusChaoscenterCharm(CharmBase):
 
         # TODO: add pebble check to verify frontend is up
         #  https://github.com/canonical/litmus-operators/issues/36
-        e.add_status(ActiveStatus(f"Ready at {self._frontend_url}."))
+        e.add_status(ActiveStatus(f"Ready at {self._most_external_frontend_url}."))
 
     ###################
     # UTILITY METHODS #
@@ -146,6 +170,13 @@ class LitmusChaoscenterCharm(CharmBase):
         """Run all logic that is independent of what event we're processing."""
         if self.backend_url and self.auth_url:
             self.nginx.reconcile()
+        if self.unit.is_leader() and self.ingress.is_ready():
+            self.ingress.submit_to_traefik(
+                ingress_config(
+                    self.model.name, self.app.name, self._tls_config is not None
+                ),
+                static=static_ingress_config(),
+            )
 
     @property
     def _certificate_request_attributes(self) -> CertificateRequestAttributes:

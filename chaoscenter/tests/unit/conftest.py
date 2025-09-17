@@ -90,3 +90,17 @@ def backend_http_api_relation():
 @pytest.fixture
 def tls_certificates_relation():
     return Relation("tls-certificates")
+
+
+@pytest.fixture
+def ingress_relation():
+    return Relation(
+        "ingress", remote_app_data={"external_host": "1.2.3.4", "scheme": "http"}
+    )
+
+
+@pytest.fixture
+def ingress_over_https_relation():
+    return Relation(
+        "ingress", remote_app_data={"external_host": "1.2.3.4", "scheme": "https"}
+    )
