@@ -34,18 +34,18 @@ storage:
     minimum-size: 1M
 
 requires:
-  backend-http-api:
-    optional: false
-    interface: litmus_backend_http_api
-    limit: 1
-    description: |
-      Receive the litmus backend HTTP API.
   auth-http-api:
     optional: false
     interface: litmus_auth_http_api
     limit: 1
     description: |
       Receive the litmus auth HTTP API.
+  backend-http-api:
+    optional: false
+    interface: litmus_backend_http_api
+    limit: 1
+    description: |
+      Receive the litmus backend HTTP API.
   tls-certificates:
     optional: true
     interface: tls-certificates
