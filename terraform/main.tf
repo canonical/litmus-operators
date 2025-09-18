@@ -36,6 +36,13 @@ module "mongodb" {
   config     = var.mongodb_config
 }
 
+module "traefik" {
+  source  = "git::https://github.com/canonical/traefik-k8s-operator//terraform"
+  model   = data.juju_model.charmed-litmus.name
+  channel = var.traefik_channel
+  config  = var.traefik_config
+}
+
 # Juju integrations
 
 resource "juju_integration" "auth-mongodb" {

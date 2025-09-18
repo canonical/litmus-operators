@@ -59,3 +59,15 @@ variable "mongodb_config" {
   type        = map(string)
   default     = {}
 }
+
+variable "traefik_channel" {
+  description = "The channel to use when deploying `traefik-k8s` charm."
+  type        = string
+  default     = "latest/stable"
+}
+
+variable "traefik_config" {
+  description = "Additional configuration for the Traefik. Details about available options can be found at https://charmhub.io/traefik-k8s-operator/configure."
+  type        = map(string)
+  default = {}
+}
