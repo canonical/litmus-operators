@@ -12,5 +12,6 @@ output "endpoints" {
     auth-http-api    = "auth-http-api"
     backend-http-api = "backend-http-api"
     tls-certificates = "tls-certificates"
+    ingress          = "ingress"
   }
 }
