@@ -1,5 +1,8 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
+import json
+from unittest.mock import MagicMock, patch
+
 import pytest
 from ops import CharmBase
 from ops.testing import Context, State
@@ -12,9 +15,9 @@ class MyCharm(CharmBase):
     META = {
         "name": "echo",
         "requires": {
-            "ch-tracing": {"interface": "tracing"},
+            "ch-tracing": {"interface": "tracing", "limit": 1},
             "logging": {"interface": "loki_push_api"},
-            "cert-transfer": {"interface": "certificate_transfer"},
+            "tls-certificates": {"interface": "tls-certificates"},
         },
     }
 
@@ -25,7 +28,11 @@ class MyCharm(CharmBase):
             endpoint_overrides={
                 "charm-tracing": "ch-tracing",  # non-default!
             },
+            tls_config_getter=self.tls_config_getter,
         )
+
+    def tls_config_getter(self):
+        return None
 
 
 @pytest.mark.parametrize(
@@ -57,6 +64,17 @@ def ctx():
     return Context(MyCharm, meta=MyCharm.META)
 
 
+@pytest.fixture
+def ctx_with_tls():
+    class MyCharmWithTls(MyCharm):
+        def tls_config_getter(self):
+            tls_config_mock = MagicMock()
+            tls_config_mock.ca_cert = "ca"
+            return tls_config_mock
+
+    return Context(MyCharmWithTls, meta=MyCharm.META)
+
+
 def test_tracing_integration(ctx):
     # GIVEN a tracing relation
     tracing_relation = Relation("ch-tracing")
@@ -78,6 +96,32 @@ def test_tracing_integration(ctx):
     state = State(leader=True, relations=[tracing_relation])
     # WHEN we receive any event, the charm doesn't error out
     ctx.run(ctx.on.update_status(), state)
+
+
+@pytest.mark.parametrize("tls", (False, True))
+def test_charm_tracing_reconcile(ctx, ctx_with_tls, tls):
+    ctx_to_use = ctx_with_tls if tls else ctx
+    # GIVEN a charm tracing relation with remote data
+    expected_url = f"http{'s' if tls else ''}://hostname:4318"
+    charm_tracing_relation = Relation(
+        "ch-tracing",
+        remote_app_data={
+            "receivers": json.dumps(
+                [{"protocol": {"name": "otlp_http", "type": "http"}, "url": expected_url}]
+            )
+        },
+    )
+    state = State(leader=True, relations=[charm_tracing_relation])
+    # WHEN we receive any event
+    with patch("ops_tracing.set_destination") as ops_tracing_mock:
+        with ctx_to_use(ctx_to_use.on.update_status(), state) as mgr:
+            charm = mgr.charm
+            # AND we call self._self_monitoring.reconcile()
+            charm._self_monitoring.reconcile()
+            # THEN the charm has called ops_tracing.set_destination with the expected params
+            ops_tracing_mock.assert_called_with(
+                url=f"{expected_url}/v1/traces", ca="ca" if tls else None
+            )
 
 
 def test_logging_integration(ctx):
