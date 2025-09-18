@@ -21,12 +21,18 @@ containers:
     mounts:
       - storage: certs
         location: /etc/tls
+  nginx-prometheus-exporter:
+    resource: nginx-prometheus-exporter-image
 
 resources:
   litmus-chaoscenter-image:
     type: oci-image
     description: OCI image for Litmus frontend server 
     upstream-source: ubuntu/litmuschaos-frontend:3-24.04_edge
+  nginx-prometheus-exporter-image:
+    type: oci-image
+    description: OCI image for nginx-prometheus-exporter
+    upstream-source: ubuntu/nginx-prometheus-exporter:1.4-24.04_stable
 
 storage:
   certs:
