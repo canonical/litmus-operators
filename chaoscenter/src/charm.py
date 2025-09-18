@@ -23,6 +23,8 @@ from ops import (
 from coordinated_workers.models import TLSConfig
 from coordinated_workers.nginx import (
     Nginx,
+    NginxPrometheusExporter,
+    NginxMappingOverrides,
 )
 
 from nginx_config import get_config
@@ -40,6 +42,11 @@ logger = logging.getLogger(__name__)
 AUTH_HTTP_API_ENDPOINT = "auth-http-api"
 BACKEND_HTTP_API_ENDPOINT = "backend-http-api"
 TLS_CERTIFICATES_ENDPOINT = "tls-certificates"
+
+NGINX_OVERRIDES: NginxMappingOverrides = {
+    "nginx_port": 8185,
+    "nginx_exporter_port": 9113,
+}
 
 
 class LitmusChaoscenterCharm(CharmBase):
@@ -72,6 +79,11 @@ class LitmusChaoscenterCharm(CharmBase):
             container_name="chaoscenter",
         )
 
+        self.nginx_exporter = NginxPrometheusExporter(
+            self,
+            options=NGINX_OVERRIDES,
+        )
+
         self.framework.observe(
             self.on.collect_unit_status, self._on_collect_unit_status
         )
@@ -100,7 +112,7 @@ class LitmusChaoscenterCharm(CharmBase):
     @property
     def _most_external_frontend_url(self):
         """Litmus ChaosCenter URL.
-        
+
         Ingressed URL, if related to ingress, otherwise internal url.
         """
         if (
@@ -170,6 +182,7 @@ class LitmusChaoscenterCharm(CharmBase):
         """Run all logic that is independent of what event we're processing."""
         if self.backend_url and self.auth_url:
             self.nginx.reconcile()
+            self.nginx_exporter.reconcile()
         if self.unit.is_leader() and self.ingress.is_ready():
             self.ingress.submit_to_traefik(
                 ingress_config(

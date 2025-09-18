@@ -29,7 +29,11 @@ import nginx_config
     ),
 )
 def test_config_contains_correct_urls(
-    ctx, nginx_container, auth_endpoint, backend_endpoint
+    ctx,
+    nginx_container,
+    nginx_prometheus_exporter_container,
+    auth_endpoint,
+    backend_endpoint,
 ):
     # GIVEN chaoscenter related to backend and auth
     auth_relation = Relation(
@@ -53,7 +57,7 @@ def test_config_contains_correct_urls(
         state=State(
             leader=True,
             relations={auth_relation, backend_relation},
-            containers={nginx_container},
+            containers={nginx_container, nginx_prometheus_exporter_container},
         ),
     )
 
@@ -90,7 +94,9 @@ def test_config_contains_correct_urls(
             assert f"server {backend_endpoint_parsed.hostname}:443" in config
 
 
-def test_config_contains_auth_rewrite(ctx, nginx_container):
+def test_config_contains_auth_rewrite(
+    ctx, nginx_container, nginx_prometheus_exporter_container
+):
     # GIVEN chaoscenter related to backend and auth
     auth_relation = Relation(
         "auth-http-api",
@@ -113,7 +119,7 @@ def test_config_contains_auth_rewrite(ctx, nginx_container):
         state=State(
             leader=True,
             relations={auth_relation, backend_relation},
-            containers={nginx_container},
+            containers={nginx_container, nginx_prometheus_exporter_container},
         ),
     )
 
@@ -145,6 +151,7 @@ def test_calling_config_with_missing_backend_url_raises():
 def test_config_contains_ssl_config_when_tls_relation_created(
     ctx,
     nginx_container,
+    nginx_prometheus_exporter_container,
     auth_http_api_relation,
     backend_http_api_relation,
     tls_certificates_relation,
@@ -161,7 +168,7 @@ def test_config_contains_ssl_config_when_tls_relation_created(
                 backend_http_api_relation,
                 tls_certificates_relation,
             },
-            containers={nginx_container},
+            containers={nginx_container, nginx_prometheus_exporter_container},
         ),
     )
 
@@ -206,6 +213,7 @@ def test_config_contains_ssl_config_when_tls_relation_created(
 def test_config_contains_correct_locations_config_depending_on_endpoints_configuration(
     ctx,
     nginx_container,
+    nginx_prometheus_exporter_container,
     tls_certificates_relation,
     patch_cert_and_key,
     patch_write_to_ca_path,
@@ -239,7 +247,7 @@ def test_config_contains_correct_locations_config_depending_on_endpoints_configu
                 backend_relation,
                 tls_certificates_relation,
             },
-            containers={nginx_container},
+            containers={nginx_container, nginx_prometheus_exporter_container},
         ),
     )
 
@@ -257,6 +265,7 @@ def test_config_contains_correct_locations_config_depending_on_endpoints_configu
 def test_generated_ssl_config_matches_expected_config(
     ctx,
     nginx_container,
+    nginx_prometheus_exporter_container,
     tls_certificates_relation,
     patch_cert_and_key,
     patch_write_to_ca_path,
@@ -286,7 +295,7 @@ def test_generated_ssl_config_matches_expected_config(
                 backend_relation,
                 tls_certificates_relation,
             },
-            containers={nginx_container},
+            containers={nginx_container, nginx_prometheus_exporter_container},
         ),
     )
 

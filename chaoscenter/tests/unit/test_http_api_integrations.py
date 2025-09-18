@@ -6,7 +6,11 @@ from litmus_libs.interfaces.http_api import BackendApiRequirerAppDatabagModelV0
 
 
 def test_chaoscenter_endpoints(
-    ctx, nginx_container, auth_http_api_relation, backend_http_api_relation
+    ctx,
+    nginx_container,
+    nginx_prometheus_exporter_container,
+    auth_http_api_relation,
+    backend_http_api_relation,
 ):
     # GIVEN http api relations with auth and backend
     # WHEN the charm receives any event
@@ -15,7 +19,7 @@ def test_chaoscenter_endpoints(
         state=State(
             leader=True,
             relations={auth_http_api_relation, backend_http_api_relation},
-            containers={nginx_container},
+            containers={nginx_container, nginx_prometheus_exporter_container},
         ),
     )
 
