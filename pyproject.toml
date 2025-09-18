@@ -24,6 +24,12 @@ type-checking = [
     "ops[tracing]"
 ]
 
+[project.optional-dependencies]
+dev = []
+
+[tool.coverage.run]
+branch = true
+
 [tool.pytest.ini_options]
 minversion = "6.0"
 log_cli_level = "INFO"
