@@ -101,7 +101,7 @@ class LitmusChaoscenterCharm(CharmBase):
     @property
     def _most_external_frontend_url(self):
         """Litmus ChaosCenter URL.
-        
+
         Ingressed URL, if related to ingress, otherwise internal url.
         """
         if (
