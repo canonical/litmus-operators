@@ -29,6 +29,7 @@ from litmus_libs import (
     get_litmus_version,
 )
 from litmus_libs.interfaces.http_api import LitmusAuthApiProvider
+from litmus_libs.interfaces.self_monitoring import SelfMonitoring
 
 DATABASE_ENDPOINT = "database"
 LITMUS_AUTH_ENDPOINT = "litmus-auth"
@@ -86,6 +87,9 @@ class LitmusAuthCharm(CharmBase):
             tls_key_path=TLS_KEY_PATH,
             tls_ca_path=TLS_CA_PATH,
             backend_grpc_endpoint=self.backend_grpc_endpoint,
+        )
+        self._self_monitoring = SelfMonitoring(
+            self, tls_config_getter=lambda: self._tls_config
         )
 
         self.framework.observe(
@@ -195,6 +199,7 @@ class LitmusAuthCharm(CharmBase):
                 )
             )
             self._send_http_api.publish_endpoint(self._http_api_endpoint)
+        self._self_monitoring.reconcile()
 
     @property
     def _tls_ready(self) -> bool:

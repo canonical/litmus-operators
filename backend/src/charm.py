@@ -33,6 +33,7 @@ from charms.data_platform_libs.v0.data_interfaces import (
 
 from typing import Optional
 from litmus_libs.interfaces.http_api import LitmusBackendApiProvider
+from litmus_libs.interfaces.self_monitoring import SelfMonitoring
 
 DATABASE_ENDPOINT = "database"
 LITMUS_AUTH_ENDPOINT = "litmus-auth"
@@ -89,6 +90,10 @@ class LitmusBackendCharm(CharmBase):
             tls_ca_path=TLS_CA_PATH,
             auth_grpc_endpoint=self.auth_grpc_endpoint,
             frontend_url=self.frontend_url,
+        )
+
+        self._self_monitoring = SelfMonitoring(
+            self, tls_config_getter=lambda: self._tls_config
         )
 
         self.framework.observe(
@@ -206,6 +211,7 @@ class LitmusBackendCharm(CharmBase):
                 )
             )
             self._send_http_api.publish_endpoint(self._http_api_endpoint)
+        self._self_monitoring.reconcile()
 
     @property
     def _tls_ready(self) -> bool:
