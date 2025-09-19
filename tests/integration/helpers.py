@@ -94,6 +94,10 @@ def deploy_control_plane(
         juju.integrate(
             f"{CHAOSCENTER_APP}:tls-certificates", SELF_SIGNED_CERTIFICATES_APP
         )
+        # Upstream Litmus (https://github.com/litmuschaos/litmus/issues/3136) does not support TLS connections to MongoDB.
+        # Since charmed mongodb-k8s uses `preferTLS`, it accepts both TLS and non-TLS connections.
+        # We'll still relate mongo to ssc in our integration tests to detect any changes in charmed mongodb-k8s behavior.
+        juju.integrate(f"{MONGO_APP}:certificates", SELF_SIGNED_CERTIFICATES_APP)
         if with_traefik:
             juju.integrate(f"{TRAEFIK_APP}:certificates", SELF_SIGNED_CERTIFICATES_APP)
         apps_to_wait_for.append(SELF_SIGNED_CERTIFICATES_APP)
