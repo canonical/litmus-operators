@@ -2,6 +2,8 @@
 # See LICENSE file for licensing details.
 from ops.testing import State
 from dataclasses import replace
+
+import pytest
 from conftest import (
     db_remote_databag,
     auth_remote_databag,
@@ -177,3 +179,37 @@ def test_pebble_service_running(
     # THEN litmus backend server pebble service is running
     backend_container_out = state_out.get_container(backend_container.name)
     assert backend_container_out.services.get("backend").is_running()
+
+
+@pytest.mark.parametrize("workload_version_set", (True, False))
+def test_workload_version_in_pebble_env_vars(
+    ctx, backend_container, patch_workload_version, workload_version_set
+):
+    patch_workload_version.return_value = "1.0" if workload_version_set else None
+    expected_env_vars = {
+        "WORKFLOW_HELPER_IMAGE_VERSION",
+        "VERSION",
+        "INFRA_COMPATIBLE_VERSIONS",
+        "SUBSCRIBER_IMAGE",
+        "EVENT_TRACKER_IMAGE",
+        "LITMUS_CHAOS_OPERATOR_IMAGE",
+        "LITMUS_CHAOS_RUNNER_IMAGE",
+        "LITMUS_CHAOS_EXPORTER_IMAGE",
+    }
+
+    # GIVEN a running container
+    state = State(containers=[backend_container])
+
+    # WHEN any event is fired
+    state_out = ctx.run(ctx.on.update_status(), state=state)
+
+    backend_container_out = state_out.get_container(backend_container.name)
+    actual_env_vars = backend_container_out.plan.to_dict()["services"]["backend"][
+        "environment"
+    ]
+    # THEN litmus backend server pebble plan env vars has the workload version set (if it's non empty)
+    for key in expected_env_vars:
+        if workload_version_set:
+            assert "1.0" in actual_env_vars[key]
+        else:
+            assert "1.0" not in actual_env_vars[key]

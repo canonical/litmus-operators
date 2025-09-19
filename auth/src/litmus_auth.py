@@ -13,7 +13,7 @@ from litmus_libs import DatabaseConfig, TLSConfigData
 from litmus_libs.interfaces.litmus_auth import Endpoint
 
 logger = logging.getLogger(__name__)
-    
+
 
 class LitmusAuth:
     """Litmus Authentication server workload."""

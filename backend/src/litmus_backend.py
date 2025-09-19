@@ -44,6 +44,7 @@ class LitmusBackend:
         self.tls_config_getter = tls_config_getter
         self._auth_grpc_endpoint = auth_grpc_endpoint
         self._frontend_url = frontend_url
+        self._workload_version = get_litmus_version(self._container)
 
     def reconcile(self):
         """Unconditional control logic."""
@@ -53,9 +54,12 @@ class LitmusBackend:
     def _reconcile_workload_config(self):
         self._container.add_layer(self.name, self._pebble_layer, combine=True)
         # replan only if the available env var config is sufficient for the workload to run
-        if self._db_config:
+        if self._db_config and self._workload_version:
             self._container.replan()
         else:
+            logger.info(
+                "cannot start/restart pebble service: missing database config or workload version.",
+            )
             self._container.stop(self.name)
 
     @property
@@ -77,7 +81,7 @@ class LitmusBackend:
 
     @property
     def _environment_vars(self) -> dict:
-        workload_version = get_litmus_version(self._container) or ""
+        workload_version = self._workload_version or ""
         env = {
             "REST_PORT": self.http_port,
             "GRPC_PORT": self.grpc_port,
