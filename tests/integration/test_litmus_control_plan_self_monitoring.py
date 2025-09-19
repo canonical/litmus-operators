@@ -2,11 +2,13 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import subprocess
 import pytest
 import requests
 from jubilant import Juju, all_active
 from tenacity import retry, stop_after_attempt, wait_fixed
 from tests.integration.helpers import (
+    CHAOSCENTER_APP,
     deploy_control_plane,
     COMPONENTS,
     get_unit_ip_address,
@@ -46,6 +48,9 @@ def test_logging_integration(juju: Juju):
     # GIVEN a litmus cluster integrated with loki over logging
     address = get_unit_ip_address(juju, LOKI_APP, 0)
     # WHEN we query the logs for each component
+    # (we need to stimulate chaoscenter to generate some logs)
+    cmd = f"curl -X GET http://{get_unit_ip_address(juju, CHAOSCENTER_APP, 0)}:8185"
+    subprocess.getoutput(cmd)
     # Use query_range for a longer default time interval
     url = f"http://{address}:3100/loki/api/v1/query_range"
     for component in COMPONENTS:
