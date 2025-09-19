@@ -40,6 +40,10 @@ def test_auth_server__is_running(juju: Juju):
     assert response == {"database": "up", "collections": "up"}
 
 
+def test_workload_version_is_set(juju: Juju):
+    assert juju.status().apps[APP].version
+
+
 @pytest.mark.teardown
 def test_teardown(juju: Juju):
     juju.remove_application(MONGO_APP)

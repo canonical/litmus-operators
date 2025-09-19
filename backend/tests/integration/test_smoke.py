@@ -41,6 +41,10 @@ def test_backend_is_running(juju: Juju):
     check_call(shlex.split(cmd))
 
 
+def test_workload_version_is_set(juju: Juju):
+    assert juju.status().apps[APP].version
+
+
 @pytest.mark.teardown
 def test_teardown(juju: Juju):
     juju.remove_application(MONGO_APP)

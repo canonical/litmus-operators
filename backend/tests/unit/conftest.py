@@ -9,6 +9,12 @@ from charm import LitmusBackendCharm
 from certificates_helpers import mock_cert_and_key
 
 
+@pytest.fixture(autouse=True)
+def patch_workload_version():
+    with patch("litmus_backend.get_litmus_version", return_value="1.0") as mock:
+        yield mock
+
+
 @pytest.fixture
 def backend_charm():
     with patch(

@@ -4,12 +4,13 @@
 
 """Control Litmus Backend server running in a container under Pebble. Provides a LitmusBackend class."""
 
+import json
 import logging
 
 from ops import Container
 from ops.pebble import Layer
 from typing import Optional, Callable
-from litmus_libs import DatabaseConfig, TLSConfigData
+from litmus_libs import DatabaseConfig, TLSConfigData, get_litmus_version
 from litmus_libs.interfaces.litmus_auth import Endpoint
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,7 @@ class LitmusBackend:
         self.tls_config_getter = tls_config_getter
         self._auth_grpc_endpoint = auth_grpc_endpoint
         self._frontend_url = frontend_url
+        self._workload_version = get_litmus_version(self._container)
 
     def reconcile(self):
         """Unconditional control logic."""
@@ -52,9 +54,12 @@ class LitmusBackend:
     def _reconcile_workload_config(self):
         self._container.add_layer(self.name, self._pebble_layer, combine=True)
         # replan only if the available env var config is sufficient for the workload to run
-        if self._db_config:
+        if self._db_config and self._workload_version:
             self._container.replan()
         else:
+            logger.warning(
+                "cannot start/restart pebble service: missing database config or workload version.",
+            )
             self._container.stop(self.name)
 
     @property
@@ -76,6 +81,7 @@ class LitmusBackend:
 
     @property
     def _environment_vars(self) -> dict:
+        workload_version = self._workload_version or ""
         env = {
             "REST_PORT": self.http_port,
             "GRPC_PORT": self.grpc_port,
@@ -83,19 +89,18 @@ class LitmusBackend:
             "DEFAULT_HUB_BRANCH_NAME": "master",  # wokeignore:rule=master
             "ALLOWED_ORIGINS": ".*",
             "CONTAINER_RUNTIME_EXECUTOR": "k8sapi",
-            # TODO: is there a way to provide the version instead of hardcoding it below?
-            # https://github.com/canonical/litmus-operators/issues/16
-            "WORKFLOW_HELPER_IMAGE_VERSION": "3.20.0",
-            "INFRA_COMPATIBLE_VERSIONS": '["3.20.0"]',
-            "VERSION": "3.20.0",
+            "WORKFLOW_HELPER_IMAGE_VERSION": workload_version,
+            # are there other versions we should set along with the current workload version?
+            "INFRA_COMPATIBLE_VERSIONS": json.dumps([workload_version]),
+            "VERSION": workload_version,
             # TODO: use the rocks https://github.com/canonical/litmus-operators/issues/15
-            "SUBSCRIBER_IMAGE": "litmuschaos/litmusportal-subscriber:3.20.0",
-            "EVENT_TRACKER_IMAGE": "litmuschaos/litmusportal-event-tracker:3.20.0",
+            "SUBSCRIBER_IMAGE": f"litmuschaos/litmusportal-subscriber:{workload_version}",
+            "EVENT_TRACKER_IMAGE": f"litmuschaos/litmusportal-event-tracker:{workload_version}",
             "ARGO_WORKFLOW_CONTROLLER_IMAGE": "litmuschaos/workflow-controller:v3.3.1",
             "ARGO_WORKFLOW_EXECUTOR_IMAGE": "litmuschaos/argoexec:v3.3.1",
-            "LITMUS_CHAOS_OPERATOR_IMAGE": "litmuschaos/chaos-operator:3.20.0",
-            "LITMUS_CHAOS_RUNNER_IMAGE": "litmuschaos/chaos-runner:3.20.0",
-            "LITMUS_CHAOS_EXPORTER_IMAGE": "litmuschaos/chaos-exporter:3.20.0",
+            "LITMUS_CHAOS_OPERATOR_IMAGE": f"litmuschaos/chaos-operator:{workload_version}",
+            "LITMUS_CHAOS_RUNNER_IMAGE": f"litmuschaos/chaos-runner:{workload_version}",
+            "LITMUS_CHAOS_EXPORTER_IMAGE": f"litmuschaos/chaos-exporter:{workload_version}",
         }
 
         if db_config := self._db_config:
