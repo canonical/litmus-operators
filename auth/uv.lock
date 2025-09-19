@@ -288,7 +288,7 @@ requires-dist = [
     { name = "coverage", extras = ["toml"], marker = "extra == 'dev'" },
     { name = "cryptography" },
     { name = "jubilant", marker = "extra == 'dev'" },
-    { name = "litmus-libs", specifier = ">=0.0.4" },
+    { name = "litmus-libs", git = "https://github.com/canonical/litmus-operators?subdirectory=libs&rev=update-self-monitoring-module" },
     { name = "ops" },
     { name = "ops", extras = ["testing"], marker = "extra == 'dev'" },
     { name = "pyright", marker = "extra == 'dev'" },
@@ -302,16 +302,12 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "litmus-libs"
-version = "0.0.6"
-source = { registry = "https://pypi.org/simple" }
+version = "0.0+dev"
+source = { git = "https://github.com/canonical/litmus-operators?subdirectory=libs&rev=update-self-monitoring-module#691a03446f7ea7052b99eb2b02693fc44f6751c4" }
 dependencies = [
     { name = "cosl" },
     { name = "ops", extra = ["tracing"] },
     { name = "pydantic" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/6b/d1/06b13882a375a8d70c700a8afd8b1ff6b37768910f218ce2ceecf6cc08fa/litmus_libs-0.0.6.tar.gz", hash = "sha256:583ec85d0fa6c1e3afe654c459b095a230cb2aaa62944fc080bd45039a5746b3", size = 63541, upload_time = "2025-09-17T13:32:00.856Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/45/bf/ce3eeb19f52d895a6d51eacbd891e2b7400a74d0384d8ab87e9025463bcd/litmus_libs-0.0.6-py3-none-any.whl", hash = "sha256:b1aa3485450939ce875dc3044267af38b040fd9cc6a0ce52d97d4741812b316c", size = 17915, upload_time = "2025-09-17T13:31:59.493Z" },
 ]
 
 [[package]]
