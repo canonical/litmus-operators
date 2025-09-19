@@ -12,9 +12,15 @@ from pathlib import Path
 AUTH_APP = "auth"
 CHAOSCENTER_APP = "chaoscenter"
 BACKEND_APP = "backend"
+COMPONENTS = (AUTH_APP, CHAOSCENTER_APP, BACKEND_APP)
 MONGO_APP = "mongodb"
 SELF_SIGNED_CERTIFICATES_APP = "self-signed-certificates"
 TRAEFIK_APP = "traefik"
+LOKI_APP = "loki"
+TEMPO_APP = "tempo"
+TEMPO_WORKER_APP = "tempo-worker-all"
+S3_APP = "swfs"
+
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +55,18 @@ def _charm_and_channel_and_resources(
         )
     # else pack the charm
     return pack(Path() / role), None, get_resources(Path().parent / role)
+
+
+def deploy_self_monitoring_stack(juju: Juju):
+    logger.info("deploying tempo monolithic")
+    juju.deploy("tempo-coordinator-k8s", TEMPO_APP, channel="2/edge", trust=True)
+    juju.deploy("tempo-worker-k8s", TEMPO_WORKER_APP, channel="2/edge", trust=True)
+    juju.deploy("seaweedfs-k8s", S3_APP, channel="edge")
+    juju.integrate(TEMPO_APP, TEMPO_WORKER_APP)
+    juju.integrate(TEMPO_APP, S3_APP)
+
+    logger.info("deploying loki")
+    juju.deploy("loki-k8s", LOKI_APP, channel="2/edge", trust=True)
 
 
 def deploy_control_plane(
