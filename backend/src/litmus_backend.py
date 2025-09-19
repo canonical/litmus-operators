@@ -57,7 +57,7 @@ class LitmusBackend:
         if self._db_config and self._workload_version:
             self._container.replan()
         else:
-            logger.info(
+            logger.warning(
                 "cannot start/restart pebble service: missing database config or workload version.",
             )
             self._container.stop(self.name)
