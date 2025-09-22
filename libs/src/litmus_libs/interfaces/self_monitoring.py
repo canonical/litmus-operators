@@ -14,7 +14,6 @@ from litmus_libs.models import TLSConfigData
 _DEFAULT_ENDPOINT_MAPPING = {
     "charm-tracing": "charm-tracing",
     "logging": "logging",
-    "tls-certificates": "tls-certificates",
 }
 
 
@@ -39,7 +38,6 @@ class SelfMonitoring:
     _expected_interfaces = {
         "logging": "loki_push_api",
         "charm-tracing": "tracing",
-        "tls-certificates": "tls-certificates",
     }
 
     def __init__(

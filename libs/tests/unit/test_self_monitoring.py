@@ -17,7 +17,6 @@ class MyCharm(CharmBase):
         "requires": {
             "ch-tracing": {"interface": "tracing", "limit": 1},
             "logging": {"interface": "loki_push_api"},
-            "tls-certificates": {"interface": "tls-certificates"},
         },
     }
 
