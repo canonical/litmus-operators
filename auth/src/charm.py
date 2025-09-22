@@ -184,7 +184,7 @@ class LitmusAuthCharm(CharmBase):
         self._tls_certificates.sync()
         self._tls.reconcile()
         self._self_monitoring.reconcile(
-            ca_cert=self._tls_config.ca_cert if self._tls_ready else None
+            ca_cert=self._tls_config.ca_cert if self._tls_config else None
         )
         self.litmus_auth.reconcile()
         self.unit.set_ports(*self.litmus_auth.litmus_auth_ports)
