@@ -46,11 +46,15 @@ def test_charm_tracing_integration(juju: Juju):
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
 def test_logging_integration(juju: Juju):
     # GIVEN a litmus cluster integrated with loki over logging
-    address = get_unit_ip_address(juju, LOKI_APP, 0)
+    def _trigger_chaoscenter_logs():
+        cmd = f"curl -X GET http://{get_unit_ip_address(juju, CHAOSCENTER_APP, 0)}:8185"
+        subprocess.getoutput(cmd)
+
+    # we need to trigger chaoscenter to generate some logs
+    _trigger_chaoscenter_logs()
+
     # WHEN we query the logs for each component
-    # (we need to stimulate chaoscenter to generate some logs)
-    cmd = f"curl -X GET http://{get_unit_ip_address(juju, CHAOSCENTER_APP, 0)}:8185"
-    subprocess.getoutput(cmd)
+    address = get_unit_ip_address(juju, LOKI_APP, 0)
     # Use query_range for a longer default time interval
     url = f"http://{address}:3100/loki/api/v1/query_range"
     for component in COMPONENTS:
