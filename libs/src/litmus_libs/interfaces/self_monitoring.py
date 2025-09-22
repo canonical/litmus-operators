@@ -5,12 +5,13 @@
 from typing import Dict, Optional
 
 import ops
+import ops_tracing
 from charms.loki_k8s.v1.loki_push_api import LogForwarder
+from charms.tempo_coordinator_k8s.v0.tracing import TracingEndpointRequirer
 
 _DEFAULT_ENDPOINT_MAPPING = {
     "charm-tracing": "charm-tracing",
     "logging": "logging",
-    "cert-transfer": "cert-transfer",
 }
 
 
@@ -35,7 +36,6 @@ class SelfMonitoring:
     _expected_interfaces = {
         "logging": "loki_push_api",
         "charm-tracing": "tracing",
-        "cert-transfer": "certificate_transfer",
     }
 
     def __init__(
@@ -52,10 +52,10 @@ class SelfMonitoring:
         # this injects a pebble-forwarding layer in all sidecars that this charm owns
         self._log_forwarder = LogForwarder(charm, relation_name=endpoint_mapping["logging"])
         # this sets up charm tracing with ops.tracing.
-        self._charm_tracing = ops.tracing.Tracing(
+        self._charm_tracing = TracingEndpointRequirer(
             charm,
-            tracing_relation_name=endpoint_mapping["charm-tracing"],
-            ca_relation_name=endpoint_mapping.get("cert-transfer", None),
+            relation_name=endpoint_mapping["charm-tracing"],
+            protocols=["otlp_http"],
         )
 
     def _validate_endpoints(self, charm: ops.CharmBase, endpoint_mapping: Dict[str, str]):
@@ -74,3 +74,14 @@ class SelfMonitoring:
                     f"Declared charm endpoint {custom_name}({internal_name}) has wrong interface name in metadata.yaml "
                     f"(expected {self._expected_interfaces[internal_name]}, got {ep_meta.interface_name})"
                 )
+
+    def reconcile(self, ca_cert: Optional[str]):
+        """Unconditional logic related to self-monitoring to run regardless of the event we are processing."""
+        if self._charm_tracing.is_ready():
+            endpoint = self._charm_tracing.get_endpoint("otlp_http")
+            if not endpoint:
+                return
+            ops_tracing.set_destination(
+                url=endpoint + "/v1/traces",
+                ca=ca_cert,
+            )
