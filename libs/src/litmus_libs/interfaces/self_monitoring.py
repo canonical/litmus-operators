@@ -2,14 +2,12 @@
 # See LICENSE file for licensing details.
 """Generic self-monitoring integration wrappers for all litmus charms."""
 
-from typing import Callable, Dict, Optional
+from typing import Dict, Optional
 
 import ops
 import ops_tracing
 from charms.loki_k8s.v1.loki_push_api import LogForwarder
 from charms.tempo_coordinator_k8s.v0.tracing import TracingEndpointRequirer
-
-from litmus_libs.models import TLSConfigData
 
 _DEFAULT_ENDPOINT_MAPPING = {
     "charm-tracing": "charm-tracing",
@@ -43,11 +41,8 @@ class SelfMonitoring:
     def __init__(
         self,
         charm: ops.CharmBase,
-        tls_config_getter: Callable[[], Optional[TLSConfigData]],
         endpoint_overrides: Optional[Dict[str, str]] = None,
     ):
-        self._tls_config_getter = tls_config_getter
-
         endpoint_mapping = _DEFAULT_ENDPOINT_MAPPING.copy()
         if endpoint_overrides:
             endpoint_mapping.update(endpoint_overrides)
@@ -80,14 +75,13 @@ class SelfMonitoring:
                     f"(expected {self._expected_interfaces[internal_name]}, got {ep_meta.interface_name})"
                 )
 
-    def reconcile(self):
+    def reconcile(self, ca_cert: Optional[str]):
         """Unconditional logic related to self-monitoring to run regardless of the event we are processing."""
         if self._charm_tracing.is_ready():
             endpoint = self._charm_tracing.get_endpoint("otlp_http")
             if not endpoint:
                 return
-            tls_config = self._tls_config_getter()
             ops_tracing.set_destination(
                 url=endpoint + "/v1/traces",
-                ca=tls_config.ca_cert if tls_config else None,
+                ca=ca_cert,
             )

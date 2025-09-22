@@ -1,7 +1,7 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from ops import CharmBase
@@ -27,11 +27,7 @@ class MyCharm(CharmBase):
             endpoint_overrides={
                 "charm-tracing": "ch-tracing",  # non-default!
             },
-            tls_config_getter=self.tls_config_getter,
         )
-
-    def tls_config_getter(self):
-        return None
 
 
 @pytest.mark.parametrize(
@@ -63,17 +59,6 @@ def ctx():
     return Context(MyCharm, meta=MyCharm.META)
 
 
-@pytest.fixture
-def ctx_with_tls():
-    class MyCharmWithTls(MyCharm):
-        def tls_config_getter(self):
-            tls_config_mock = MagicMock()
-            tls_config_mock.ca_cert = "ca"
-            return tls_config_mock
-
-    return Context(MyCharmWithTls, meta=MyCharm.META)
-
-
 def test_tracing_integration(ctx):
     # GIVEN a tracing relation
     tracing_relation = Relation("ch-tracing")
@@ -98,8 +83,8 @@ def test_tracing_integration(ctx):
 
 
 @pytest.mark.parametrize("tls", (False, True))
-def test_charm_tracing_reconcile(ctx, ctx_with_tls, tls):
-    ctx_to_use = ctx_with_tls if tls else ctx
+def test_charm_tracing_reconcile(ctx, tls):
+    expected_ca = "ca" if tls else None
     # GIVEN a charm tracing relation with remote data
     expected_url = f"http{'s' if tls else ''}://hostname:4318"
     charm_tracing_relation = Relation(
@@ -113,14 +98,12 @@ def test_charm_tracing_reconcile(ctx, ctx_with_tls, tls):
     state = State(leader=True, relations=[charm_tracing_relation])
     # WHEN we receive any event
     with patch("ops_tracing.set_destination") as ops_tracing_mock:
-        with ctx_to_use(ctx_to_use.on.update_status(), state) as mgr:
+        with ctx(ctx.on.update_status(), state) as mgr:
             charm = mgr.charm
             # AND we call self._self_monitoring.reconcile()
-            charm._self_monitoring.reconcile()
+            charm._self_monitoring.reconcile(ca_cert=expected_ca)
             # THEN the charm has called ops_tracing.set_destination with the expected params
-            ops_tracing_mock.assert_called_with(
-                url=f"{expected_url}/v1/traces", ca="ca" if tls else None
-            )
+            ops_tracing_mock.assert_called_with(url=f"{expected_url}/v1/traces", ca=expected_ca)
 
 
 def test_logging_integration(ctx):
