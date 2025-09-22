@@ -88,9 +88,7 @@ class LitmusAuthCharm(CharmBase):
             tls_ca_path=TLS_CA_PATH,
             backend_grpc_endpoint=self.backend_grpc_endpoint,
         )
-        self._self_monitoring = SelfMonitoring(
-            self, tls_config_getter=lambda: self._tls_config
-        )
+        self._self_monitoring = SelfMonitoring(self)
 
         self.framework.observe(
             self.on.collect_unit_status, self._on_collect_unit_status
@@ -185,6 +183,9 @@ class LitmusAuthCharm(CharmBase):
         """Run all logic that is independent of what event we're processing."""
         self._tls_certificates.sync()
         self._tls.reconcile()
+        self._self_monitoring.reconcile(
+            ca_cert=self._tls_config.ca_cert if self._tls_ready else None
+        )
         self.litmus_auth.reconcile()
         self.unit.set_ports(*self.litmus_auth.litmus_auth_ports)
         self.unit.set_workload_version(
@@ -199,7 +200,6 @@ class LitmusAuthCharm(CharmBase):
                 )
             )
             self._send_http_api.publish_endpoint(self._http_api_endpoint)
-        self._self_monitoring.reconcile()
 
     @property
     def _tls_ready(self) -> bool:

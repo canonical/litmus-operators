@@ -73,10 +73,7 @@ class LitmusChaoscenterCharm(CharmBase):
             container_name="chaoscenter",
         )
 
-        self._self_monitoring = SelfMonitoring(
-            self,
-            tls_config_getter=lambda: self._tls_config,  # type: ignore
-        )
+        self._self_monitoring = SelfMonitoring(self)
 
         self.framework.observe(
             self.on.collect_unit_status, self._on_collect_unit_status
@@ -181,6 +178,9 @@ class LitmusChaoscenterCharm(CharmBase):
             )
             or ""
         )
+        self._self_monitoring.reconcile(
+            ca_cert=self._tls_config.ca_cert if self._tls_config else None
+        )
         if self.backend_url and self.auth_url:
             self.nginx.reconcile()
         if self.unit.is_leader() and self.ingress.is_ready():
@@ -190,7 +190,6 @@ class LitmusChaoscenterCharm(CharmBase):
                 ),
                 static=static_ingress_config(),
             )
-        self._self_monitoring.reconcile()
 
     @property
     def _certificate_request_attributes(self) -> CertificateRequestAttributes:
