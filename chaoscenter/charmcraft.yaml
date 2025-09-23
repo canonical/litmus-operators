@@ -55,6 +55,27 @@ requires:
   ingress:
     interface: traefik_route
     limit: 1
+  service-mesh:
+    limit: 1
+    optional: true
+    interface: service_mesh
+    description: |
+      Subscribe this charm into a service mesh to enforce authorization policies.
+  require-cmr-mesh:
+    interface: cross_model_mesh
+    optional: true
+    description: |
+      Allow a cross-model application access to this one via the service mesh.
+      This relation provides additional data required by the service mesh to enforce cross-model authorization policies.
+
+
+provides:
+  provide-cmr-mesh:
+    optional: true
+    interface: cross_model_mesh
+    description: |
+      Access a cross-model application from this app via the service mesh.
+      This relation provides additional data required by the service mesh to enforce cross-model authorization policies.
 
 
 links:

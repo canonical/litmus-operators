@@ -100,22 +100,24 @@ class LitmusAuthCharm(CharmBase):
                         ),
                     ],
                 ),
-                service_mesh.AppPolicy(
-                    relation=LITMUS_AUTH_ENDPOINT,
-                    endpoints=[
-                        service_mesh.Endpoint(
-                            ports=[
-                                LitmusAuth.grpc_port,
-                                LitmusAuth.grpc_tls_port,
-                            ],  # TODO: do we really need grpc-tls-port too?
-                            # TODO: fine-grained access controls for grpc calls?
-                            # methods=[
-                            #     Method.get
-                            # ],
-                            # paths=["/data"],
-                        ),
-                    ],
-                ),
+                # TODO: GRPC routes are handled differently;
+                #  likely we'll need to craft our own policy and apply it manually; ask andrew
+                # service_mesh.AppPolicy(
+                #     relation=LITMUS_AUTH_ENDPOINT,
+                #     endpoints=[
+                #         service_mesh.Endpoint(
+                #             ports=[
+                #                 LitmusAuth.grpc_port,
+                #                 LitmusAuth.grpc_tls_port,
+                #             ],  # TODO: do we really need grpc-tls-port too?
+                #             # TODO: fine-grained access controls for grpc calls?
+                #             # methods=[
+                #             #     Method.get
+                #             # ],
+                #             # paths=["/data"],
+                #         ),
+                #     ],
+                # ),
                 # UnitPolicy(
                 #     relation="metrics",
                 #     ports=[HTTP_LISTEN_PORT],

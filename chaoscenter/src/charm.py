@@ -29,6 +29,7 @@ from nginx_config import get_config, http_server_port
 from traefik_config import ingress_config, static_ingress_config
 
 from charms.traefik_k8s.v0.traefik_route import TraefikRouteRequirer
+from charms.istio_beacon_k8s.v0 import service_mesh
 
 from litmus_libs import get_app_hostname, get_litmus_version
 from litmus_libs.interfaces.http_api import (
@@ -59,6 +60,10 @@ class LitmusChaoscenterCharm(CharmBase):
             relationship_name=TLS_CERTIFICATES_ENDPOINT,
             certificate_requests=[self._certificate_request_attributes],
         )
+
+        # no policies: we don't have an externally-available API (which isn't an ingressed UI)
+        self._mesh = service_mesh.ServiceMeshConsumer(self)
+
         self.ingress = TraefikRouteRequirer(
             self,
             self.model.get_relation("ingress"),  # type: ignore
