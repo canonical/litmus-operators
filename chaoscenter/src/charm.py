@@ -35,7 +35,7 @@ from litmus_libs.interfaces.http_api import (
     LitmusAuthApiRequirer,
     LitmusBackendApiRequirer,
 )
-
+from litmus_libs.interfaces.self_monitoring import SelfMonitoring
 
 logger = logging.getLogger(__name__)
 AUTH_HTTP_API_ENDPOINT = "auth-http-api"
@@ -72,6 +72,8 @@ class LitmusChaoscenterCharm(CharmBase):
             options=None,
             container_name="chaoscenter",
         )
+
+        self._self_monitoring = SelfMonitoring(self)
 
         self.framework.observe(
             self.on.collect_unit_status, self._on_collect_unit_status
@@ -175,6 +177,9 @@ class LitmusChaoscenterCharm(CharmBase):
                 container=self.unit.get_container("chaoscenter"),
             )
             or ""
+        )
+        self._self_monitoring.reconcile(
+            ca_cert=self._tls_config.ca_cert if self._tls_config else None
         )
         if self.backend_url and self.auth_url:
             self.nginx.reconcile()

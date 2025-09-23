@@ -33,6 +33,7 @@ from charms.data_platform_libs.v0.data_interfaces import (
 
 from typing import Optional
 from litmus_libs.interfaces.http_api import LitmusBackendApiProvider
+from litmus_libs.interfaces.self_monitoring import SelfMonitoring
 
 DATABASE_ENDPOINT = "database"
 LITMUS_AUTH_ENDPOINT = "litmus-auth"
@@ -90,6 +91,8 @@ class LitmusBackendCharm(CharmBase):
             auth_grpc_endpoint=self.auth_grpc_endpoint,
             frontend_url=self.frontend_url,
         )
+
+        self._self_monitoring = SelfMonitoring(self)
 
         self.framework.observe(
             self.on.collect_unit_status, self._on_collect_unit_status
@@ -192,6 +195,9 @@ class LitmusBackendCharm(CharmBase):
         """Run all logic that is independent of what event we're processing."""
         self._tls_certificates.sync()
         self._tls.reconcile()
+        self._self_monitoring.reconcile(
+            ca_cert=self._tls_config.ca_cert if self._tls_config else None
+        )
         self.litmus_backend.reconcile()
         self.unit.set_ports(*self.litmus_backend.litmus_backend_ports)
         self.unit.set_workload_version(

@@ -29,6 +29,7 @@ from litmus_libs import (
     get_litmus_version,
 )
 from litmus_libs.interfaces.http_api import LitmusAuthApiProvider
+from litmus_libs.interfaces.self_monitoring import SelfMonitoring
 
 DATABASE_ENDPOINT = "database"
 LITMUS_AUTH_ENDPOINT = "litmus-auth"
@@ -87,6 +88,7 @@ class LitmusAuthCharm(CharmBase):
             tls_ca_path=TLS_CA_PATH,
             backend_grpc_endpoint=self.backend_grpc_endpoint,
         )
+        self._self_monitoring = SelfMonitoring(self)
 
         self.framework.observe(
             self.on.collect_unit_status, self._on_collect_unit_status
@@ -181,6 +183,9 @@ class LitmusAuthCharm(CharmBase):
         """Run all logic that is independent of what event we're processing."""
         self._tls_certificates.sync()
         self._tls.reconcile()
+        self._self_monitoring.reconcile(
+            ca_cert=self._tls_config.ca_cert if self._tls_config else None
+        )
         self.litmus_auth.reconcile()
         self.unit.set_ports(*self.litmus_auth.litmus_auth_ports)
         self.unit.set_workload_version(

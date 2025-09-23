@@ -49,6 +49,18 @@ requires:
     limit: 1
     description: |
       Receive TLS certificates.
+  charm-tracing:
+    optional: true
+    interface: tracing
+    description: |
+      Request a tracing endpoint through which this application will send its charm traces to a 
+      tracing backend.
+    limit: 1
+  logging:
+    optional: true
+    interface: loki_push_api
+    description: |
+      Request a loki-push-api endpoint to push workload container application logs to.
 
 provides:
   litmus-auth:

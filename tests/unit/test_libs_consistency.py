@@ -8,6 +8,7 @@ REPO_ROOT = Path(__file__).parent.parent.parent
 PROJECTS = ["chaoscenter", "auth", "backend"]
 REQUIRED_CHARMLIBS = [
     "charms.loki_k8s.v1.loki_push_api",
+    "charms.tempo_coordinator_k8s.v0.tracing",
 ]
 
 _LIBPATCH_RE = re.compile(r".*/lib/(.+)\.py:\d+:LIBPATCH = (\d+).*")
