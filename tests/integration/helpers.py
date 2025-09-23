@@ -13,6 +13,7 @@ AUTH_APP = "auth"
 CHAOSCENTER_APP = "chaoscenter"
 BACKEND_APP = "backend"
 MONGO_APP = "mongodb"
+ISTIO_BEACON_APP = "istio-beacon"
 SELF_SIGNED_CERTIFICATES_APP = "self-signed-certificates"
 TRAEFIK_APP = "traefik"
 
@@ -54,6 +55,7 @@ def _charm_and_channel_and_resources(
 def deploy_control_plane(
     juju: Juju,
     with_tls: bool = False,
+    with_mesh: bool = False,
     with_traefik: bool = False,
     wait_for_idle: bool = True,
 ):
@@ -86,6 +88,14 @@ def deploy_control_plane(
         juju.deploy("traefik-k8s", channel="latest/edge", app=TRAEFIK_APP, trust=True)
         juju.integrate(TRAEFIK_APP, f"{CHAOSCENTER_APP}:ingress")
         apps_to_wait_for.append(TRAEFIK_APP)
+
+    if with_mesh:
+        juju.deploy(
+            "istio-beacon-k8s", channel="2/edge", app=ISTIO_BEACON_APP, trust=True
+        )
+        juju.integrate(ISTIO_BEACON_APP, f"{AUTH_APP}:service-mesh")
+        juju.integrate(ISTIO_BEACON_APP, f"{BACKEND_APP}:service-mesh")
+        apps_to_wait_for.append(ISTIO_BEACON_APP)
 
     if with_tls:
         juju.deploy(SELF_SIGNED_CERTIFICATES_APP, app=SELF_SIGNED_CERTIFICATES_APP)

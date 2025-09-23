@@ -11,6 +11,9 @@ dependencies = [
     "cosl",
     "cryptography",
     "litmus-libs>=0.0.4",
+    # required by mesh charmlib
+    "httpx",
+    "lightkube"
 ]
 
 [project.optional-dependencies]

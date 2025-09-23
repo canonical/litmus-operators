@@ -15,7 +15,7 @@ from charms.tls_certificates_interface.v4.tls_certificates import (
 from litmus_backend import LitmusBackend
 from ops import ActiveStatus, CollectStatusEvent, BlockedStatus
 
-from litmus_libs.interfaces.litmus_auth import LitmusAuthRequirer, Endpoint
+from litmus_libs.interfaces import litmus_auth
 from litmus_libs import (
     DatabaseConfig,
     TLSConfigData,
@@ -30,14 +30,16 @@ from pydantic_core import ValidationError
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseRequires,
 )
+from charms.istio_beacon_k8s.v0 import service_mesh
 
 from typing import Optional
 from litmus_libs.interfaces.http_api import LitmusBackendApiProvider
 
 DATABASE_ENDPOINT = "database"
 LITMUS_AUTH_ENDPOINT = "litmus-auth"
+HTTP_API_ENDPOINT = "http-api"
 TLS_CERTIFICATES_ENDPOINT = "tls-certificates"
-# TODO: Put cert paths in the tls_reconciler module in litmus-libs
+
 TLS_CERT_PATH = "/etc/tls/tls.crt"
 TLS_KEY_PATH = "/etc/tls/tls.key"
 TLS_CA_PATH = "/usr/local/share/ca-certificates/ca.crt"
@@ -59,7 +61,7 @@ class LitmusBackendCharm(CharmBase):
             # cfr. https://github.com/canonical/mongo-single-kernel-library/blob/6/edge/single_kernel_mongo/utils/mongodb_users.py#L52
             extra_user_roles="admin",
         )
-        self._auth = LitmusAuthRequirer(
+        self._auth = litmus_auth.LitmusAuthRequirer(
             self.model.get_relation(LITMUS_AUTH_ENDPOINT),
             self.app,
         )
@@ -70,7 +72,7 @@ class LitmusBackendCharm(CharmBase):
         )
 
         self._send_http_api = LitmusBackendApiProvider(
-            self.model.get_relation("http-api"), app=self.app
+            self.model.get_relation(HTTP_API_ENDPOINT), app=self.app
         )
 
         self._tls = TlsReconciler(
@@ -80,6 +82,33 @@ class LitmusBackendCharm(CharmBase):
             tls_ca_path=TLS_CA_PATH,
             tls_config_getter=lambda: self._tls_config,
         )
+
+        self._mesh = service_mesh.ServiceMeshConsumer(
+            self,
+            policies=[
+                service_mesh.AppPolicy(
+                    relation=HTTP_API_ENDPOINT,
+                    endpoints=[
+                        service_mesh.Endpoint(
+                            ports=[
+                                LitmusBackend.http_port,
+                                LitmusBackend.https_port,
+                            ],  # TODO: do we really need https_port too?
+                            # TODO: fine-grained access controls for paths and HTTP methods
+                            # methods=[
+                            #     Method.get
+                            # ],
+                            # paths=["/data"],
+                        ),
+                    ],
+                ),
+                # UnitPolicy(
+                #     relation="metrics",
+                #     ports=[HTTP_LISTEN_PORT],
+                # ),
+            ],
+        )
+
         self.litmus_backend = LitmusBackend(
             container=self.unit.get_container(LitmusBackend.name),
             db_config=self.database_config,
@@ -111,7 +140,7 @@ class LitmusBackendCharm(CharmBase):
             return None
 
     @property
-    def auth_grpc_endpoint(self) -> Optional[Endpoint]:
+    def auth_grpc_endpoint(self) -> Optional[litmus_auth.Endpoint]:
         """Auth gRPC endpoint."""
         return self._auth.get_auth_grpc_endpoint()
 
@@ -199,7 +228,7 @@ class LitmusBackendCharm(CharmBase):
         )
         if self.unit.is_leader():
             self._auth.publish_endpoint(
-                Endpoint(
+                litmus_auth.Endpoint(
                     grpc_server_host=get_app_hostname(self.app.name, self.model.name),
                     grpc_server_port=self._grpc_port,
                     insecure=False if self._tls_ready else True,

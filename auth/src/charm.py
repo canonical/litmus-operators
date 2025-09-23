@@ -20,7 +20,9 @@ from pydantic_core import ValidationError
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseRequires,
 )
-from litmus_libs.interfaces.litmus_auth import LitmusAuthProvider, Endpoint
+from charms.istio_beacon_k8s.v0 import service_mesh
+
+from litmus_libs.interfaces import litmus_auth
 from litmus_libs import (
     DatabaseConfig,
     TLSConfigData,
@@ -32,8 +34,9 @@ from litmus_libs.interfaces.http_api import LitmusAuthApiProvider
 
 DATABASE_ENDPOINT = "database"
 LITMUS_AUTH_ENDPOINT = "litmus-auth"
+HTTP_API_ENDPOINT = "http-api"
 TLS_CERTIFICATES_ENDPOINT = "tls-certificates"
-# TODO: Put cert paths in the tls_reconciler module in litmus-libs
+
 TLS_CERT_PATH = "/etc/tls/tls.crt"
 TLS_KEY_PATH = "/etc/tls/tls.key"
 TLS_CA_PATH = "/usr/local/share/ca-certificates/ca.crt"
@@ -47,7 +50,7 @@ class LitmusAuthCharm(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
 
-        self._auth_provider = LitmusAuthProvider(
+        self._auth_provider = litmus_auth.LitmusAuthProvider(
             self.model.get_relation(LITMUS_AUTH_ENDPOINT),
             self.app,
         )
@@ -68,7 +71,7 @@ class LitmusAuthCharm(CharmBase):
         )
 
         self._send_http_api = LitmusAuthApiProvider(
-            self.model.get_relation("http-api"), app=self.app
+            self.model.get_relation(HTTP_API_ENDPOINT), app=self.app
         )
 
         self._tls = TlsReconciler(
@@ -78,6 +81,48 @@ class LitmusAuthCharm(CharmBase):
             tls_ca_path=TLS_CA_PATH,
             tls_config_getter=lambda: self._tls_config,
         )
+        self._mesh = service_mesh.ServiceMeshConsumer(
+            self,
+            policies=[
+                service_mesh.AppPolicy(
+                    relation=HTTP_API_ENDPOINT,
+                    endpoints=[
+                        service_mesh.Endpoint(
+                            ports=[
+                                LitmusAuth.http_port,
+                                LitmusAuth.https_port,
+                            ],  # TODO: do we really need https_port too?
+                            # TODO: fine-grained access controls for paths and HTTP methods
+                            # methods=[
+                            #     Method.get
+                            # ],
+                            # paths=["/data"],
+                        ),
+                    ],
+                ),
+                service_mesh.AppPolicy(
+                    relation=LITMUS_AUTH_ENDPOINT,
+                    endpoints=[
+                        service_mesh.Endpoint(
+                            ports=[
+                                LitmusAuth.grpc_port,
+                                LitmusAuth.grpc_tls_port,
+                            ],  # TODO: do we really need grpc-tls-port too?
+                            # TODO: fine-grained access controls for grpc calls?
+                            # methods=[
+                            #     Method.get
+                            # ],
+                            # paths=["/data"],
+                        ),
+                    ],
+                ),
+                # UnitPolicy(
+                #     relation="metrics",
+                #     ports=[HTTP_LISTEN_PORT],
+                # ),
+            ],
+        )
+
         self.litmus_auth = LitmusAuth(
             container=self.unit.get_container(LitmusAuth.name),
             db_config=self.database_config,
@@ -107,7 +152,7 @@ class LitmusAuthCharm(CharmBase):
             return None
 
     @property
-    def backend_grpc_endpoint(self) -> Optional[Endpoint]:
+    def backend_grpc_endpoint(self) -> Optional[litmus_auth.Endpoint]:
         return self._auth_provider.get_backend_grpc_endpoint()
 
     ##################
@@ -188,7 +233,7 @@ class LitmusAuthCharm(CharmBase):
         )
         if self.unit.is_leader():
             self._auth_provider.publish_endpoint(
-                Endpoint(
+                litmus_auth.Endpoint(
                     grpc_server_host=get_app_hostname(self.app.name, self.model.name),
                     grpc_server_port=self._grpc_port,
                     insecure=False if self._tls_ready else True,
