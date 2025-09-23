@@ -95,6 +95,7 @@ def deploy_control_plane(
         )
         juju.integrate(ISTIO_BEACON_APP, f"{AUTH_APP}:service-mesh")
         juju.integrate(ISTIO_BEACON_APP, f"{BACKEND_APP}:service-mesh")
+        juju.integrate(ISTIO_BEACON_APP, f"{CHAOSCENTER_APP}:service-mesh")
         apps_to_wait_for.append(ISTIO_BEACON_APP)
 
     if with_tls:
