@@ -24,7 +24,7 @@ def juju():
 def test_terraform_apply(juju):
     subprocess.check_call(["terraform", f"-chdir={TESTS_DIR}", "init"])
     subprocess.check_call(
-        f"terraform -chdir={TESTS_DIR} apply -var \"model={juju.model}\" -auto-approve",
+        f'terraform -chdir={TESTS_DIR} apply -var "model={juju.model}" -auto-approve',
         shell=True,
     )
 
