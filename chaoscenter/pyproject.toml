@@ -9,7 +9,10 @@ dependencies = [
     "litmus-libs==0.0.8",
     "ops",
     "cryptography>=45.0.7",
-    "coordinated-workers",
+    # FIXME: use package from pypi
+    "coordinated-workers@git+https://github.com/canonical/cos-coordinated-workers@enable-nginx-tracing",
+    # for juju topology
+    "cosl",
 ]
 
 [project.optional-dependencies]
@@ -23,6 +26,7 @@ dev = [
 #   INTEGRATION TESTS
     "jubilant",
     "pytest-jubilant>=0.2.1",
+    "requests",
 
 #   LINTING
     "pyright",

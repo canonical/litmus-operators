@@ -23,6 +23,7 @@ from coordinated_workers.nginx import (
     Nginx,
     NginxPrometheusExporter,
     NginxMappingOverrides,
+    NginxTracingConfig,
 )
 
 from litmus_libs.status_manager import StatusManager
@@ -37,6 +38,9 @@ from litmus_libs.interfaces.http_api import (
     LitmusBackendApiRequirer,
 )
 from litmus_libs.interfaces.self_monitoring import SelfMonitoring
+from charms.tempo_coordinator_k8s.v0.tracing import TracingEndpointRequirer
+from cosl import JujuTopology
+
 
 logger = logging.getLogger(__name__)
 AUTH_HTTP_API_ENDPOINT = "auth-http-api"
@@ -71,6 +75,12 @@ class LitmusChaoscenterCharm(CharmBase):
             "ingress",
         )
 
+        self._workload_tracing = TracingEndpointRequirer(
+            self,
+            relation_name="workload-tracing",
+            protocols=["otlp_grpc"],
+        )
+
         self.nginx = Nginx(
             self,
             config_getter=self._nginx_config,
@@ -100,12 +110,30 @@ class LitmusChaoscenterCharm(CharmBase):
     # CONFIG METHODS #
     ##################
 
+    def _nginx_tracing_config(self) -> Optional[NginxTracingConfig]:
+        endpoint = self._workload_tracing_endpoint
+        return (
+            NginxTracingConfig(
+                endpoint=endpoint,
+                service_name=f"{self.app.name}-workload",  # append "-workload" suffix to distinguish workload traces from charm traces
+                # insert juju topology into the trace resource attributes
+                resource_attributes={
+                    "juju_{}".format(key): value
+                    for key, value in JujuTopology.from_charm(self).as_dict().items()
+                    if value
+                },
+            )
+            if endpoint
+            else None
+        )
+
     def _nginx_config(self, tls: bool) -> str:
         return get_config(
             hostname=socket.getfqdn(),
             auth_url=self.auth_url,
             backend_url=self.backend_url,
             tls_available=tls,
+            tracing_config=self._nginx_tracing_config(),
         )
 
     ##################
@@ -216,6 +244,13 @@ class LitmusChaoscenterCharm(CharmBase):
             private_key=private_key.raw,
             ca_cert=certificates.ca.raw,
         )
+
+    @property
+    def _workload_tracing_endpoint(self) -> Optional[str]:
+        if self._workload_tracing.is_ready():
+            endpoint = self._workload_tracing.get_endpoint("otlp_grpc")
+            return endpoint
+        return None
 
 
 if __name__ == "__main__":  # pragma: nocover

@@ -309,3 +309,49 @@ def test_generated_ssl_config_matches_expected_config(
         Path(__file__).parent / "resources" / "sample_nginx_litmus_ssl.conf"
     )
     assert sample_config_path.read_text() == generated_config
+
+
+def test_config_contains_tracing_config(
+    ctx,
+    nginx_container,
+    auth_http_api_relation,
+    backend_http_api_relation,
+    workload_tracing_relation,
+):
+    # GIVEN chaoscenter related to backend, auth, and a tracing backend
+    state_out = ctx.run(
+        ctx.on.update_status(),
+        state=State(
+            leader=True,
+            relations={
+                auth_http_api_relation,
+                backend_http_api_relation,
+                workload_tracing_relation,
+            },
+            containers={nginx_container},
+        ),
+    )
+
+    # WHEN we peek into the generated nginx config
+    nginx_container_out = state_out.get_container(nginx_container.name)
+    nginx_config_path = nginx_container_out.get_filesystem(ctx) / NGINX_CONFIG[1:]
+
+    config = nginx_config_path.read_text()
+
+    # THEN it contains the tracing block configuration
+    assert "load_module /etc/nginx/modules/ngx_otel_module.so;" in config
+    assert "otel_trace on;" in config
+    assert "otel_trace_context propagate;" in config
+    assert "otel_exporter" in config
+    assert "endpoint foo.bar:4317;" in config
+    # AND otel_service_name is set to <app_name>-workload
+    assert "otel_service_name chaoscenter-workload;"
+    # AND juju topology is inserted as resource attributes
+    for key in {
+        "juju_model",
+        "juju_application",
+        "juju_model_uuid",
+        "juju_unit",
+        "juju_charm_name",
+    }:
+        assert f"otel_resource_attr {key}" in config
