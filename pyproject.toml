@@ -4,14 +4,16 @@
 name = "litmus-k8s"
 version = "0.1"  # this is in fact irrelevant
 requires-python = ">=3.12, <4"
+dependencies = []
 
 [dependency-groups]
 dev = [
     # itests
     "jubilant >=1",
+    "pytest-bdd>=8.1.0",
     "pytest-jubilant ~=1.0",
     "tenacity",
-    ]
+]
 
 unittest = [
     "pytest",

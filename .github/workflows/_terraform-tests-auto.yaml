@@ -1,0 +1,62 @@
+name: Terraform module tests (auto)
+
+on:
+  workflow_call:
+    inputs:
+      terraform-module-path:
+        description: "CWD for this test; path to a dir with a main.tf file."
+        default: 'terraform'
+        required: false
+        type: string
+      terraform-args:
+        description: "Additional arguments (such as additional -var) to pass to `terraform apply`."
+        default: ''
+        required: false
+        type: string
+      charm-channel:
+        description: "Charm channel to deploy from with the terraform module"
+        default: '2/edge'
+        required: false
+        type: string
+      provider:
+        description: |
+          The substrate to set up prior to running the test 
+          (a concierge preset, e.g. 'machine' or 'microk8s').
+        default: 'microk8s'
+        required: false
+        type: string
+      active-timeout:
+        description: |
+          How many seconds to wait for the model to get to active after terraform deploy.
+        default: 1200 # 20 minutes
+        required: false
+        type: string
+
+jobs:
+    tf-tests:
+        runs-on: [self-hosted]
+        name: Terraform tests
+        steps:
+          - name: Checkout
+            uses: actions/checkout@v4
+          - name: Install dependencies
+            run: |
+              sudo snap install concierge --classic
+              sudo concierge prepare -p ${{ inputs.provider }} --extra-snaps terraform,astral-uv
+
+          - name: Run tests
+            run: |
+              export MODEL="test-terraform"
+              juju add-model $MODEL
+              
+              cd ${{ inputs.terraform-module-path }}
+  
+              terraform init
+              terraform apply \
+                -var="channel=${{ inputs.charm-channel }}" \
+                -var="model=$MODEL" ${{ inputs.terraform-args || '' }} -auto-approve 
+                
+              # assert all gets to active; eventually
+              uv run --with jubilant python -c "import jubilant as j; j.Juju(model='$MODEL').wait(j.all_active, timeout=${{ inputs.active-timeout }})"
+              
+              juju destroy-model --no-prompt test-terraform --no-wait --force  
