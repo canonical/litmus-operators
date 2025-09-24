@@ -58,4 +58,4 @@ jobs:
               # assert all gets to active; eventually
               uv run --with jubilant python -c "import jubilant as j; j.Juju(model='$MODEL').wait(j.all_active, timeout=${{ inputs.active-timeout }})"
               
-              juju destroy-model --no-prompt test-terraform --no-wait --force  
+              juju destroy-model --no-prompt test-terraform --destroy-storage --no-wait --force  
