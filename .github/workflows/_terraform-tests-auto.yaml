@@ -53,7 +53,6 @@ jobs:
   
               terraform init
               terraform apply \
-                -var="channel=${{ inputs.charm-channel }}" \
                 -var="model=$MODEL" ${{ inputs.terraform-args || '' }} -auto-approve 
                 
               # assert all gets to active; eventually
