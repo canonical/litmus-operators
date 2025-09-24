@@ -6,6 +6,7 @@ import ops
 def test_ingressed_url_present_in_status(
     ctx,
     nginx_container,
+    nginx_prometheus_exporter_container,
     auth_http_api_relation,
     backend_http_api_relation,
     ingress_relation,
@@ -21,7 +22,7 @@ def test_ingressed_url_present_in_status(
                 backend_http_api_relation,
                 ingress_relation,
             },
-            containers={nginx_container},
+            containers={nginx_container, nginx_prometheus_exporter_container},
         ),
     )
 
@@ -32,6 +33,7 @@ def test_ingressed_url_present_in_status(
 def test_ingressed_https_url_present_in_status(
     ctx,
     nginx_container,
+    nginx_prometheus_exporter_container,
     auth_http_api_relation,
     backend_http_api_relation,
     ingress_over_https_relation,
@@ -51,7 +53,7 @@ def test_ingressed_https_url_present_in_status(
                 ingress_over_https_relation,
                 tls_certificates_relation,
             },
-            containers={nginx_container},
+            containers={nginx_container, nginx_prometheus_exporter_container},
         ),
     )
 
