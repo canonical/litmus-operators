@@ -93,6 +93,8 @@ class LitmusBackendCharm(CharmBase):
                             ports=[
                                 LitmusBackend.http_port,
                                 LitmusBackend.https_port,
+                                LitmusBackend.grpc_port,
+                                LitmusBackend.grpc_tls_port,
                             ],  # TODO: do we really need https_port too?
                             # TODO: fine-grained access controls for paths and HTTP methods
                             # methods=[
