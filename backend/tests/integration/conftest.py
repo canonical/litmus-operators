@@ -15,6 +15,7 @@ RESOURCES = {
     image_name: image_meta["upstream-source"]
     for image_name, image_meta in _METADATA["resources"].items()
 }
+MONGO_APP = "mongodb-k8s"
 
 logger = logging.getLogger(__name__)
 

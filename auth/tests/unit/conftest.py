@@ -1,11 +1,12 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
+from unittest.mock import patch, Mock
 
 import json
-from unittest.mock import patch
 from ops.testing import Container, Context, Relation
 import pytest
 from charm import LitmusAuthCharm
+from certificates_helpers import mock_cert_and_key
 
 
 @pytest.fixture
@@ -18,16 +19,39 @@ def auth_charm():
 
 
 @pytest.fixture
+def cert_and_key():
+    return mock_cert_and_key()
+
+
+@pytest.fixture()
+def patch_cert_and_key(cert_and_key):
+    with patch(
+        "charms.tls_certificates_interface.v4.tls_certificates.TLSCertificatesRequiresV4.get_assigned_certificate",
+        return_value=cert_and_key,
+    ):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def patch_container_exec():
+    with patch(
+        "ops.model.Container.exec",
+        Mock(),
+    ):
+        yield
+
+
+@pytest.fixture
 def authserver_container():
     return Container(
-        "authserver",
+        "auth",
         can_connect=True,
     )
 
 
 @pytest.fixture
 def ctx(auth_charm):
-    return Context(charm_type=auth_charm)
+    yield Context(charm_type=auth_charm)
 
 
 @pytest.fixture
@@ -38,6 +62,16 @@ def database_relation():
 @pytest.fixture
 def auth_relation():
     return Relation("litmus-auth")
+
+
+@pytest.fixture
+def http_api_relation():
+    return Relation("http-api")
+
+
+@pytest.fixture
+def tls_certificates_relation():
+    return Relation("tls-certificates")
 
 
 def db_remote_databag():

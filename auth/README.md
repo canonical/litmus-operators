@@ -1,11 +1,10 @@
-# Litmus Operator
+# Litmus Auth K8s Operator
 
 [![CharmHub Badge](https://charmhub.io/litmus-auth-k8s/badge.svg)](https://charmhub.io/litmus-auth-k8s)
 [![Release](https://github.com/canonical/litmus-operators/actions/workflows/release.yaml/badge.svg)](https://github.com/canonical/litmus-operators/actions/workflows/release.yaml)
 [![Discourse Status](https://img.shields.io/discourse/status?server=https%3A%2F%2Fdiscourse.charmhub.io&style=flat&label=CharmHub%20Discourse)](https://discourse.charmhub.io)
 
-This directory contains the source code for a Charmed Operator that partially drives [LitmusChaos] on Kubernetes. It is designed to work together with other charms to deploy and operate the control plane of LitmusChaos, an open source platform for chaos testing.
-
+This directory contains the source code for a Charmed Litmus Auth K8s Operator that partially drives [LitmusChaos] on Kubernetes. It is designed to work together with other charms to deploy and operate the control plane of LitmusChaos, an open source platform for chaos testing.
 
 ## Usage
 
@@ -15,8 +14,18 @@ Assuming you have access to a bootstrapped Juju controller on Kubernetes, you ca
 $ juju deploy litmus-auth-k8s # --trust (use when cluster has RBAC enabled)
 ```
 
+### Enabling Transport Layer Security (TLS)
+
+Litmus Backend K8s Operator supports integration with TLS certificates over the `tls-certificates` charm interface. Example:
+
+```bash
+$ juju deploy self-signed-certificates --channel=1/stable
+$ juju integrate litmus-backend-k8s self-signed-certificates
+```
+
 ## OCI Images
 
+**authserver**: ubuntu/litmuschaos-authserver:3-24.04_edge
 
 ## Contributing
 

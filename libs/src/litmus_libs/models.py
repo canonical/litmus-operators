@@ -3,6 +3,8 @@
 
 """Database Config class."""
 
+from dataclasses import dataclass
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -17,3 +19,12 @@ class DatabaseConfig(BaseModel):
     uris: str
     username: str
     password: str
+
+
+@dataclass
+class TLSConfigData:
+    """Data structure encapsulating the TLS configuration received over the `tls-certificates` interface."""
+
+    server_cert: str
+    private_key: str
+    ca_cert: str

@@ -1,11 +1,18 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
+from unittest.mock import patch, Mock
 
 import json
-from unittest.mock import patch
 from ops.testing import Container, Context, Relation
 import pytest
 from charm import LitmusBackendCharm
+from certificates_helpers import mock_cert_and_key
+
+
+@pytest.fixture(autouse=True)
+def patch_workload_version():
+    with patch("litmus_backend.get_litmus_version", return_value="1.0") as mock:
+        yield mock
 
 
 @pytest.fixture
@@ -18,16 +25,39 @@ def backend_charm():
 
 
 @pytest.fixture
+def cert_and_key():
+    return mock_cert_and_key()
+
+
+@pytest.fixture()
+def patch_cert_and_key(cert_and_key):
+    with patch(
+        "charms.tls_certificates_interface.v4.tls_certificates.TLSCertificatesRequiresV4.get_assigned_certificate",
+        return_value=cert_and_key,
+    ):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def patch_container_exec():
+    with patch(
+        "ops.model.Container.exec",
+        Mock(),
+    ):
+        yield
+
+
+@pytest.fixture
 def backend_container():
     return Container(
-        "litmuschaos-server",
+        "backend",
         can_connect=True,
     )
 
 
 @pytest.fixture
 def ctx(backend_charm):
-    return Context(charm_type=backend_charm)
+    yield Context(charm_type=backend_charm)
 
 
 @pytest.fixture
@@ -38,6 +68,16 @@ def database_relation():
 @pytest.fixture
 def auth_relation():
     return Relation("litmus-auth")
+
+
+@pytest.fixture
+def http_api_relation():
+    return Relation("http-api")
+
+
+@pytest.fixture
+def tls_certificates_relation():
+    return Relation("tls-certificates")
 
 
 def db_remote_databag():
@@ -53,4 +93,11 @@ def auth_remote_databag():
         "version": json.dumps(0),
         "grpc_server_host": json.dumps("host"),
         "grpc_server_port": json.dumps(80),
+    }
+
+
+def http_api_remote_databag():
+    return {
+        "version": json.dumps(0),
+        "endpoint": json.dumps("http://foo.com:8080"),
     }

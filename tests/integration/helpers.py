@@ -3,14 +3,24 @@
 
 import logging
 import os
+import subprocess
 from typing import Literal
 from jubilant import Juju, all_active, any_error
 from pytest_jubilant import pack, get_resources
 from pathlib import Path
 
 AUTH_APP = "auth"
+CHAOSCENTER_APP = "chaoscenter"
 BACKEND_APP = "backend"
+COMPONENTS = (AUTH_APP, CHAOSCENTER_APP, BACKEND_APP)
 MONGO_APP = "mongodb"
+SELF_SIGNED_CERTIFICATES_APP = "self-signed-certificates"
+TRAEFIK_APP = "traefik"
+LOKI_APP = "loki"
+TEMPO_APP = "tempo"
+TEMPO_WORKER_APP = "tempo-worker-all"
+S3_APP = "swfs"
+
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +31,9 @@ def get_unit_ip_address(juju: Juju, app_name: str, unit_no: int):
 
 
 def _charm_and_channel_and_resources(
-    role: Literal["auth", "backend"], charm_path_key: str, charm_channel_key: str
+    role: Literal["auth", "backend", "chaoscenter"],
+    charm_path_key: str,
+    charm_channel_key: str,
 ):
     """Litmus charms used for integration testing.
 
@@ -45,8 +57,25 @@ def _charm_and_channel_and_resources(
     return pack(Path() / role), None, get_resources(Path().parent / role)
 
 
-def deploy_control_plane(juju: Juju, wait_for_idle: bool = True):
-    for component in (AUTH_APP, BACKEND_APP):
+def deploy_self_monitoring_stack(juju: Juju):
+    logger.info("deploying tempo monolithic")
+    juju.deploy("tempo-coordinator-k8s", TEMPO_APP, channel="2/edge", trust=True)
+    juju.deploy("tempo-worker-k8s", TEMPO_WORKER_APP, channel="2/edge", trust=True)
+    juju.deploy("seaweedfs-k8s", S3_APP, channel="edge")
+    juju.integrate(TEMPO_APP, TEMPO_WORKER_APP)
+    juju.integrate(TEMPO_APP, S3_APP)
+
+    logger.info("deploying loki")
+    juju.deploy("loki-k8s", LOKI_APP, channel="2/edge", trust=True)
+
+
+def deploy_control_plane(
+    juju: Juju,
+    with_tls: bool = False,
+    with_traefik: bool = False,
+    wait_for_idle: bool = True,
+):
+    for component in (AUTH_APP, BACKEND_APP, CHAOSCENTER_APP):
         charm_url, channel, resources = _charm_and_channel_and_resources(
             component,
             f"{component.upper()}_CHARM_PATH",
@@ -63,17 +92,62 @@ def deploy_control_plane(juju: Juju, wait_for_idle: bool = True):
 
     # deploy mongodb
     juju.deploy("mongodb-k8s", app=MONGO_APP, trust=True)
+    apps_to_wait_for = [
+        MONGO_APP,
+        CHAOSCENTER_APP,
+        AUTH_APP,
+        BACKEND_APP,
+        CHAOSCENTER_APP,
+    ]
+
+    if with_traefik:
+        juju.deploy("traefik-k8s", channel="latest/edge", app=TRAEFIK_APP, trust=True)
+        juju.integrate(TRAEFIK_APP, f"{CHAOSCENTER_APP}:ingress")
+        apps_to_wait_for.append(TRAEFIK_APP)
+
+    if with_tls:
+        juju.deploy(SELF_SIGNED_CERTIFICATES_APP, app=SELF_SIGNED_CERTIFICATES_APP)
+        juju.integrate(f"{AUTH_APP}:tls-certificates", SELF_SIGNED_CERTIFICATES_APP)
+        juju.integrate(f"{BACKEND_APP}:tls-certificates", SELF_SIGNED_CERTIFICATES_APP)
+        juju.integrate(
+            f"{CHAOSCENTER_APP}:tls-certificates", SELF_SIGNED_CERTIFICATES_APP
+        )
+        # Upstream Litmus (https://github.com/litmuschaos/litmus/issues/3136) does not support TLS connections to MongoDB.
+        # Since charmed mongodb-k8s uses `preferTLS`, it accepts both TLS and non-TLS connections.
+        # We'll still relate mongo to ssc in our integration tests to detect any changes in charmed mongodb-k8s behavior.
+        juju.integrate(f"{MONGO_APP}:certificates", SELF_SIGNED_CERTIFICATES_APP)
+        if with_traefik:
+            juju.integrate(f"{TRAEFIK_APP}:certificates", SELF_SIGNED_CERTIFICATES_APP)
+        apps_to_wait_for.append(SELF_SIGNED_CERTIFICATES_APP)
 
     juju.integrate(f"{AUTH_APP}:database", MONGO_APP)
+    juju.integrate(f"{AUTH_APP}:http-api", CHAOSCENTER_APP)
+    juju.integrate(f"{BACKEND_APP}:http-api", CHAOSCENTER_APP)
     juju.integrate(f"{BACKEND_APP}:database", MONGO_APP)
     juju.integrate(f"{AUTH_APP}:litmus-auth", f"{BACKEND_APP}:litmus-auth")
 
     if wait_for_idle:
         logger.info("waiting for the control plane to be active/idle...")
         juju.wait(
-            lambda status: all_active(status, MONGO_APP, AUTH_APP, BACKEND_APP),
-            error=lambda status: any_error(status, AUTH_APP, BACKEND_APP),
+            lambda status: all_active(
+                status,
+                *apps_to_wait_for,
+            ),
+            error=lambda status: any_error(status, *apps_to_wait_for),
             timeout=1000,
             delay=10,
             successes=6,
         )
+
+
+def get_login_response(
+    host: str, port: int, subpath: str, use_ssl: bool = False
+) -> tuple[int, str]:
+    protocol = "https" if use_ssl else "http"
+    allow_insecure = "-k" if use_ssl else ""
+    cmd = (
+        f'curl {allow_insecure} -sS -X POST -H "Content-Type: application/json" '
+        '-d \'{"username": "admin", "password": "litmus"}\' '
+        f"{protocol}://{host}:{port}{subpath}/login"
+    )
+    return subprocess.getstatusoutput(cmd)

@@ -6,19 +6,14 @@ import pytest
 from jubilant import Juju, all_blocked, all_active, any_error
 from pathlib import Path
 from conftest import APP, RESOURCES
+from subprocess import getoutput
 from tenacity import retry, stop_after_attempt, wait_fixed
-import shlex
-import subprocess
+
+from helpers import get_unit_ip_address
 
 MONGO_APP = "mongodb-k8s"
 
-
 logger = logging.getLogger(__name__)
-
-
-def _get_unit_ip_address(juju: Juju, app_name: str, unit_no: int):
-    """Return a juju unit's IP address."""
-    return juju.status().apps[app_name].units[f"{app_name}/{unit_no}"].address
 
 
 @pytest.mark.setup
@@ -38,11 +33,15 @@ def test_setup(juju: Juju, charm: Path):
 
 @retry(stop=stop_after_attempt(6), wait=wait_fixed(10))
 def test_auth_server__is_running(juju: Juju):
-    auth_ip = _get_unit_ip_address(juju, APP, 0)
-    cmd = f"curl {auth_ip}:3000/readiness"
-    out = subprocess.run(shlex.split(cmd), text=True, capture_output=True)
-    response = json.loads(out.stdout)
+    auth_ip = get_unit_ip_address(juju, APP, 0)
+    cmd = f"curl -sS {auth_ip}:3000/readiness"
+    out = getoutput(cmd)
+    response = json.loads(out)
     assert response == {"database": "up", "collections": "up"}
+
+
+def test_workload_version_is_set(juju: Juju):
+    assert juju.status().apps[APP].version
 
 
 @pytest.mark.teardown

@@ -3,7 +3,14 @@
 
 """Utilities to work with litmus."""
 
-from .models import DatabaseConfig
-from .utils import get_app_hostname
+from .models import DatabaseConfig, TLSConfigData
+from .tls_reconciler import TlsReconciler
+from .utils import get_app_hostname, get_litmus_version
 
-__all__ = ["DatabaseConfig", "get_app_hostname"]
+__all__ = [
+    "DatabaseConfig",
+    "TLSConfigData",
+    "TlsReconciler",
+    "get_app_hostname",
+    "get_litmus_version",
+]

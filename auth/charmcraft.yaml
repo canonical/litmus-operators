@@ -16,14 +16,22 @@ summary: |
   Litmus Authentication Server is a component of the LitmusChaos solution, an open source platform used for chaos testing.
 
 containers:
-  authserver:
+  auth:
     resource: litmus-auth-image
+    mounts:
+      - storage: certs
+        location: /etc/tls
 
 resources:
   litmus-auth-image:
     type: oci-image
     description: OCI image for Litmus authentication server 
     upstream-source: ubuntu/litmuschaos-authserver:3-24.04_edge
+
+storage:
+  certs:
+    type: filesystem
+    minimum-size: 1M
 
 requires:
   database:
@@ -35,6 +43,24 @@ requires:
       Litmus Chaos, including projects, and users.
 
       Note: This should be the same MongoDB instance used by the Litmus backend server.
+  tls-certificates:
+    optional: true
+    interface: tls-certificates
+    limit: 1
+    description: |
+      Receive TLS certificates.
+  charm-tracing:
+    optional: true
+    interface: tracing
+    description: |
+      Request a tracing endpoint through which this application will send its charm traces to a 
+      tracing backend.
+    limit: 1
+  logging:
+    optional: true
+    interface: loki_push_api
+    description: |
+      Request a loki-push-api endpoint to push workload container application logs to.
 
 provides:
   litmus-auth:
@@ -43,11 +69,15 @@ provides:
     limit: 1
     description: |
       Exchange the gRPC server endpoints of the auth and backend components.
-
+  http-api:
+    optional: false
+    interface: litmus_auth_http_api
+    limit: 1
+    description: |
+      Send this component's HTTP API to the frontend component.
 
 links:
-  # FIXME: update discourse link https://github.com/canonical/litmus-operators/issues/4
-  documentation: https://discourse.charmhub.io/t/18122
+  documentation: https://discourse.charmhub.io/t/18789
   website: https://charmhub.io/litmus-auth-k8s
   source: https://github.com/canonical/litmus-operators/tree/main/auth
   issues: https://github.com/canonical/litmus-operators/issues
@@ -59,7 +89,14 @@ parts:
   charm:
     source: .
     plugin: uv
-    build-packages: [git] # handy for git+ dependencies during development
+    build-packages:
+      - git # handy for git+ dependencies during development
+      # Required by the tls_certificates_interface
+      - cargo
+      - libffi-dev
+      - libssl-dev
+      - pkg-config
+      - rustc
     build-snaps: [astral-uv]
     # FIXME: override-build with "git describe --always > $CRAFT_PART_INSTALL/version" causes
     # charm pack to fail "fatal: not a git repository (or any of the parent directories): .git"
