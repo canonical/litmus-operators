@@ -23,6 +23,8 @@ from ops import (
 from coordinated_workers.models import TLSConfig
 from coordinated_workers.nginx import (
     Nginx,
+    NginxPrometheusExporter,
+    NginxMappingOverrides,
 )
 
 from nginx_config import get_config, http_server_port
@@ -41,6 +43,11 @@ logger = logging.getLogger(__name__)
 AUTH_HTTP_API_ENDPOINT = "auth-http-api"
 BACKEND_HTTP_API_ENDPOINT = "backend-http-api"
 TLS_CERTIFICATES_ENDPOINT = "tls-certificates"
+
+NGINX_OVERRIDES: NginxMappingOverrides = {
+    "nginx_port": http_server_port,
+    "nginx_exporter_port": 9113,
+}
 
 
 class LitmusChaoscenterCharm(CharmBase):
@@ -74,6 +81,11 @@ class LitmusChaoscenterCharm(CharmBase):
         )
 
         self._self_monitoring = SelfMonitoring(self)
+        
+        self.nginx_exporter = NginxPrometheusExporter(
+            self,
+            options=NGINX_OVERRIDES,
+        )
 
         self.framework.observe(
             self.on.collect_unit_status, self._on_collect_unit_status
@@ -183,6 +195,7 @@ class LitmusChaoscenterCharm(CharmBase):
         )
         if self.backend_url and self.auth_url:
             self.nginx.reconcile()
+            self.nginx_exporter.reconcile()
         if self.unit.is_leader() and self.ingress.is_ready():
             self.ingress.submit_to_traefik(
                 ingress_config(

@@ -30,6 +30,14 @@ def nginx_container():
 
 
 @pytest.fixture
+def nginx_prometheus_exporter_container():
+    return Container(
+        "nginx-prometheus-exporter",
+        can_connect=True,
+    )
+
+
+@pytest.fixture
 def ctx(chaoscenter_charm):
     return Context(charm_type=chaoscenter_charm)
 

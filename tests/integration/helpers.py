@@ -97,7 +97,6 @@ def deploy_control_plane(
         CHAOSCENTER_APP,
         AUTH_APP,
         BACKEND_APP,
-        CHAOSCENTER_APP,
     ]
 
     if with_traefik:
