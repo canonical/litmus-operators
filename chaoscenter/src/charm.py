@@ -27,6 +27,7 @@ from coordinated_workers.nginx import (
     NginxMappingOverrides,
 )
 
+from litmus_libs.status_manager import StatusManager
 from nginx_config import get_config, http_server_port
 from traefik_config import ingress_config, static_ingress_config
 
@@ -150,30 +151,14 @@ class LitmusChaoscenterCharm(CharmBase):
         )
 
     def _on_collect_unit_status(self, e: CollectStatusEvent):
-        missing_relations = [
-            rel
-            for rel in (AUTH_HTTP_API_ENDPOINT, BACKEND_HTTP_API_ENDPOINT)
-            if not self.model.get_relation(rel)
-        ]
-        missing_configs = [
-            config_name
-            for config_name, source in (
-                ("backend http API endpoint url", self.backend_url),
-                ("auth http API endpoint url", self.auth_url),
-            )
-            if not source
-        ]
-        if missing_relations:
-            e.add_status(
-                BlockedStatus(
-                    f"Missing [{', '.join(missing_relations)}] integration(s)."
-                )
-            )
-        if missing_configs:
-            e.add_status(
-                WaitingStatus(f"[{', '.join(missing_configs)}] not provided yet.")
-            )
-
+        StatusManager(
+            charm=self,
+            block_if_relations_missing=(AUTH_HTTP_API_ENDPOINT, BACKEND_HTTP_API_ENDPOINT),
+            wait_for_config={
+                "backend http API endpoint url": self.backend_url,
+                "auth http API endpoint url": self.auth_url,
+            },
+        ).collect_status(e)
         # TODO: add pebble check to verify frontend is up
         #  https://github.com/canonical/litmus-operators/issues/36
         e.add_status(ActiveStatus(f"Ready at {self._most_external_frontend_url}."))
