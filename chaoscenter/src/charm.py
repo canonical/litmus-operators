@@ -83,8 +83,6 @@ class LitmusChaoscenterCharm(CharmBase):
 
         self.nginx = Nginx(
             self,
-            config_getter=self._nginx_config,
-            tls_config_getter=lambda: self._tls_config,
             options=None,
             container_name="chaoscenter",
         )
@@ -111,7 +109,11 @@ class LitmusChaoscenterCharm(CharmBase):
     ##################
 
     def _nginx_tracing_config(self) -> Optional[NginxTracingConfig]:
-        endpoint = self._workload_tracing_endpoint
+        endpoint = (
+            self._workload_tracing.get_endpoint("otlp_grpc")
+            if self._workload_tracing.is_ready()
+            else None
+        )
         return (
             NginxTracingConfig(
                 endpoint=endpoint,
@@ -127,12 +129,12 @@ class LitmusChaoscenterCharm(CharmBase):
             else None
         )
 
-    def _nginx_config(self, tls: bool) -> str:
+    def _nginx_config(self) -> str:
         return get_config(
             hostname=socket.getfqdn(),
             auth_url=self.auth_url,
             backend_url=self.backend_url,
-            tls_available=tls,
+            tls_available=bool(self._tls_config),
             tracing_config=self._nginx_tracing_config(),
         )
 
@@ -208,7 +210,9 @@ class LitmusChaoscenterCharm(CharmBase):
             ca_cert=self._tls_config.ca_cert if self._tls_config else None
         )
         if self.backend_url and self.auth_url:
-            self.nginx.reconcile()
+            self.nginx.reconcile(
+                nginx_config=self._nginx_config(), tls_config=self._tls_config
+            )
             self.nginx_exporter.reconcile()
         if self.unit.is_leader() and self.ingress.is_ready():
             self.ingress.submit_to_traefik(
@@ -244,13 +248,6 @@ class LitmusChaoscenterCharm(CharmBase):
             private_key=private_key.raw,
             ca_cert=certificates.ca.raw,
         )
-
-    @property
-    def _workload_tracing_endpoint(self) -> Optional[str]:
-        if self._workload_tracing.is_ready():
-            endpoint = self._workload_tracing.get_endpoint("otlp_grpc")
-            return endpoint
-        return None
 
 
 if __name__ == "__main__":  # pragma: nocover

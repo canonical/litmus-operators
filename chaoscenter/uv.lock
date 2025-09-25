@@ -145,7 +145,7 @@ wheels = [
 [[package]]
 name = "coordinated-workers"
 version = "2.0.19"
-source = { git = "https://github.com/canonical/cos-coordinated-workers?rev=enable-nginx-tracing#57aec84afd315b6abc560c28cbafdbf372f6563a" }
+source = { git = "https://github.com/canonical/cos-coordinated-workers?rev=enable-nginx-tracing#012273ad46e9a84ed9eacb0c2d308ac8c5f63d55" }
 dependencies = [
     { name = "cosl" },
     { name = "crossplane" },
