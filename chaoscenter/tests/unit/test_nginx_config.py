@@ -344,8 +344,8 @@ def test_config_contains_tracing_config(
     assert "otel_trace_context propagate;" in config
     assert "otel_exporter" in config
     assert "endpoint foo.bar:4317;" in config
-    # AND otel_service_name is set to <app_name>-workload
-    assert "otel_service_name chaoscenter-workload;"
+    # AND otel_service_name is set to <app_name>:nginx
+    assert "otel_service_name chaoscenter:nginx;"
     # AND juju topology is inserted as resource attributes
     for key in {
         "juju_model",
