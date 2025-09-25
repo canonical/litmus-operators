@@ -15,7 +15,7 @@ from charms.tls_certificates_interface.v4.tls_certificates import (
 )
 from litmus_auth import LitmusAuth
 from cosl.reconciler import all_events, observe_events
-from ops import ActiveStatus, CollectStatusEvent, BlockedStatus, WaitingStatus
+from ops import ActiveStatus, CollectStatusEvent
 from pydantic_core import ValidationError
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseRequires,

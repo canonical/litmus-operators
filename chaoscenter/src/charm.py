@@ -16,8 +16,6 @@ from ops import (
     LifecycleEvent,
     EventBase,
     CollectStatusEvent,
-    BlockedStatus,
-    WaitingStatus,
     ActiveStatus,
 )
 from coordinated_workers.models import TLSConfig
@@ -82,7 +80,7 @@ class LitmusChaoscenterCharm(CharmBase):
         )
 
         self._self_monitoring = SelfMonitoring(self)
-        
+
         self.nginx_exporter = NginxPrometheusExporter(
             self,
             options=NGINX_OVERRIDES,
@@ -153,7 +151,10 @@ class LitmusChaoscenterCharm(CharmBase):
     def _on_collect_unit_status(self, e: CollectStatusEvent):
         StatusManager(
             charm=self,
-            block_if_relations_missing=(AUTH_HTTP_API_ENDPOINT, BACKEND_HTTP_API_ENDPOINT),
+            block_if_relations_missing=(
+                AUTH_HTTP_API_ENDPOINT,
+                BACKEND_HTTP_API_ENDPOINT,
+            ),
             wait_for_config={
                 "backend http API endpoint url": self.backend_url,
                 "auth http API endpoint url": self.auth_url,
