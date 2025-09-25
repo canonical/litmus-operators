@@ -91,7 +91,7 @@ wheels = [
 
 [[package]]
 name = "cosl"
-version = "1.1.0"
+version = "1.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ops" },
@@ -100,9 +100,9 @@ dependencies = [
     { name = "tenacity" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/92/c5/7e2ce9f3b0579784ca6dd0ce7eb11d171c445e086fa9d0fe7b4c944d0774/cosl-1.1.0.tar.gz", hash = "sha256:7a04e32c95cdc2d556bb43517eaadf6fc177bc8449bd9359989a24056b34c9aa", size = 44268, upload-time = "2025-08-18T08:54:09.62Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9b/23/a683e493a84f60a3c516ecc3c7a498007f7f84883b34ed4f96659cbe3637/cosl-1.2.0.tar.gz", hash = "sha256:7aea30d1ee3a34e4a04d75646a55f94f9dd7482354950f01d81a918448d5e9a9", size = 44828, upload-time = "2025-09-23T14:03:34.747Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f2/ff/8f1415de3877b6b6f1a71345506e4daab7555a357a7ee27122ce6d167714/cosl-1.1.0-py3-none-any.whl", hash = "sha256:e5313e6753db057b32fd41a493735b9eb152d38d1e2f688e54ef0b974ba99934", size = 35373, upload-time = "2025-08-18T08:54:08.712Z" },
+    { url = "https://files.pythonhosted.org/packages/c2/d9/5ebff004d5febfdd1255ae5096f59488ec4d859baafaa383f2b52ed5abd7/cosl-1.2.0-py3-none-any.whl", hash = "sha256:527a5c960f4d098a718ae849684f355132d69021094c48a72ec7212074e6682c", size = 36128, upload-time = "2025-09-23T14:03:33.443Z" },
 ]
 
 [[package]]
@@ -298,7 +298,7 @@ requires-dist = [
     { name = "coverage", extras = ["toml"], marker = "extra == 'dev'" },
     { name = "cryptography" },
     { name = "jubilant", marker = "extra == 'dev'" },
-    { name = "litmus-libs", specifier = ">=0.0.4" },
+    { name = "litmus-libs", specifier = "==0.0.8" },
     { name = "ops" },
     { name = "ops", extras = ["testing"], marker = "extra == 'dev'" },
     { name = "pyright", marker = "extra == 'dev'" },
@@ -312,16 +312,16 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "litmus-libs"
-version = "0.0.7"
+version = "0.0.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cosl" },
     { name = "ops", extra = ["tracing"] },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/06/3f/3a48a0cc6c215a5a64da9413b7690b0b2a976e9cb1b80af24bb1fc4564f2/litmus_libs-0.0.7.tar.gz", hash = "sha256:d2f23b910f4f5d4cb14d1660f6eddb41575b87aab5aadd6a2d5092e051a7e087", size = 72469, upload-time = "2025-09-22T11:01:34.74Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/77/08/1bbc76f3e9418a8d19fb88f2474a36de9af278ce92bfcd55f58a903a76b9/litmus_libs-0.0.8.tar.gz", hash = "sha256:269dc0d72dc2ebd6f180121e0267ff083ac0732c755e4793bb22624172d1acaf", size = 75387, upload-time = "2025-09-25T10:23:33.38Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/77/ff/461befa532cd012ba9e976fb4f724ad32e697b95fa128216fddfcd10242a/litmus_libs-0.0.7-py3-none-any.whl", hash = "sha256:b3cbe2f06e15791677ff36b1a60208155033f8ad95e04b98aa679fb35fe05f1e", size = 18079, upload-time = "2025-09-22T11:01:33.669Z" },
+    { url = "https://files.pythonhosted.org/packages/60/35/7eb49fef9d4560fe4683ec77e36806bc56eee2ccf5a685653133ca509d9a/litmus_libs-0.0.8-py3-none-any.whl", hash = "sha256:6f2741891b2ef4eb09bcc41ed09225b8fa0836972128d1c3de7b7100664733e7", size = 19117, upload-time = "2025-09-25T10:23:31.778Z" },
 ]
 
 [[package]]

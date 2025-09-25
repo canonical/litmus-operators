@@ -34,6 +34,7 @@ from charms.data_platform_libs.v0.data_interfaces import (
 from typing import Optional
 from litmus_libs.interfaces.http_api import LitmusBackendApiProvider
 from litmus_libs.interfaces.self_monitoring import SelfMonitoring
+from litmus_libs.status_manager import StatusManager
 
 DATABASE_ENDPOINT = "database"
 LITMUS_AUTH_ENDPOINT = "litmus-auth"
@@ -128,31 +129,15 @@ class LitmusBackendCharm(CharmBase):
     ##################
 
     def _on_collect_unit_status(self, e: CollectStatusEvent):
-        missing_relations = [
-            rel
-            for rel in (DATABASE_ENDPOINT, LITMUS_AUTH_ENDPOINT)
-            if not self.model.get_relation(rel)
-        ]
-        missing_configs = [
-            config_name
-            for config_name, source in (
-                ("database config", self.database_config),
-                ("auth gRPC endpoint", self.auth_grpc_endpoint),
-                ("frontend url", self.frontend_url),
-            )
-            if not source
-        ]
-        if missing_relations:
-            e.add_status(
-                BlockedStatus(
-                    f"Missing [{', '.join(missing_relations)}] integration(s)."
-                )
-            )
-        if missing_configs:
-            e.add_status(
-                WaitingStatus(f"[{', '.join(missing_configs)}] not provided yet.")
-            )
-
+        StatusManager(
+            charm=self,
+            block_if_relations_missing=(DATABASE_ENDPOINT, LITMUS_AUTH_ENDPOINT),
+            wait_for_config={
+                "database config": self.database_config,
+                "auth gRPC endpoint": self.auth_grpc_endpoint,
+                "frontend url": self.frontend_url,
+            },
+        ).collect_status(e)
         # TODO: add pebble check to verify backend is up
         #  https://github.com/canonical/litmus-operators/issues/36
         e.add_status(ActiveStatus(""))
