@@ -38,7 +38,7 @@ We are using the following images built by [oci-factory](https://github.com/cano
 ### Testing
 
 ```shell
-tox -e fmt           # update your code according to formatting rules
+tox -e fmt           # update your code according to formatting rules; requires `opentofu` classic snap
 tox -e lint          # lint the codebase
 tox -e unit          # run the unit testing suite
 tox -e integration   # run the integration testing suite

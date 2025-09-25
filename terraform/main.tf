@@ -30,10 +30,10 @@ module "chaoscenter" {
 }
 
 module "mongodb" {
-  source     = "git::https://github.com/canonical/mongodb-k8s-operator//terraform"
-  model      = data.juju_model.charmed-litmus.name
-  channel    = var.mongodb_channel
-  config     = var.mongodb_config
+  source  = "./external/mongodb-k8s"
+  model   = data.juju_model.charmed-litmus.name
+  channel = var.mongodb_channel
+  config  = var.mongodb_config
 }
 
 # Juju integrations
