@@ -314,6 +314,7 @@ def test_generated_ssl_config_matches_expected_config(
 def test_config_contains_tracing_config(
     ctx,
     nginx_container,
+    nginx_prometheus_exporter_container,
     auth_http_api_relation,
     backend_http_api_relation,
     workload_tracing_relation,
@@ -328,7 +329,7 @@ def test_config_contains_tracing_config(
                 backend_http_api_relation,
                 workload_tracing_relation,
             },
-            containers={nginx_container},
+            containers={nginx_container, nginx_prometheus_exporter_container},
         ),
     )
 
