@@ -115,7 +115,7 @@ class LitmusChaoscenterCharm(CharmBase):
         return (
             NginxTracingConfig(
                 endpoint=endpoint,
-                service_name=f"{self.app.name}:nginx",  # append ":nginx" suffix to distinguish workload traces from charm traces
+                service_name=f"{self.app.name}-nginx",  # append "-nginx" suffix to distinguish workload traces from charm traces
                 # insert juju topology into the trace resource attributes
                 resource_attributes={
                     "juju_{}".format(key): value
