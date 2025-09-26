@@ -18,6 +18,11 @@ from tests.integration.helpers import (
 )
 
 
+def _generate_chaoscenter_traffic(juju: Juju):
+    cmd = f"curl -sS -X GET http://{get_unit_ip_address(juju, CHAOSCENTER_APP, 0)}:8185"
+    subprocess.getoutput(cmd)
+
+
 @pytest.mark.setup
 def test_setup(juju: Juju):
     deploy_control_plane(juju, wait_for_idle=False)
@@ -27,6 +32,7 @@ def test_setup(juju: Juju):
         juju.integrate(TEMPO_APP, f"{component}:charm-tracing")
         juju.integrate(LOKI_APP, f"{component}:logging")
 
+    juju.integrate(TEMPO_APP, f"{CHAOSCENTER_APP}:workload-tracing")
     juju.wait(all_active, timeout=600, delay=10, successes=6)  # 10m timeout, 1m hold
 
 
@@ -46,12 +52,9 @@ def test_charm_tracing_integration(juju: Juju):
 @retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
 def test_logging_integration(juju: Juju):
     # GIVEN a litmus cluster integrated with loki over logging
-    def _trigger_chaoscenter_logs():
-        cmd = f"curl -X GET http://{get_unit_ip_address(juju, CHAOSCENTER_APP, 0)}:8185"
-        subprocess.getoutput(cmd)
 
     # we need to trigger chaoscenter to generate some logs
-    _trigger_chaoscenter_logs()
+    _generate_chaoscenter_traffic(juju)
 
     # WHEN we query the logs for each component
     address = get_unit_ip_address(juju, LOKI_APP, 0)
@@ -72,3 +75,18 @@ def test_logging_integration(juju: Juju):
             )
         except requests.exceptions.RequestException as e:
             assert False, f"Request to Loki failed for component '{component}': {e}"
+
+
+@retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
+def test_chaoscenter_workload_tracing_integration(juju: Juju):
+    # GIVEN a litmus chaoscenter integrated with tempo over workload-tracing
+
+    # we need to trigger chaoscenter to generate some traces
+    _generate_chaoscenter_traffic(juju)
+
+    # WHEN we query the tags for all ingested traces in Tempo
+    url = f"http://{get_unit_ip_address(juju, TEMPO_APP, 0)}:3200/api/search/tag/service.name/values"
+    response = requests.get(url)
+    tags = response.json()["tagValues"]
+    # THEN the litmus chaoscenter has sent some workload traces
+    assert f"{CHAOSCENTER_APP}-nginx" in tags
