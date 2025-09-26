@@ -15,7 +15,7 @@ from charms.tls_certificates_interface.v4.tls_certificates import (
 )
 from litmus_auth import LitmusAuth
 from cosl.reconciler import all_events, observe_events
-from ops import ActiveStatus, CollectStatusEvent, BlockedStatus, WaitingStatus
+from ops import ActiveStatus, CollectStatusEvent
 from pydantic_core import ValidationError
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseRequires,
@@ -30,6 +30,7 @@ from litmus_libs import (
 )
 from litmus_libs.interfaces.http_api import LitmusAuthApiProvider
 from litmus_libs.interfaces.self_monitoring import SelfMonitoring
+from litmus_libs.status_manager import StatusManager
 
 DATABASE_ENDPOINT = "database"
 LITMUS_AUTH_ENDPOINT = "litmus-auth"
@@ -117,30 +118,14 @@ class LitmusAuthCharm(CharmBase):
     ##################
 
     def _on_collect_unit_status(self, e: CollectStatusEvent):
-        missing_relations = [
-            rel
-            for rel in (DATABASE_ENDPOINT, LITMUS_AUTH_ENDPOINT)
-            if not self.model.get_relation(rel)
-        ]
-        missing_configs = [
-            config_name
-            for config_name, source in (
-                ("database config", self.database_config),
-                ("backend gRPC endpoint", self.backend_grpc_endpoint),
-            )
-            if not source
-        ]
-        if missing_relations:
-            e.add_status(
-                BlockedStatus(
-                    f"Missing [{', '.join(missing_relations)}] integration(s)."
-                )
-            )
-        if missing_configs:
-            e.add_status(
-                WaitingStatus(f"[{', '.join(missing_configs)}] not provided yet.")
-            )
-
+        StatusManager(
+            charm=self,
+            block_if_relations_missing=(DATABASE_ENDPOINT, LITMUS_AUTH_ENDPOINT),
+            wait_for_config={
+                "database config": self.database_config,
+                "backend gRPC endpoint": self.backend_grpc_endpoint,
+            },
+        ).collect_status(e)
         # TODO: add pebble check to verify auth server is up
         #  https://github.com/canonical/litmus-operators/issues/36
         e.add_status(ActiveStatus(""))

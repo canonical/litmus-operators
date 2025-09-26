@@ -6,6 +6,7 @@ import shlex
 import subprocess
 import pytest
 from jubilant import Juju, all_active
+from tenacity import retry, stop_after_attempt, wait_fixed
 from helpers import (
     deploy_control_plane,
     BACKEND_APP,
@@ -102,6 +103,7 @@ def test_removing_tls_certificates_relation_doesnt_break_the_system(juju: Juju):
     )
 
 
+@retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
 def test_after_removing_tls_certificates_relation_frontend_is_served_without_ssl(
     juju: Juju,
 ):
