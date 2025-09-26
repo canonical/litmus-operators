@@ -469,9 +469,9 @@ dependencies = [
     { name = "ops", extra = ["tracing"] },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/77/08/1bbc76f3e9418a8d19fb88f2474a36de9af278ce92bfcd55f58a903a76b9/litmus_libs-0.0.8.tar.gz", hash = "sha256:269dc0d72dc2ebd6f180121e0267ff083ac0732c755e4793bb22624172d1acaf", size = 75387, upload-time = "2025-09-25T10:23:33.38Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/77/08/1bbc76f3e9418a8d19fb88f2474a36de9af278ce92bfcd55f58a903a76b9/litmus_libs-0.0.8.tar.gz", hash = "sha256:269dc0d72dc2ebd6f180121e0267ff083ac0732c755e4793bb22624172d1acaf", size = 75387, upload_time = "2025-09-25T10:23:33.38Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/60/35/7eb49fef9d4560fe4683ec77e36806bc56eee2ccf5a685653133ca509d9a/litmus_libs-0.0.8-py3-none-any.whl", hash = "sha256:6f2741891b2ef4eb09bcc41ed09225b8fa0836972128d1c3de7b7100664733e7", size = 19117, upload-time = "2025-09-25T10:23:31.778Z" },
+    { url = "https://files.pythonhosted.org/packages/60/35/7eb49fef9d4560fe4683ec77e36806bc56eee2ccf5a685653133ca509d9a/litmus_libs-0.0.8-py3-none-any.whl", hash = "sha256:6f2741891b2ef4eb09bcc41ed09225b8fa0836972128d1c3de7b7100664733e7", size = 19117, upload_time = "2025-09-25T10:23:31.778Z" },
 ]
 
 [[package]]
