@@ -13,6 +13,5 @@ jobs:
         name: TiCs
         uses: canonical/observability/.github/workflows/charm-tiobe-scan.yaml@v1
         with:
-            # FIXME: should be updated to litmus-operators once the project is onboarded
-            tiobe-project-name: litmus-chaoscenter-k8s
+            tiobe-project-name: litmus-operators
         secrets: inherit
