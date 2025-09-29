@@ -109,6 +109,10 @@ def _generate_http_locations(
             upstream_tls=True if backend_scheme == "https" else False,
             extra_directives=_extra_directives(backend_scheme),
         ),
+        NginxLocationConfig(
+            path="/status",
+            extra_directives={"stub_status": []},
+        ),
     ]
 
 

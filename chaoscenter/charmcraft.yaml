@@ -75,6 +75,13 @@ requires:
     description: |
       Request a loki-push-api endpoint to push workload container application logs to.
 
+provides:
+  metrics-endpoint:
+    optional: true
+    interface: prometheus_scrape
+    description: |
+      Endpoint to allow prometheus metrics to be scraped.
+
 links:
   documentation: https://discourse.charmhub.io/t/18788
   website: https://charmhub.io/litmus-chaoscenter-k8s

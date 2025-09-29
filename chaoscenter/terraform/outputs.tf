@@ -13,5 +13,7 @@ output "endpoints" {
     backend-http-api = "backend-http-api"
     tls-certificates = "tls-certificates"
     ingress          = "ingress"
+    # Provides
+    metrics-endpoint = "metrics-endpoint"
   }
 }

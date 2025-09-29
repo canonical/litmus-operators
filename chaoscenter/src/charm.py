@@ -30,6 +30,7 @@ from coordinated_workers.nginx import (
 from nginx_config import get_config, http_server_port
 from traefik_config import ingress_config, static_ingress_config
 
+from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from charms.traefik_k8s.v0.traefik_route import TraefikRouteRequirer
 
 from litmus_libs import get_app_hostname, get_litmus_version
@@ -43,10 +44,11 @@ logger = logging.getLogger(__name__)
 AUTH_HTTP_API_ENDPOINT = "auth-http-api"
 BACKEND_HTTP_API_ENDPOINT = "backend-http-api"
 TLS_CERTIFICATES_ENDPOINT = "tls-certificates"
+NGINX_EXPORTER_PORT = 9113
 
 NGINX_OVERRIDES: NginxMappingOverrides = {
     "nginx_port": http_server_port,
-    "nginx_exporter_port": 9113,
+    "nginx_exporter_port": NGINX_EXPORTER_PORT,
 }
 
 
@@ -55,6 +57,7 @@ class LitmusChaoscenterCharm(CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
+        self._fqdn = socket.getfqdn()
         self._receive_auth_http_api = LitmusAuthApiRequirer(
             relation=self.model.get_relation(AUTH_HTTP_API_ENDPOINT), app=self.app
         )
@@ -71,6 +74,17 @@ class LitmusChaoscenterCharm(CharmBase):
             self.model.get_relation("ingress"),  # type: ignore
             "ingress",
         )
+        self.metrics_endpoint_provider = MetricsEndpointProvider(
+            self,
+            jobs=[
+                {
+                    "static_configs": [
+                        {"targets": [f"{self._fqdn}:{NGINX_EXPORTER_PORT}"]}
+                    ],
+                }
+            ],
+            refresh_event=[self.on.update_status],
+        )
 
         self.nginx = Nginx(
             self,
@@ -81,7 +95,7 @@ class LitmusChaoscenterCharm(CharmBase):
         )
 
         self._self_monitoring = SelfMonitoring(self)
-        
+
         self.nginx_exporter = NginxPrometheusExporter(
             self,
             options=NGINX_OVERRIDES,
@@ -103,7 +117,7 @@ class LitmusChaoscenterCharm(CharmBase):
 
     def _nginx_config(self, tls: bool) -> str:
         return get_config(
-            hostname=socket.getfqdn(),
+            hostname=self._fqdn,
             auth_url=self.auth_url,
             backend_url=self.backend_url,
             tls_available=tls,
@@ -210,7 +224,7 @@ class LitmusChaoscenterCharm(CharmBase):
             common_name=self.app.name,
             sans_dns=frozenset(
                 (
-                    socket.getfqdn(),
+                    self._fqdn,
                     get_app_hostname(self.app.name, self.model.name),
                     # TODO: Once Ingress is in use, its address should also be added here
                 )
