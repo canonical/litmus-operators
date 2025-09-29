@@ -77,16 +77,17 @@ class LitmusChaoscenterCharm(CharmBase):
             self.model.get_relation("ingress"),  # type: ignore
             "ingress",
         )
-        self.metrics_endpoint_provider = MetricsEndpointProvider(
+        self._metrics_endpoint_provider = MetricsEndpointProvider(
             self,
             jobs=[
                 {
                     "static_configs": [
+                        # TODO: Due to Traefik route settings metrics can't be served when using ingress.
+                        #   Improvement: https://github.com/canonical/litmus-operators/issues/90
                         {"targets": [f"{self._fqdn}:{NGINX_EXPORTER_PORT}"]}
-                    ],
+                    ]
                 }
             ],
-            refresh_event=[self.on.update_status],
         )
 
         self._workload_tracing = TracingEndpointRequirer(
@@ -166,14 +167,14 @@ class LitmusChaoscenterCharm(CharmBase):
             and self.ingress.scheme
             and self.ingress.external_host
         ):
-            return f"{self.ingress.scheme}://{self.ingress.external_host}:8185"
+            return f"{self.ingress.scheme}://{self.ingress.external_host}"
         return self._internal_frontend_url
 
     @property
     def _internal_frontend_url(self):
         """Internal (i.e. not ingressed) url."""
         protocol = "https" if self._tls_config else "http"
-        return f"{protocol}://{get_app_hostname(self.app.name, self.model.name)}:8185"
+        return f"{protocol}://{get_app_hostname(self.app.name, self.model.name)}"
 
     @property
     def backend_url(self):
@@ -189,7 +190,7 @@ class LitmusChaoscenterCharm(CharmBase):
         """Common entry hook."""
         self._reconcile()
         self._receive_backend_http_api.publish_endpoint(
-            self._most_external_frontend_url
+            f"{self._most_external_frontend_url}:{http_server_port}"
         )
 
     def _on_collect_unit_status(self, e: CollectStatusEvent):
@@ -206,7 +207,11 @@ class LitmusChaoscenterCharm(CharmBase):
         ).collect_status(e)
         # TODO: add pebble check to verify frontend is up
         #  https://github.com/canonical/litmus-operators/issues/36
-        e.add_status(ActiveStatus(f"Ready at {self._most_external_frontend_url}."))
+        e.add_status(
+            ActiveStatus(
+                f"Ready at {self._most_external_frontend_url}:{http_server_port}."
+            )
+        )
 
     ###################
     # UTILITY METHODS #
@@ -220,6 +225,7 @@ class LitmusChaoscenterCharm(CharmBase):
             )
             or ""
         )
+        self._metrics_endpoint_provider.set_scrape_job_spec()
         self._self_monitoring.reconcile(
             ca_cert=self._tls_config.ca_cert if self._tls_config else None
         )
