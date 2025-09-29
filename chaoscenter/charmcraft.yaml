@@ -73,13 +73,6 @@ requires:
     interface: loki_push_api
     description: |
       Request a loki-push-api endpoint to push workload container application logs to.
-
-provides:
-  metrics-endpoint:
-    optional: true
-    interface: prometheus_scrape
-    description: |
-      Endpoint to allow prometheus metrics to be scraped.
   workload-tracing:
     optional: true
     interface: tracing
@@ -87,6 +80,13 @@ provides:
       Request a tracing endpoint through which this application will send its workload traces to a 
       tracing backend.
     limit: 1
+
+provides:
+  metrics-endpoint:
+    optional: true
+    interface: prometheus_scrape
+    description: |
+      Endpoint to allow prometheus metrics to be scraped.
 
 links:
   documentation: https://discourse.charmhub.io/t/18788
