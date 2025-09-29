@@ -13,6 +13,7 @@ from coordinated_workers.nginx import (
     NginxUpstream,
     NginxLocationConfig,
     NginxConfig,
+    NginxTracingConfig,
 )
 
 from urllib.parse import urlparse, ParseResult
@@ -29,6 +30,7 @@ def get_config(
     auth_url: Optional[str],
     backend_url: Optional[str],
     tls_available: bool = False,
+    tracing_config: Optional[NginxTracingConfig] = None,
 ) -> str:
     if not hostname or not auth_url or not backend_url:
         raise ValueError(
@@ -55,6 +57,7 @@ def get_config(
         _upstreams_to_addresses(auth_parsed_url.hostname, backend_parsed_url.hostname),  # type: ignore[arg-type]
         listen_tls=tls_available,
         root_path="/dist",
+        tracing_config=tracing_config,
     )
 
 

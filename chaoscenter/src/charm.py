@@ -16,8 +16,6 @@ from ops import (
     LifecycleEvent,
     EventBase,
     CollectStatusEvent,
-    BlockedStatus,
-    WaitingStatus,
     ActiveStatus,
 )
 from coordinated_workers.models import TLSConfig
@@ -25,8 +23,10 @@ from coordinated_workers.nginx import (
     Nginx,
     NginxPrometheusExporter,
     NginxMappingOverrides,
+    NginxTracingConfig,
 )
 
+from litmus_libs.status_manager import StatusManager
 from nginx_config import get_config, http_server_port
 from traefik_config import ingress_config, static_ingress_config
 
@@ -39,6 +39,9 @@ from litmus_libs.interfaces.http_api import (
     LitmusBackendApiRequirer,
 )
 from litmus_libs.interfaces.self_monitoring import SelfMonitoring
+from charms.tempo_coordinator_k8s.v0.tracing import TracingEndpointRequirer
+from cosl import JujuTopology
+
 
 logger = logging.getLogger(__name__)
 AUTH_HTTP_API_ENDPOINT = "auth-http-api"
@@ -86,10 +89,14 @@ class LitmusChaoscenterCharm(CharmBase):
             refresh_event=[self.on.update_status],
         )
 
+        self._workload_tracing = TracingEndpointRequirer(
+            self,
+            relation_name="workload-tracing",
+            protocols=["otlp_grpc"],
+        )
+
         self.nginx = Nginx(
             self,
-            config_getter=self._nginx_config,
-            tls_config_getter=lambda: self._tls_config,
             options=None,
             container_name="chaoscenter",
         )
@@ -115,12 +122,34 @@ class LitmusChaoscenterCharm(CharmBase):
     # CONFIG METHODS #
     ##################
 
-    def _nginx_config(self, tls: bool) -> str:
+    def _nginx_tracing_config(self) -> Optional[NginxTracingConfig]:
+        endpoint = (
+            self._workload_tracing.get_endpoint("otlp_grpc")
+            if self._workload_tracing.is_ready()
+            else None
+        )
+        return (
+            NginxTracingConfig(
+                endpoint=endpoint,
+                service_name=f"{self.app.name}-nginx",  # append "-nginx" suffix to distinguish workload traces from charm traces
+                # insert juju topology into the trace resource attributes
+                resource_attributes={
+                    "juju_{}".format(key): value
+                    for key, value in JujuTopology.from_charm(self).as_dict().items()
+                    if value
+                },
+            )
+            if endpoint
+            else None
+        )
+
+    def _nginx_config(self) -> str:
         return get_config(
             hostname=self._fqdn,
             auth_url=self.auth_url,
             backend_url=self.backend_url,
-            tls_available=tls,
+            tls_available=bool(self._tls_config),
+            tracing_config=self._nginx_tracing_config(),
         )
 
     ##################
@@ -164,30 +193,17 @@ class LitmusChaoscenterCharm(CharmBase):
         )
 
     def _on_collect_unit_status(self, e: CollectStatusEvent):
-        missing_relations = [
-            rel
-            for rel in (AUTH_HTTP_API_ENDPOINT, BACKEND_HTTP_API_ENDPOINT)
-            if not self.model.get_relation(rel)
-        ]
-        missing_configs = [
-            config_name
-            for config_name, source in (
-                ("backend http API endpoint url", self.backend_url),
-                ("auth http API endpoint url", self.auth_url),
-            )
-            if not source
-        ]
-        if missing_relations:
-            e.add_status(
-                BlockedStatus(
-                    f"Missing [{', '.join(missing_relations)}] integration(s)."
-                )
-            )
-        if missing_configs:
-            e.add_status(
-                WaitingStatus(f"[{', '.join(missing_configs)}] not provided yet.")
-            )
-
+        StatusManager(
+            charm=self,
+            block_if_relations_missing=(
+                AUTH_HTTP_API_ENDPOINT,
+                BACKEND_HTTP_API_ENDPOINT,
+            ),
+            wait_for_config={
+                "backend http API endpoint url": self.backend_url,
+                "auth http API endpoint url": self.auth_url,
+            },
+        ).collect_status(e)
         # TODO: add pebble check to verify frontend is up
         #  https://github.com/canonical/litmus-operators/issues/36
         e.add_status(ActiveStatus(f"Ready at {self._most_external_frontend_url}."))
@@ -208,7 +224,9 @@ class LitmusChaoscenterCharm(CharmBase):
             ca_cert=self._tls_config.ca_cert if self._tls_config else None
         )
         if self.backend_url and self.auth_url:
-            self.nginx.reconcile()
+            self.nginx.reconcile(
+                nginx_config=self._nginx_config(), tls_config=self._tls_config
+            )
             self.nginx_exporter.reconcile()
         if self.unit.is_leader() and self.ingress.is_ready():
             self.ingress.submit_to_traefik(

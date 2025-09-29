@@ -61,7 +61,6 @@ requires:
   ingress:
     interface: traefik_route
     limit: 1
-
   charm-tracing:
     optional: true
     interface: tracing
@@ -81,6 +80,13 @@ provides:
     interface: prometheus_scrape
     description: |
       Endpoint to allow prometheus metrics to be scraped.
+  workload-tracing:
+    optional: true
+    interface: tracing
+    description: |
+      Request a tracing endpoint through which this application will send its workload traces to a 
+      tracing backend.
+    limit: 1
 
 links:
   documentation: https://discourse.charmhub.io/t/18788
