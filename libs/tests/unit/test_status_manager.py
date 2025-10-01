@@ -148,3 +148,28 @@ def test_status_mgr_charm_api_checks(ctx, fail):
             )
         case None:
             assert state_out.unit_status.message == "happy status!"
+
+
+def test_pebble_checks_ignored_when_container_cannot_connect(ctx):
+    # GIVEN a charm container configured with pebble checks
+    # AND the pebble checks are failing
+    # AND the container is not up yet (cannot connect)
+    state = scenario.State(
+        config={"cfg1": True},
+        relations={scenario.Relation("rel1")},
+        containers={
+            scenario.Container(
+                "container1",
+                _base_plan={
+                    "checks": {"check1": {"threshold": 3, "startup": "enabled", "level": None}}
+                },
+                check_infos={scenario.CheckInfo("check1", status=ops.pebble.CheckStatus.DOWN)},
+                can_connect=False,
+            )
+        },
+    )
+    # WHEN any event is fired
+    state_out = ctx.run(ctx.on.update_status(), state=state)
+    # THEN the status manager ignores the failing pebble checks
+    # AND doesn't set the charm to blocked
+    assert isinstance(state_out.unit_status, ops.ActiveStatus)
