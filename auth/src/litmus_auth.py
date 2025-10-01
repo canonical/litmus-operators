@@ -5,7 +5,6 @@
 """Control Litmus Authentication server running in a container under Pebble. Provides a LitmusAuth class."""
 
 import logging
-import socket
 
 from ops import Container
 from ops.pebble import Layer, CheckDict
@@ -80,8 +79,8 @@ class LitmusAuth:
             "override": "replace",
             "startup": "enabled",
             "threshold": 3,
-            "http": {
-                "url": f"http{'s' if tls_config else ''}://{socket.getfqdn()}:{self.https_port if tls_config else self.http_port}/status"
+            "tcp": {
+                "port": self.https_port if tls_config else self.http_port,
             },
         }
 
