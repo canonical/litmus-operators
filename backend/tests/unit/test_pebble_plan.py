@@ -226,7 +226,7 @@ def test_pebble_checks_plan(
             "startup": "enabled",
             "threshold": 3,
             "tcp": {
-                "port": 8080 if tls else 8080,
+                "port": 8081 if tls else 8080,
             },
         }
     }
