@@ -216,16 +216,16 @@ wheels = [
 
 [[package]]
 name = "ops"
-version = "3.2.0"
+version = "3.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "opentelemetry-api" },
     { name = "pyyaml" },
     { name = "websocket-client" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7d/e7/1e8009ead8c9ea52af27d9b7dc02612530b69c89ae6716d8f6fbfcc4e7d2/ops-3.2.0.tar.gz", hash = "sha256:1974a002a64e88665f4b23187fb2b1534be15507c2cb6523a5acb5d933b45815", size = 537349, upload_time = "2025-08-27T22:58:37.974Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/00/42/dd7f3129ea3feb083e9787406c75249f1a311ae829d0d1adefd54c42fc73/ops-3.3.0.tar.gz", hash = "sha256:f89613def8b4a231218038ba5656927c522532e42b2dd8c06e12ff7a45bc647a", size = 541714, upload_time = "2025-09-29T04:01:44.179Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/63/5b/ea7b25780e2d83c5e679fb626674e97e9f7969cc9c8419a716cd093e2010/ops-3.2.0-py3-none-any.whl", hash = "sha256:2227acceef8f60432b17287f1130135690dd0f6b44edcd025c413ee25f5de010", size = 189782, upload_time = "2025-08-27T22:58:33.302Z" },
+    { url = "https://files.pythonhosted.org/packages/7d/7e/ba6915be399db5b671d5b7d162aefa298507676efcc77f75227d2e599991/ops-3.3.0-py3-none-any.whl", hash = "sha256:4f03013dfe325690add181f989b571259cc4add8a8a5cafbd380ffcc2bbd7c1d", size = 191346, upload_time = "2025-09-29T04:01:40.016Z" },
 ]
 
 [package.optional-dependencies]
@@ -238,20 +238,20 @@ tracing = [
 
 [[package]]
 name = "ops-scenario"
-version = "8.2.0"
+version = "8.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ops" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/eb/9f/03f711869e9b8ebc993a0686c38201ca738c61958db4795c65093d7e9cc9/ops_scenario-8.2.0.tar.gz", hash = "sha256:33eb2ad46f6ee916747a2a0c5d6691454f23c9a7dc03dce24d0be4370c54d45a", size = 109715, upload_time = "2025-08-27T22:58:39.463Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6f/c4/c230f40926ee361aaa7bc529a1c7ac9e65c67b28251eb77718b09a851b68/ops_scenario-8.3.0.tar.gz", hash = "sha256:97bbfcfe3f98280c0c585ea60bf5210f4dc324b30f8db0b816c9450b4f5bcfc6", size = 110284, upload_time = "2025-09-29T04:01:45.369Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/68/d6/6129b8852dd1e14e3332bc9299d4be39d3c5944f15dc80b2d541b97456ad/ops_scenario-8.2.0-py3-none-any.whl", hash = "sha256:35e0786b50f8ddd2067c78dbaff2d9219ef701cbebbbace50f8330aaa1fa91f0", size = 63901, upload_time = "2025-08-27T22:58:34.996Z" },
+    { url = "https://files.pythonhosted.org/packages/80/05/55331c60603dc0b12ce7fa4095e8e432a11affc7fa23c90dff8b0a0c14b3/ops_scenario-8.3.0-py3-none-any.whl", hash = "sha256:ae8be8a50a5520f1fe4a092d8a11e3b8865cea3532e78b4bb1f93d86e72bf6d9", size = 64407, upload_time = "2025-09-29T04:01:41.861Z" },
 ]
 
 [[package]]
 name = "ops-tracing"
-version = "3.2.0"
+version = "3.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -259,9 +259,9 @@ dependencies = [
     { name = "ops" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/55/5b/e9244b5a5324fbf9a327af710801afb3ef04afddefdffb4c60d112fa50e8/ops_tracing-3.2.0.tar.gz", hash = "sha256:e1e965bcbba18ba140e2befb17105604a47bfc28e7fce8473214f39d1eb3a339", size = 28478, upload_time = "2025-08-27T22:58:40.485Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e0/b9/b41e15ec27ad67ca6fa7ce549552a7e92184765f53ef5438f2c28cbaa450/ops_tracing-3.3.0.tar.gz", hash = "sha256:c2b549d0b0dab206a5f854e53e0d7dc8730bb1fae296c3cf12fa6c1d847bd917", size = 28588, upload_time = "2025-09-29T04:01:46.717Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/89/45/f9f680ce479ce59002b3351a1ad659fddf08f71739fd0fc3fbed4fb60f54/ops_tracing-3.2.0-py3-none-any.whl", hash = "sha256:2b503247120025df8e866e5f489fd0d750471ddb20dc400675de7eea06b80eb2", size = 31444, upload_time = "2025-08-27T22:58:36.613Z" },
+    { url = "https://files.pythonhosted.org/packages/a9/20/0a91f1dd2710c4e17e6bcee2314601205d213aa07e5deb0ee34533c5bf1a/ops_tracing-3.3.0-py3-none-any.whl", hash = "sha256:551a3ad1e06c154d1c6c999cfd1923b4a67207a877bfc0fbd2e2921272955dad", size = 31556, upload_time = "2025-09-29T04:01:43.083Z" },
 ]
 
 [[package]]
@@ -483,14 +483,14 @@ wheels = [
 
 [[package]]
 name = "typing-inspection"
-version = "0.4.1"
+version = "0.4.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f8/b1/0c11f5058406b3af7609f121aaa6b609744687f1d158b3c3a5bf4cc94238/typing_inspection-0.4.1.tar.gz", hash = "sha256:6ae134cc0203c33377d43188d4064e9b357dba58cff3185f22924610e70a9d28", size = 75726, upload_time = "2025-05-21T18:55:23.885Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/55/e3/70399cb7dd41c10ac53367ae42139cf4b1ca5f36bb3dc6c9d33acdb43655/typing_inspection-0.4.2.tar.gz", hash = "sha256:ba561c48a67c5958007083d386c3295464928b01faa735ab8547c5692e87f464", size = 75949, upload_time = "2025-10-01T02:14:41.687Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/17/69/cd203477f944c353c31bade965f880aa1061fd6bf05ded0726ca845b6ff7/typing_inspection-0.4.1-py3-none-any.whl", hash = "sha256:389055682238f53b04f7badcb49b989835495a96700ced5dab2d8feae4b26f51", size = 14552, upload_time = "2025-05-21T18:55:22.152Z" },
+    { url = "https://files.pythonhosted.org/packages/dc/9b/47798a6c91d8bdb567fe2698fe81e0c6b7cb7ef4d13da4114b41d239f65d/typing_inspection-0.4.2-py3-none-any.whl", hash = "sha256:4ed1cacbdc298c220f1bd249ed5287caa16f34d44ef4e9c3d0cbad5b521545e7", size = 14611, upload_time = "2025-10-01T02:14:40.154Z" },
 ]
 
 [[package]]
