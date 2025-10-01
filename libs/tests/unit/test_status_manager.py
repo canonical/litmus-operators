@@ -124,6 +124,7 @@ def test_status_mgr_charm_api_checks(ctx, fail):
                     "checks": {"check1": {"threshold": 3, "startup": "enabled", "level": None}}
                 },
                 check_infos={scenario.CheckInfo("check1", status=check_status)},
+                can_connect=True,
             )
         },
     )
