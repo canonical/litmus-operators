@@ -6,9 +6,10 @@
 
 import json
 import logging
+import socket
 
 from ops import Container
-from ops.pebble import Layer
+from ops.pebble import Layer, CheckDict
 from typing import Optional, Callable
 from litmus_libs import DatabaseConfig, TLSConfigData, get_litmus_version
 from litmus_libs.interfaces.litmus_auth import Endpoint
@@ -41,7 +42,7 @@ class LitmusBackend:
         self._tls_key_path = tls_key_path
         self._tls_ca_path = tls_ca_path
         self._db_config = db_config
-        self.tls_config_getter = tls_config_getter
+        self._tls_config_getter = tls_config_getter
         self._auth_grpc_endpoint = auth_grpc_endpoint
         self._frontend_url = frontend_url
         self._workload_version = get_litmus_version(self._container)
@@ -65,6 +66,7 @@ class LitmusBackend:
     @property
     def _pebble_layer(self) -> Layer:
         """Return a Pebble layer for Litmus backend server."""
+        tls_config = self._tls_config_getter()
         return Layer(
             {
                 "services": {
@@ -73,14 +75,24 @@ class LitmusBackend:
                         "summary": "litmus backend server layer",
                         "command": "/bin/server",
                         "startup": "enabled",
-                        "environment": self._environment_vars,
+                        "environment": self._environment_vars(tls_config),
                     }
                 },
+                "checks": {self.name: self._pebble_check_layer(tls_config)},
             }
         )
 
-    @property
-    def _environment_vars(self) -> dict:
+    def _pebble_check_layer(self, tls_config: Optional[TLSConfigData]) -> CheckDict:
+        return {
+            "override": "replace",
+            "startup": "enabled",
+            "threshold": 3,
+            "http": {
+                "url": f"http{'s' if tls_config else ''}://{socket.getfqdn()}:{self.https_port if tls_config else self.http_port}/status"
+            },
+        }
+
+    def _environment_vars(self, tls_config: Optional[TLSConfigData]) -> dict:
         workload_version = self._workload_version or ""
         env = {
             "REST_PORT": self.http_port,
@@ -124,7 +136,7 @@ class LitmusBackend:
                     "CHAOS_CENTER_UI_ENDPOINT": frontend_url,
                 }
             )
-        if self.tls_config_getter():
+        if tls_config:
             env.update(
                 {
                     "ENABLE_INTERNAL_TLS": "true",
@@ -140,6 +152,6 @@ class LitmusBackend:
 
     @property
     def litmus_backend_ports(self) -> tuple[int, int]:
-        if not self.tls_config_getter():
+        if not self._tls_config_getter():
             return self.http_port, self.grpc_port
         return self.https_port, self.grpc_tls_port

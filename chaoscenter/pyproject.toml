@@ -9,7 +9,8 @@ dependencies = [
     "litmus-libs==0.0.8",
     "ops",
     "cryptography>=45.0.7",
-    "coordinated-workers",
+    # FIXME: use pypi package
+    "coordinated-workers@git+https://github.com/canonical/cos-coordinated-workers@nginx-pebble-checks",
     # for juju topology
     "cosl",
 ]

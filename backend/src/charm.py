@@ -136,9 +136,8 @@ class LitmusBackendCharm(CharmBase):
                 "auth gRPC endpoint": self.auth_grpc_endpoint,
                 "frontend url": self.frontend_url,
             },
+            block_if_pebble_checks_failing={LitmusBackend.name: [LitmusBackend.name]},
         ).collect_status(e)
-        # TODO: add pebble check to verify backend is up
-        #  https://github.com/canonical/litmus-operators/issues/36
         e.add_status(ActiveStatus(""))
 
     ###################

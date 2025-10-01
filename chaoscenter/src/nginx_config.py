@@ -98,6 +98,15 @@ def _generate_http_locations(
                 "autoindex": ["on"],
             },
         ),
+        # this location will be used by pebble checks to verify that nginx is alive
+        NginxLocationConfig(
+            path="/health",
+            extra_directives={
+                "access_log": ["off"],
+                "return": ["200", "'OK'"],
+                "add_header": ["Content-Type", "text/plain"],
+            },
+        ),
         NginxLocationConfig(
             path="/auth",
             backend="auth",

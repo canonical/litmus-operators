@@ -5,9 +5,10 @@
 """Control Litmus Authentication server running in a container under Pebble. Provides a LitmusAuth class."""
 
 import logging
+import socket
 
 from ops import Container
-from ops.pebble import Layer
+from ops.pebble import Layer, CheckDict
 from typing import Optional, Callable
 from litmus_libs import DatabaseConfig, TLSConfigData
 from litmus_libs.interfaces.litmus_auth import Endpoint
@@ -58,6 +59,7 @@ class LitmusAuth:
     @property
     def _pebble_layer(self) -> Layer:
         """Return a Pebble layer for Litmus Auth server."""
+        tls_config = self._tls_config_getter()
         return Layer(
             {
                 "services": {
@@ -66,14 +68,24 @@ class LitmusAuth:
                         "summary": "litmus auth server layer",
                         "command": "/bin/server",
                         "startup": "enabled",
-                        "environment": self._environment_vars,
+                        "environment": self._environment_vars(tls_config),
                     }
                 },
+                "checks": {self.name: self._pebble_check_layer(tls_config)},
             }
         )
 
-    @property
-    def _environment_vars(self) -> dict:
+    def _pebble_check_layer(self, tls_config: Optional[TLSConfigData]) -> CheckDict:
+        return {
+            "override": "replace",
+            "startup": "enabled",
+            "threshold": 3,
+            "http": {
+                "url": f"http{'s' if tls_config else ''}://{socket.getfqdn()}:{self.https_port if tls_config else self.http_port}/status"
+            },
+        }
+
+    def _environment_vars(self, tls_config: Optional[TLSConfigData]) -> dict:
         env = {
             "ALLOWED_ORIGINS": ".*",
             "REST_PORT": self.http_port,
@@ -99,7 +111,7 @@ class LitmusAuth:
                     "LITMUS_GQL_GRPC_PORT": backend_endpoint.grpc_server_port,
                 }
             )
-        if self._tls_config_getter():
+        if tls_config:
             env.update(
                 {
                     "ENABLE_INTERNAL_TLS": "true",

@@ -75,7 +75,6 @@ def test_tls_certs_not_updated_if_stored_certs_match_these_from_the_relation_dat
     ctx,
     authserver_container,
     tls_certificates_relation,
-    cert_and_key,
     patch_cert_and_key,
 ):
     with tempfile.TemporaryDirectory() as tempdir:
@@ -87,7 +86,7 @@ def test_tls_certs_not_updated_if_stored_certs_match_these_from_the_relation_dat
             location="/usr",
             source=Path(tempdir) / "usr",
         )
-        certs, key = cert_and_key
+        certs, key = patch_cert_and_key
         authserver_container.mounts["certs"] = certs_mount
         authserver_container.mounts["usr"] = usr_mount
 
@@ -126,7 +125,6 @@ def test_tls_certs_updated_if_stored_certs_dont_match_these_from_the_relation_da
     ctx,
     authserver_container,
     tls_certificates_relation,
-    cert_and_key,
     patch_cert_and_key,
 ):
     with tempfile.TemporaryDirectory() as tempdir:
@@ -138,7 +136,7 @@ def test_tls_certs_updated_if_stored_certs_dont_match_these_from_the_relation_da
             location="/usr",
             source=Path(tempdir) / "usr",
         )
-        certs, key = cert_and_key
+        certs, key = patch_cert_and_key
         authserver_container.mounts["certs"] = certs_mount
         authserver_container.mounts["usr"] = usr_mount
 

@@ -1,5 +1,6 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
+from contextlib import contextmanager
 import json
 import pathlib
 from unittest.mock import patch
@@ -10,13 +11,19 @@ from scenario import Relation
 from certificates_helpers import mock_cert_and_key
 from coordinated_workers.nginx import CA_CERT_PATH
 from charm import LitmusChaoscenterCharm
+from ops.testing import Exec
+
+
+@pytest.fixture(scope="session")
+def unit_fqdn():
+    yield "app-0.app-headless.default.svc.cluster.local"
 
 
 @pytest.fixture
-def chaoscenter_charm():
+def chaoscenter_charm(unit_fqdn):
     with patch(
         "socket.getfqdn",
-        return_value="app-0.app-headless.default.svc.cluster.local",
+        return_value=unit_fqdn,
     ):
         yield LitmusChaoscenterCharm
 
@@ -26,6 +33,7 @@ def nginx_container():
     return Container(
         "chaoscenter",
         can_connect=True,
+        execs=[Exec(["update-ca-certificates", "--fresh"], return_code=0)],
     )
 
 
@@ -42,17 +50,18 @@ def ctx(chaoscenter_charm):
     return Context(charm_type=chaoscenter_charm)
 
 
-@pytest.fixture
-def cert_and_key():
-    return mock_cert_and_key()
+@contextmanager
+def patch_cert_and_key_ctx(tls: bool):
+    with patch(
+        "charms.tls_certificates_interface.v4.tls_certificates.TLSCertificatesRequiresV4.get_assigned_certificate",
+        return_value=mock_cert_and_key() if tls else (None, None),
+    ):
+        yield
 
 
 @pytest.fixture()
-def patch_cert_and_key(cert_and_key):
-    with patch(
-        "charms.tls_certificates_interface.v4.tls_certificates.TLSCertificatesRequiresV4.get_assigned_certificate",
-        return_value=cert_and_key,
-    ):
+def patch_cert_and_key():
+    with patch_cert_and_key_ctx(True):
         yield
 
 
