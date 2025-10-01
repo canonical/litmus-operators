@@ -31,6 +31,7 @@ from nginx_config import get_config, http_server_port
 from traefik_config import ingress_config, static_ingress_config
 
 from charms.traefik_k8s.v0.traefik_route import TraefikRouteRequirer
+from charms.traefik_k8s.v2.ingress import IngressPerAppRequirer
 
 from litmus_libs import get_app_hostname, get_litmus_version
 from litmus_libs.interfaces.http_api import (
@@ -69,10 +70,10 @@ class LitmusChaoscenterCharm(CharmBase):
             relationship_name=TLS_CERTIFICATES_ENDPOINT,
             certificate_requests=[self._certificate_request_attributes],
         )
-        self.ingress = TraefikRouteRequirer(
+        self.ingress = IngressPerAppRequirer(
             self,
-            self.model.get_relation("ingress"),  # type: ignore
-            "ingress",
+            port=8185,
+            strip_prefix=True,
         )
 
         self._workload_tracing = TracingEndpointRequirer(
@@ -149,10 +150,8 @@ class LitmusChaoscenterCharm(CharmBase):
         """
         if (
             self.ingress.is_ready()
-            and self.ingress.scheme
-            and self.ingress.external_host
         ):
-            return f"{self.ingress.scheme}://{self.ingress.external_host}:8185"
+            return f"{self.ingress.url}"
         return self._internal_frontend_url
 
     @property
@@ -214,13 +213,13 @@ class LitmusChaoscenterCharm(CharmBase):
                 nginx_config=self._nginx_config(), tls_config=self._tls_config
             )
             self.nginx_exporter.reconcile()
-        if self.unit.is_leader() and self.ingress.is_ready():
-            self.ingress.submit_to_traefik(
-                ingress_config(
-                    self.model.name, self.app.name, self._tls_config is not None
-                ),
-                static=static_ingress_config(),
-            )
+        # if self.unit.is_leader() and self.ingress.is_ready():
+        #     self.ingress.submit_to_traefik(
+        #         ingress_config(
+        #             self.model.name, self.app.name, self._tls_config is not None
+        #         ),
+        #         static=static_ingress_config(),
+        #     )
 
     @property
     def _certificate_request_attributes(self) -> CertificateRequestAttributes:

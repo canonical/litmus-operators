@@ -59,7 +59,7 @@ requires:
     description: |
       Receive TLS certificates.
   ingress:
-    interface: traefik_route
+    interface: ingress
     limit: 1
   charm-tracing:
     optional: true
