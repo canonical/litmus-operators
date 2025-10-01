@@ -154,8 +154,8 @@ def test_pebble_checks_plan(
             "override": "replace",
             "startup": "enabled",
             "threshold": 3,
-            "http": {
-                "url": f"http{'s' if tls else ''}://{unit_fqdn}:{'3001' if tls else '3000'}/status"
+            "tcp": {
+                "port": 3001 if tls else 3000,
             },
         }
     }
