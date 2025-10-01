@@ -56,8 +56,11 @@ NGINX_OVERRIDES: NginxMappingOverrides = {
 class LitmusChaoscenterCharm(CharmBase):
     """Charmed Operator for Litmus Chaoscenter."""
 
+    _container_name = "chaoscenter"
+
     def __init__(self, *args):
         super().__init__(*args)
+        self._fqdn = socket.getfqdn()
         self._receive_auth_http_api = LitmusAuthApiRequirer(
             relation=self.model.get_relation(AUTH_HTTP_API_ENDPOINT), app=self.app
         )
@@ -84,7 +87,8 @@ class LitmusChaoscenterCharm(CharmBase):
         self.nginx = Nginx(
             self,
             options=None,
-            container_name="chaoscenter",
+            container_name=self._container_name,
+            liveness_check_endpoint_getter=self._nginx_liveness_endpoint,
         )
 
         self._self_monitoring = SelfMonitoring(self)
@@ -138,6 +142,9 @@ class LitmusChaoscenterCharm(CharmBase):
             tracing_config=self._nginx_tracing_config(),
         )
 
+    def _nginx_liveness_endpoint(self, tls: bool) -> str:
+        return f"http{'s' if tls else ''}://{self._fqdn}:{http_server_port}/health"
+
     ##################
     # EVENT HANDLERS #
     ##################
@@ -189,9 +196,10 @@ class LitmusChaoscenterCharm(CharmBase):
                 "backend http API endpoint url": self.backend_url,
                 "auth http API endpoint url": self.auth_url,
             },
+            block_if_pebble_checks_failing={
+                self._container_name: [self._container_name]
+            },
         ).collect_status(e)
-        # TODO: add pebble check to verify frontend is up
-        #  https://github.com/canonical/litmus-operators/issues/36
         e.add_status(ActiveStatus(f"Ready at {self._most_external_frontend_url}."))
 
     ###################
@@ -202,7 +210,7 @@ class LitmusChaoscenterCharm(CharmBase):
         self.unit.set_ports(http_server_port)
         self.unit.set_workload_version(
             get_litmus_version(
-                container=self.unit.get_container("chaoscenter"),
+                container=self.unit.get_container(self._container_name),
             )
             or ""
         )
@@ -228,7 +236,7 @@ class LitmusChaoscenterCharm(CharmBase):
             common_name=self.app.name,
             sans_dns=frozenset(
                 (
-                    socket.getfqdn(),
+                    self._fqdn,
                     get_app_hostname(self.app.name, self.model.name),
                     # TODO: Once Ingress is in use, its address should also be added here
                 )

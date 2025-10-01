@@ -125,9 +125,8 @@ class LitmusAuthCharm(CharmBase):
                 "database config": self.database_config,
                 "backend gRPC endpoint": self.backend_grpc_endpoint,
             },
+            block_if_pebble_checks_failing={LitmusAuth.name: [LitmusAuth.name]},
         ).collect_status(e)
-        # TODO: add pebble check to verify auth server is up
-        #  https://github.com/canonical/litmus-operators/issues/36
         e.add_status(ActiveStatus(""))
 
     ###################

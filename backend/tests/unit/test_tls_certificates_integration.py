@@ -76,7 +76,7 @@ def test_tls_certs_removed_from_disk_when_tls_certificates_relation_is_broken(
 
 
 def test_tls_certs_not_updated_if_stored_certs_match_these_from_the_relation_databag(
-    ctx, backend_container, tls_certificates_relation, cert_and_key, patch_cert_and_key
+    ctx, backend_container, tls_certificates_relation, patch_cert_and_key
 ):
     with tempfile.TemporaryDirectory() as tempdir:
         certs_mount = Mount(
@@ -87,7 +87,7 @@ def test_tls_certs_not_updated_if_stored_certs_match_these_from_the_relation_dat
             location="/usr",
             source=Path(tempdir) / "usr",
         )
-        certs, key = cert_and_key
+        certs, key = patch_cert_and_key
         backend_container.mounts["certs"] = certs_mount
         backend_container.mounts["usr"] = usr_mount
 
@@ -123,7 +123,7 @@ def test_tls_certs_not_updated_if_stored_certs_match_these_from_the_relation_dat
 
 
 def test_tls_certs_updated_if_stored_certs_dont_match_these_from_the_relation_databag(
-    ctx, backend_container, tls_certificates_relation, cert_and_key, patch_cert_and_key
+    ctx, backend_container, tls_certificates_relation, patch_cert_and_key
 ):
     with tempfile.TemporaryDirectory() as tempdir:
         certs_mount = Mount(
@@ -134,7 +134,7 @@ def test_tls_certs_updated_if_stored_certs_dont_match_these_from_the_relation_da
             location="/usr",
             source=Path(tempdir) / "usr",
         )
-        certs, key = cert_and_key
+        certs, key = patch_cert_and_key
         backend_container.mounts["certs"] = certs_mount
         backend_container.mounts["usr"] = usr_mount
 

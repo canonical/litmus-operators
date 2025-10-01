@@ -1,6 +1,7 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 from unittest.mock import patch, Mock
+from contextlib import contextmanager
 
 import json
 from ops.testing import Container, Context, Relation
@@ -15,27 +16,34 @@ def patch_workload_version():
         yield mock
 
 
+@pytest.fixture(scope="session")
+def unit_fqdn():
+    yield "app-0.app-headless.default.svc.cluster.local"
+
+
 @pytest.fixture
-def backend_charm():
+def backend_charm(unit_fqdn):
     with patch(
         "socket.getfqdn",
-        return_value="app-0.app-headless.default.svc.cluster.local",
+        return_value=unit_fqdn,
     ):
         yield LitmusBackendCharm
 
 
-@pytest.fixture
-def cert_and_key():
-    return mock_cert_and_key()
+@contextmanager
+def patch_cert_and_key_ctx(tls: bool):
+    tls_config = mock_cert_and_key() if tls else (None, None)
+    with patch(
+        "charms.tls_certificates_interface.v4.tls_certificates.TLSCertificatesRequiresV4.get_assigned_certificate",
+        return_value=tls_config,
+    ):
+        yield tls_config
 
 
 @pytest.fixture()
-def patch_cert_and_key(cert_and_key):
-    with patch(
-        "charms.tls_certificates_interface.v4.tls_certificates.TLSCertificatesRequiresV4.get_assigned_certificate",
-        return_value=cert_and_key,
-    ):
-        yield
+def patch_cert_and_key():
+    with patch_cert_and_key_ctx(True) as tls_config:
+        yield tls_config
 
 
 @pytest.fixture(autouse=True)

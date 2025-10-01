@@ -4,8 +4,9 @@
 import dataclasses
 import pytest
 import ops
-from ops.testing import State, CharmEvents, Relation
+from ops.testing import State, CharmEvents, Relation, CheckInfo
 from conftest import db_remote_databag, auth_remote_databag
+from ops.pebble import Layer, CheckStatus
 
 
 @pytest.mark.parametrize("leader", (False, True))
@@ -26,7 +27,9 @@ from conftest import db_remote_databag, auth_remote_databag
         {Relation("litmus-auth")},
     ),
 )
-def test_blocked_status(ctx, relations, event, authserver_container, leader):
+def test_missing_relations_blocked_status(
+    ctx, relations, event, authserver_container, leader
+):
     # GIVEN a running container
     # AND the relations provided by input (if any)
     # WHEN we receive any event
@@ -103,3 +106,51 @@ def test_active_status(
     )
     # THEN the unit sets active
     assert isinstance(state_out.unit_status, ops.ActiveStatus)
+
+
+@pytest.mark.parametrize(
+    "event",
+    (
+        CharmEvents.upgrade_charm(),
+        CharmEvents.install(),
+        CharmEvents.update_status(),
+        CharmEvents.install(),
+    ),
+)
+def test_pebble_check_failing_blocked_status(
+    ctx,
+    database_relation,
+    auth_relation,
+    authserver_container,
+    event,
+):
+    # GIVEN a database and a litmus-auth relation
+    # AND an authserver container with failing pebble checks
+    authserver_container = dataclasses.replace(
+        authserver_container,
+        layers={
+            "auth": Layer(
+                {
+                    "services": {"auth": {}},
+                    "checks": {
+                        "auth": {
+                            "threshold": 3,
+                            "startup": "enabled",
+                            "level": None,
+                        }
+                    },
+                }
+            )
+        },
+        check_infos={CheckInfo("auth", status=CheckStatus.DOWN, level=None)},
+    )
+    state = State(
+        containers=[authserver_container],
+        relations=[database_relation, auth_relation],
+    )
+
+    # WHEN any event fires
+    state_out = ctx.run(event, state=state)
+
+    # THEN the unit sets blocked
+    assert isinstance(state_out.unit_status, ops.BlockedStatus)

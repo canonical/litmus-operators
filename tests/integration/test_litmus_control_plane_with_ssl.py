@@ -116,3 +116,47 @@ def test_after_removing_tls_certificates_relation_frontend_is_served_without_ssl
 
     # THEN the frontend is served over http again
     assert "LitmusChaos" in result
+
+
+def test_after_removing_tls_certificates_relation_backend_is_served_without_ssl(
+    juju: Juju,
+):
+    # GIVEN control plane is deployed and TLS is disabled
+
+    # WHEN we call the nginx redirect for backend
+    chaoscenter_ip = get_unit_ip_address(juju, CHAOSCENTER_APP, 0)
+    query = (
+        'mutation { createEnvironment(projectID:"", '
+        'request:{environmentID:"test-env-1", name:"My Test Environment", type:NON_PROD}) '
+        "{ environmentID name type } }"
+    )
+
+    cmd = (
+        'curl -sS -k -X POST -H "Content-Type: application/json" '
+        f'-H "Authorization: Bearer {token}" '
+        f'-d \'{{"query": "{query}"}}\' '
+        f"http://{chaoscenter_ip}:8185/backend/query"
+    )
+
+    # THEN we receive a response from the backend
+    subprocess.check_call(shlex.split(cmd))
+
+
+def test_after_removing_tls_certificates_relation_auth_is_served_without_ssl(
+    juju: Juju,
+):
+    # GIVEN control plane is deployed and TLS is disabled
+
+    # WHEN we call the nginx redirect for auth server
+    chaoscenter_ip = get_unit_ip_address(juju, CHAOSCENTER_APP, 0)
+    returncode, output = get_login_response(
+        host=chaoscenter_ip,
+        port=8185,
+        subpath="/auth",
+        use_ssl=False,
+    )
+
+    # THEN we receive a response from the auth server
+    assert returncode == 0
+    response_json = json.loads(output)
+    assert "accessToken" in response_json, f"No token found in response: {output}"

@@ -2,7 +2,9 @@
 # See LICENSE file for licensing details.
 from ops.testing import State
 from dataclasses import replace
-from conftest import db_remote_databag, auth_remote_databag
+
+import pytest
+from conftest import db_remote_databag, auth_remote_databag, patch_cert_and_key_ctx
 
 
 def test_pebble_plan_minimal(ctx, authserver_container):
@@ -141,3 +143,39 @@ def test_pebble_service_running(
     # THEN litmus auth server pebble service is running
     auth_container_out = state_out.get_container(authserver_container.name)
     assert auth_container_out.services.get("auth").is_running()
+
+
+@pytest.mark.parametrize("tls", (False, True))
+def test_pebble_checks_plan(
+    ctx, authserver_container, auth_relation, database_relation, tls, unit_fqdn
+):
+    expected_checks = {
+        "auth": {
+            "override": "replace",
+            "startup": "enabled",
+            "threshold": 3,
+            "http": {
+                "url": f"http{'s' if tls else ''}://{unit_fqdn}:{'3001' if tls else '3000'}/status"
+            },
+        }
+    }
+
+    # GIVEN a running container with an auth and a database relation
+    auth_relation = replace(
+        auth_relation,
+        remote_app_data=auth_remote_databag(),
+    )
+    database_relation = replace(
+        database_relation,
+        remote_app_data=db_remote_databag(),
+    )
+    state = State(
+        containers=[authserver_container], relations=[auth_relation, database_relation]
+    )
+    with patch_cert_and_key_ctx(tls):
+        # WHEN a workload pebble ready event is fired
+        state_out = ctx.run(ctx.on.relation_changed(auth_relation), state=state)
+
+    # THEN litmus auth server pebble plan is generated with the correct pebble checks
+    auth_container_out = state_out.get_container(authserver_container.name)
+    assert auth_container_out.plan.to_dict()["checks"] == expected_checks
