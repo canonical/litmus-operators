@@ -23,6 +23,9 @@ logger = logging.getLogger(__name__)
 
 
 http_server_port = 8185
+container_name = "chaoscenter"
+liveness_check_name = "chaoscenter-up"
+all_pebble_checks = [liveness_check_name]
 
 
 def get_config(
@@ -96,6 +99,16 @@ def _generate_http_locations(
                 "add_header": ["Cache-Control", "no-cache"],
                 "try_files": ["$uri", "/index.html"],
                 "autoindex": ["on"],
+            },
+        ),
+        # this location will be used by pebble checks to verify that nginx is alive
+        # TODO: use `enable_health_check` once https://github.com/canonical/cos-coordinated-workers/issues/86 is fixed
+        NginxLocationConfig(
+            path="/health",
+            extra_directives={
+                "access_log": ["off"],
+                "return": ["200", "'OK'"],
+                "add_header": ["Content-Type", "text/plain"],
             },
         ),
         NginxLocationConfig(

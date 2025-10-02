@@ -8,6 +8,7 @@ from conftest import (
     db_remote_databag,
     auth_remote_databag,
     http_api_remote_databag,
+    patch_cert_and_key_ctx,
 )
 
 
@@ -213,3 +214,30 @@ def test_workload_version_in_pebble_env_vars(
             assert "1.0" in actual_env_vars[key]
         else:
             assert "1.0" not in actual_env_vars[key]
+
+
+@pytest.mark.parametrize("tls", (False, True))
+def test_pebble_checks_plan(
+    ctx, backend_container, auth_relation, database_relation, tls, unit_fqdn
+):
+    # GIVEN a running container with an auth and a database relation
+    auth_relation = replace(
+        auth_relation,
+        remote_app_data=auth_remote_databag(),
+    )
+    database_relation = replace(
+        database_relation,
+        remote_app_data=db_remote_databag(),
+    )
+    state = State(
+        containers=[backend_container], relations=[auth_relation, database_relation]
+    )
+    with patch_cert_and_key_ctx(tls):
+        # WHEN a workload pebble ready event is fired
+        state_out = ctx.run(ctx.on.relation_changed(auth_relation), state=state)
+
+    # THEN litmus backend server pebble plan is generated with the correct pebble checks
+    backend_container_out = state_out.get_container(backend_container.name)
+    assert backend_container_out.plan.checks["backend-up"].tcp == {
+        "port": 8081 if tls else 8080
+    }
