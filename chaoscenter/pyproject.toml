@@ -9,7 +9,7 @@ dependencies = [
     "litmus-libs",
     "ops",
     "cryptography>=45.0.7",
-    "coordinated-workers@git+https://github.com/canonical/cos-coordinated-workers@try-to-fix-update-ca",
+    "coordinated-workers",
     # for juju topology
     "cosl",
 ]
