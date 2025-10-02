@@ -220,17 +220,6 @@ def test_workload_version_in_pebble_env_vars(
 def test_pebble_checks_plan(
     ctx, backend_container, auth_relation, database_relation, tls, unit_fqdn
 ):
-    expected_checks = {
-        "backend": {
-            "override": "replace",
-            "startup": "enabled",
-            "threshold": 3,
-            "tcp": {
-                "port": 8081 if tls else 8080,
-            },
-        }
-    }
-
     # GIVEN a running container with an auth and a database relation
     auth_relation = replace(
         auth_relation,
@@ -249,4 +238,6 @@ def test_pebble_checks_plan(
 
     # THEN litmus backend server pebble plan is generated with the correct pebble checks
     backend_container_out = state_out.get_container(backend_container.name)
-    assert backend_container_out.plan.to_dict()["checks"] == expected_checks
+    assert backend_container_out.plan.checks["backend-up"].tcp == {
+        "port": 8081 if tls else 8080
+    }

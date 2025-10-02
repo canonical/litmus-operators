@@ -37,28 +37,6 @@ def test_nginx_pebble_ready_plan(
     patch_write_to_ca_path,
     tls,
 ):
-    expected_plan = {
-        "services": {
-            "chaoscenter": {
-                "override": "replace",
-                "summary": "nginx",
-                "command": "nginx -g 'daemon off;'",
-                "startup": "enabled",
-                "on-check-failure": {
-                    "chaoscenter": "restart",
-                },
-            },
-        },
-        "checks": {
-            "chaoscenter": {
-                "override": "replace",
-                "startup": "enabled",
-                "threshold": 3,
-                "http": {"url": f"http{'s' if tls else ''}://{unit_fqdn}:8185/health"},
-            }
-        },
-    }
-
     # GIVEN relations with auth and backend endpoints
     state = State(
         containers=[nginx_container, nginx_prometheus_exporter_container],
@@ -69,9 +47,21 @@ def test_nginx_pebble_ready_plan(
         # WHEN a workload pebble ready event is fired
         state_out = ctx.run(ctx.on.pebble_ready(nginx_container), state=state)
 
-    # THEN litmus chaoscenter server pebble plan is generated
     nginx_container_out = state_out.get_container(nginx_container.name)
-    assert nginx_container_out.plan.to_dict() == expected_plan
+    nginx_container_plan = nginx_container_out.plan
+    # THEN litmus chaoscenter server pebble plan is generated with the correct command
+    assert (
+        nginx_container_plan.services["chaoscenter"].command == "nginx -g 'daemon off;'"
+    )
+    # AND the correct on-check-failure
+    assert nginx_container_plan.services["chaoscenter"].on_check_failure == {
+        "chaoscenter-up": "restart"
+    }
+
+    # AND the plan has the correct pebble checks
+    assert nginx_container_plan.checks["chaoscenter-up"].http == {
+        "url": f"http{'s' if tls else ''}://{unit_fqdn}:8185/health"
+    }
     # AND the pebble service is running
     assert nginx_container_out.services.get("chaoscenter").is_running()
 

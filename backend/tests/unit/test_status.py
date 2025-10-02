@@ -139,7 +139,7 @@ def test_pebble_check_failing_blocked_status(
                 {
                     "services": {"backend": {}},
                     "checks": {
-                        "backend": {
+                        "backend-up": {
                             "threshold": 3,
                             "startup": "enabled",
                             "level": None,
@@ -148,7 +148,7 @@ def test_pebble_check_failing_blocked_status(
                 }
             )
         },
-        check_infos={CheckInfo("backend", status=CheckStatus.DOWN, level=None)},
+        check_infos={CheckInfo("backend-up", status=CheckStatus.DOWN, level=None)},
     )
     state = State(
         containers=[backend_container],

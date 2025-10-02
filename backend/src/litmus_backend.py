@@ -19,11 +19,14 @@ logger = logging.getLogger(__name__)
 class LitmusBackend:
     """Litmus Backend server workload."""
 
-    name = "backend"
+    container_name = "backend"
+    layer_name = "backend"
+    liveness_check_name = "backend-up"
     http_port = 8080
     https_port = 8081
     grpc_port = 8000
     grpc_tls_port = 8001
+    all_pebble_checks = [liveness_check_name]
 
     def __init__(
         self,
@@ -52,7 +55,7 @@ class LitmusBackend:
             self._reconcile_workload_config()
 
     def _reconcile_workload_config(self):
-        self._container.add_layer(self.name, self._pebble_layer, combine=True)
+        self._container.add_layer(self.layer_name, self._pebble_layer, combine=True)
         # replan only if the available env var config is sufficient for the workload to run
         if self._db_config and self._workload_version:
             self._container.replan()
@@ -60,38 +63,40 @@ class LitmusBackend:
             logger.warning(
                 "cannot start/restart pebble service: missing database config or workload version.",
             )
-            self._container.stop(self.name)
+            self._container.stop(self.container_name)
 
     @property
     def _pebble_layer(self) -> Layer:
         """Return a Pebble layer for Litmus backend server."""
-        tls_config = self._tls_config_getter()
+        tls_enabled = bool(self._tls_config_getter())
         return Layer(
             {
                 "services": {
-                    self.name: {
+                    self.layer_name: {
                         "override": "replace",
                         "summary": "litmus backend server layer",
                         "command": "/bin/server",
                         "startup": "enabled",
-                        "environment": self._environment_vars(tls_config),
+                        "environment": self._environment_vars(tls_enabled),
                     }
                 },
-                "checks": {self.name: self._pebble_check_layer(tls_config)},
+                "checks": {
+                    self.liveness_check_name: self._pebble_check_layer(tls_enabled)
+                },
             }
         )
 
-    def _pebble_check_layer(self, tls_config: Optional[TLSConfigData]) -> CheckDict:
+    def _pebble_check_layer(self, tls_enabled: bool) -> CheckDict:
         return {
             "override": "replace",
             "startup": "enabled",
             "threshold": 3,
             "tcp": {
-                "port": self.https_port if tls_config else self.http_port,
+                "port": self.https_port if tls_enabled else self.http_port,
             },
         }
 
-    def _environment_vars(self, tls_config: Optional[TLSConfigData]) -> dict:
+    def _environment_vars(self, tls_enabled: bool) -> dict:
         workload_version = self._workload_version or ""
         env = {
             "REST_PORT": self.http_port,
@@ -135,7 +140,7 @@ class LitmusBackend:
                     "CHAOS_CENTER_UI_ENDPOINT": frontend_url,
                 }
             )
-        if tls_config:
+        if tls_enabled:
             env.update(
                 {
                     "ENABLE_INTERNAL_TLS": "true",

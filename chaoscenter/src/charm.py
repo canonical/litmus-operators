@@ -27,7 +27,7 @@ from coordinated_workers.nginx import (
 )
 
 from litmus_libs.status_manager import StatusManager
-from nginx_config import get_config, http_server_port
+from nginx_config import get_config, http_server_port, all_pebble_checks, container_name
 from traefik_config import ingress_config, static_ingress_config
 
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
@@ -57,8 +57,6 @@ NGINX_OVERRIDES: NginxMappingOverrides = {
 
 class LitmusChaoscenterCharm(CharmBase):
     """Charmed Operator for Litmus Chaoscenter."""
-
-    _container_name = "chaoscenter"
 
     def __init__(self, *args):
         super().__init__(*args)
@@ -99,7 +97,7 @@ class LitmusChaoscenterCharm(CharmBase):
         self.nginx = Nginx(
             self,
             options=None,
-            container_name=self._container_name,
+            container_name=container_name,
             liveness_check_endpoint_getter=self._nginx_liveness_endpoint,
         )
 
@@ -209,7 +207,7 @@ class LitmusChaoscenterCharm(CharmBase):
                 "auth http API endpoint url": self.auth_url,
             },
             block_if_pebble_checks_failing={
-                self._container_name: [self._container_name]
+                container_name: all_pebble_checks,
             },
         ).collect_status(e)
         e.add_status(ActiveStatus(f"Ready at {self._most_external_frontend_url}."))
@@ -222,7 +220,7 @@ class LitmusChaoscenterCharm(CharmBase):
         self.unit.set_ports(http_server_port)
         self.unit.set_workload_version(
             get_litmus_version(
-                container=self.unit.get_container(self._container_name),
+                container=self.unit.get_container(container_name),
             )
             or ""
         )
