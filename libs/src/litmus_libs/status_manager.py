@@ -66,10 +66,11 @@ class StatusManager:
         failing_checks: list[str] = []
         for container_name, checks in self._block_if_pebble_checks_failing.items():
             container = self._charm.unit.get_container(container_name)
-            checks_status = container.get_checks(*checks)
-            for check_name, check_status in checks_status.items():
-                if check_status.status is CheckStatus.DOWN:
-                    failing_checks.append(check_name)
+            if container.can_connect():
+                checks_status = container.get_checks(*checks)
+                for check_name, check_status in checks_status.items():
+                    if check_status.status is CheckStatus.DOWN:
+                        failing_checks.append(check_name)
 
         if failing_checks:
             return ops.BlockedStatus(
