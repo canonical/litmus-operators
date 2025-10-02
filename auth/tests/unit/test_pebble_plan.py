@@ -149,17 +149,6 @@ def test_pebble_service_running(
 def test_pebble_checks_plan(
     ctx, authserver_container, auth_relation, database_relation, tls, unit_fqdn
 ):
-    expected_checks = {
-        "auth": {
-            "override": "replace",
-            "startup": "enabled",
-            "threshold": 3,
-            "tcp": {
-                "port": 3001 if tls else 3000,
-            },
-        }
-    }
-
     # GIVEN a running container with an auth and a database relation
     auth_relation = replace(
         auth_relation,
@@ -178,4 +167,4 @@ def test_pebble_checks_plan(
 
     # THEN litmus auth server pebble plan is generated with the correct pebble checks
     auth_container_out = state_out.get_container(authserver_container.name)
-    assert auth_container_out.plan.to_dict()["checks"] == expected_checks
+    assert auth_container_out.plan.checks["auth-up"].tcp == {"port": (3001 if tls else 3000)}

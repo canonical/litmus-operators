@@ -35,7 +35,7 @@ def test_pebble_check_failing_blocked_status(
                 {
                     "services": {"chaoscenter": {}},
                     "checks": {
-                        "chaoscenter": {
+                        "chaoscenter-up": {
                             "threshold": 3,
                             "startup": "enabled",
                             "level": None,
@@ -44,7 +44,7 @@ def test_pebble_check_failing_blocked_status(
                 }
             )
         },
-        check_infos={CheckInfo("chaoscenter", status=CheckStatus.DOWN, level=None)},
+        check_infos={CheckInfo("chaoscenter-up", status=CheckStatus.DOWN, level=None)},
     )
     state = State(
         containers=[nginx_container, nginx_prometheus_exporter_container],

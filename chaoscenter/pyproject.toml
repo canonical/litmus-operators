@@ -6,12 +6,10 @@ version = "0.1"  # this is in fact irrelevant
 requires-python = ">=3.12, <4"
 
 dependencies = [
-    # FIXME: use pypi package
-    "litmus-libs@git+https://github.com/canonical/litmus-operators@fix-collect-status#subdirectory=libs",
+    "litmus-libs",
     "ops",
     "cryptography>=45.0.7",
-    # FIXME: use pypi package
-    "coordinated-workers@git+https://github.com/canonical/cos-coordinated-workers@nginx-pebble-checks",
+    "coordinated-workers@git+https://github.com/canonical/cos-coordinated-workers@try-to-fix-update-ca",
     # for juju topology
     "cosl",
 ]
