@@ -30,6 +30,7 @@ from litmus_libs.status_manager import StatusManager
 from nginx_config import get_config, http_server_port
 from traefik_config import ingress_config, static_ingress_config
 
+from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from charms.traefik_k8s.v0.traefik_route import TraefikRouteRequirer
 
 from litmus_libs import get_app_hostname, get_litmus_version
@@ -46,10 +47,11 @@ logger = logging.getLogger(__name__)
 AUTH_HTTP_API_ENDPOINT = "auth-http-api"
 BACKEND_HTTP_API_ENDPOINT = "backend-http-api"
 TLS_CERTIFICATES_ENDPOINT = "tls-certificates"
+NGINX_EXPORTER_PORT = 9113
 
 NGINX_OVERRIDES: NginxMappingOverrides = {
     "nginx_port": http_server_port,
-    "nginx_exporter_port": 9113,
+    "nginx_exporter_port": NGINX_EXPORTER_PORT,
 }
 
 
@@ -58,6 +60,7 @@ class LitmusChaoscenterCharm(CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
+        self._fqdn = socket.getfqdn()
         self._receive_auth_http_api = LitmusAuthApiRequirer(
             relation=self.model.get_relation(AUTH_HTTP_API_ENDPOINT), app=self.app
         )
@@ -73,6 +76,16 @@ class LitmusChaoscenterCharm(CharmBase):
             self,
             self.model.get_relation("ingress"),  # type: ignore
             "ingress",
+        )
+        self._metrics_endpoint_provider = MetricsEndpointProvider(
+            self,
+            jobs=[
+                {
+                    "static_configs": [
+                        {"targets": [f"{self._fqdn}:{NGINX_EXPORTER_PORT}"]}
+                    ]
+                }
+            ],
         )
 
         self._workload_tracing = TracingEndpointRequirer(
@@ -131,7 +144,7 @@ class LitmusChaoscenterCharm(CharmBase):
 
     def _nginx_config(self) -> str:
         return get_config(
-            hostname=socket.getfqdn(),
+            hostname=self._fqdn,
             auth_url=self.auth_url,
             backend_url=self.backend_url,
             tls_available=bool(self._tls_config),
@@ -152,14 +165,14 @@ class LitmusChaoscenterCharm(CharmBase):
             and self.ingress.scheme
             and self.ingress.external_host
         ):
-            return f"{self.ingress.scheme}://{self.ingress.external_host}:8185"
+            return f"{self.ingress.scheme}://{self.ingress.external_host}"
         return self._internal_frontend_url
 
     @property
     def _internal_frontend_url(self):
         """Internal (i.e. not ingressed) url."""
         protocol = "https" if self._tls_config else "http"
-        return f"{protocol}://{get_app_hostname(self.app.name, self.model.name)}:8185"
+        return f"{protocol}://{get_app_hostname(self.app.name, self.model.name)}"
 
     @property
     def backend_url(self):
@@ -175,7 +188,7 @@ class LitmusChaoscenterCharm(CharmBase):
         """Common entry hook."""
         self._reconcile()
         self._receive_backend_http_api.publish_endpoint(
-            self._most_external_frontend_url
+            f"{self._most_external_frontend_url}:{http_server_port}"
         )
 
     def _on_collect_unit_status(self, e: CollectStatusEvent):
@@ -192,7 +205,11 @@ class LitmusChaoscenterCharm(CharmBase):
         ).collect_status(e)
         # TODO: add pebble check to verify frontend is up
         #  https://github.com/canonical/litmus-operators/issues/36
-        e.add_status(ActiveStatus(f"Ready at {self._most_external_frontend_url}."))
+        e.add_status(
+            ActiveStatus(
+                f"Ready at {self._most_external_frontend_url}:{http_server_port}."
+            )
+        )
 
     ###################
     # UTILITY METHODS #
@@ -206,6 +223,7 @@ class LitmusChaoscenterCharm(CharmBase):
             )
             or ""
         )
+        self._metrics_endpoint_provider.set_scrape_job_spec()
         self._self_monitoring.reconcile(
             ca_cert=self._tls_config.ca_cert if self._tls_config else None
         )
@@ -228,7 +246,7 @@ class LitmusChaoscenterCharm(CharmBase):
             common_name=self.app.name,
             sans_dns=frozenset(
                 (
-                    socket.getfqdn(),
+                    self._fqdn,
                     get_app_hostname(self.app.name, self.model.name),
                     # TODO: Once Ingress is in use, its address should also be added here
                 )

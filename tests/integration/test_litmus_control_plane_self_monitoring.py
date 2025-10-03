@@ -15,6 +15,7 @@ from tests.integration.helpers import (
     deploy_self_monitoring_stack,
     LOKI_APP,
     TEMPO_APP,
+    PROMETHEUS_APP,
 )
 
 
@@ -33,6 +34,7 @@ def test_setup(juju: Juju):
         juju.integrate(LOKI_APP, f"{component}:logging")
 
     juju.integrate(TEMPO_APP, f"{CHAOSCENTER_APP}:workload-tracing")
+    juju.integrate(CHAOSCENTER_APP, PROMETHEUS_APP)
     juju.wait(all_active, timeout=600, delay=10, successes=6)  # 10m timeout, 1m hold
 
 
@@ -90,3 +92,10 @@ def test_chaoscenter_workload_tracing_integration(juju: Juju):
     tags = response.json()["tagValues"]
     # THEN the litmus chaoscenter has sent some workload traces
     assert f"{CHAOSCENTER_APP}-nginx" in tags
+
+
+@retry(stop=stop_after_attempt(5), wait=wait_fixed(10))
+def test_metrics_integration(juju: Juju):
+    prom_ip = get_unit_ip_address(juju, PROMETHEUS_APP, 0)
+    res = requests.get(f"http://{prom_ip}:9090/api/v1/label/juju_application/values")
+    assert CHAOSCENTER_APP in res.json()["data"]

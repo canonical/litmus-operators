@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 TESTS_DIR = pathlib.Path(__file__).parent.resolve()
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def juju():
     with jubilant.temp_model() as tm:
         yield tm
@@ -31,4 +31,7 @@ def test_terraform_apply(juju):
 
 @then("litmus charms are deployed and active")
 def test_active(juju):
-    juju.wait(jubilant.all_active, timeout=60 * 10)
+    juju.wait(
+        lambda status: jubilant.all_active(status, "litmus-auth", "litmus-backend", "litmus-chaoscenter"),
+        timeout=60 * 10,
+    )
