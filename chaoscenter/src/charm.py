@@ -82,8 +82,6 @@ class LitmusChaoscenterCharm(CharmBase):
             jobs=[
                 {
                     "static_configs": [
-                        # TODO: Due to Traefik route settings metrics can't be served when using ingress.
-                        #   Improvement: https://github.com/canonical/litmus-operators/issues/90
                         {"targets": [f"{self._fqdn}:{NGINX_EXPORTER_PORT}"]}
                     ]
                 }
