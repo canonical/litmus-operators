@@ -17,6 +17,7 @@ MONGO_APP = "mongodb"
 SELF_SIGNED_CERTIFICATES_APP = "self-signed-certificates"
 TRAEFIK_APP = "traefik"
 LOKI_APP = "loki"
+PROMETHEUS_APP = "prometheus"
 TEMPO_APP = "tempo"
 TEMPO_WORKER_APP = "tempo-worker-all"
 S3_APP = "swfs"
@@ -67,6 +68,9 @@ def deploy_self_monitoring_stack(juju: Juju):
 
     logger.info("deploying loki")
     juju.deploy("loki-k8s", LOKI_APP, channel="2/edge", trust=True)
+
+    logger.info("deploying prometheus")
+    juju.deploy("prometheus-k8s", PROMETHEUS_APP, channel="2/edge", trust=True)
 
 
 def deploy_control_plane(
