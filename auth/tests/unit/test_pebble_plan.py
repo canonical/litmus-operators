@@ -167,4 +167,6 @@ def test_pebble_checks_plan(
 
     # THEN litmus auth server pebble plan is generated with the correct pebble checks
     auth_container_out = state_out.get_container(authserver_container.name)
-    assert auth_container_out.plan.checks["auth-up"].tcp == {"port": (3001 if tls else 3000)}
+    assert auth_container_out.plan.checks["auth-up"].tcp == {
+        "port": (3001 if tls else 3000)
+    }
