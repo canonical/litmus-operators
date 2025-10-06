@@ -210,7 +210,11 @@ class LitmusChaoscenterCharm(CharmBase):
                 container_name: all_pebble_checks,
             },
         ).collect_status(e)
-        e.add_status(ActiveStatus(f"Ready at {self._most_external_frontend_url}."))
+        e.add_status(
+            ActiveStatus(
+                f"Ready at {self._most_external_frontend_url}:{http_server_port}."
+            )
+        )
 
     ###################
     # UTILITY METHODS #
