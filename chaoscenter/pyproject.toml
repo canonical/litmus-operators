@@ -6,7 +6,7 @@ version = "0.1"  # this is in fact irrelevant
 requires-python = ">=3.12, <4"
 
 dependencies = [
-    "litmus-libs==0.0.8",
+    "litmus-libs",
     "ops",
     "cryptography>=45.0.7",
     "coordinated-workers",

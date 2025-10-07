@@ -48,6 +48,7 @@ class LitmusAuthCharm(CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
+        self._auth_container = self.unit.get_container(LitmusAuth.container_name)
 
         self._auth_provider = LitmusAuthProvider(
             self.model.get_relation(LITMUS_AUTH_ENDPOINT),
@@ -74,14 +75,14 @@ class LitmusAuthCharm(CharmBase):
         )
 
         self._tls = TlsReconciler(
-            container=self.unit.get_container(LitmusAuth.name),
+            container=self._auth_container,
             tls_cert_path=TLS_CERT_PATH,
             tls_key_path=TLS_KEY_PATH,
             tls_ca_path=TLS_CA_PATH,
             tls_config_getter=lambda: self._tls_config,
         )
         self.litmus_auth = LitmusAuth(
-            container=self.unit.get_container(LitmusAuth.name),
+            container=self._auth_container,
             db_config=self.database_config,
             tls_config_getter=lambda: self._tls_config,
             tls_cert_path=TLS_CERT_PATH,
@@ -125,9 +126,10 @@ class LitmusAuthCharm(CharmBase):
                 "database config": self.database_config,
                 "backend gRPC endpoint": self.backend_grpc_endpoint,
             },
+            block_if_pebble_checks_failing={
+                LitmusAuth.container_name: LitmusAuth.all_pebble_checks
+            },
         ).collect_status(e)
-        # TODO: add pebble check to verify auth server is up
-        #  https://github.com/canonical/litmus-operators/issues/36
         e.add_status(ActiveStatus(""))
 
     ###################
@@ -173,9 +175,7 @@ class LitmusAuthCharm(CharmBase):
         )
         self.litmus_auth.reconcile()
         self.unit.set_ports(*self.litmus_auth.litmus_auth_ports)
-        self.unit.set_workload_version(
-            get_litmus_version(self.unit.get_container(LitmusAuth.name)) or ""
-        )
+        self.unit.set_workload_version(get_litmus_version(self._auth_container) or "")
         if self.unit.is_leader():
             self._auth_provider.publish_endpoint(
                 Endpoint(

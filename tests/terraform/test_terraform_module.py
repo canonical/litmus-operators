@@ -32,6 +32,8 @@ def test_terraform_apply(juju):
 @then("litmus charms are deployed and active")
 def test_active(juju):
     juju.wait(
-        lambda status: jubilant.all_active(status, "litmus-auth", "litmus-backend", "litmus-chaoscenter"),
+        lambda status: jubilant.all_active(
+            status, "litmus-auth", "litmus-backend", "litmus-chaoscenter"
+        ),
         timeout=60 * 10,
     )

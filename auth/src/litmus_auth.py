@@ -7,7 +7,7 @@
 import logging
 
 from ops import Container
-from ops.pebble import Layer
+from ops.pebble import Layer, CheckDict
 from typing import Optional, Callable
 from litmus_libs import DatabaseConfig, TLSConfigData
 from litmus_libs.interfaces.litmus_auth import Endpoint
@@ -18,11 +18,14 @@ logger = logging.getLogger(__name__)
 class LitmusAuth:
     """Litmus Authentication server workload."""
 
-    name = "auth"
+    container_name = "auth"
+    layer_name = "auth"
+    liveness_check_name = "auth-up"
     http_port = 3000
     https_port = 3001
     grpc_port = 3030
     grpc_tls_port = 3031
+    all_pebble_checks = [liveness_check_name]
 
     def __init__(
         self,
@@ -48,32 +51,45 @@ class LitmusAuth:
             self._reconcile_workload_config()
 
     def _reconcile_workload_config(self):
-        self._container.add_layer(self.name, self._pebble_layer, combine=True)
+        self._container.add_layer(self.layer_name, self._pebble_layer, combine=True)
         # replan only if the available env var config is sufficient for the workload to run
         if self._db_config:
             self._container.replan()
         else:
-            self._container.stop(self.name)
+            self._container.stop(self.container_name)
 
     @property
     def _pebble_layer(self) -> Layer:
         """Return a Pebble layer for Litmus Auth server."""
+        tls_enabled = bool(self._tls_config_getter())
         return Layer(
             {
                 "services": {
-                    self.name: {
+                    self.layer_name: {
                         "override": "replace",
                         "summary": "litmus auth server layer",
                         "command": "/bin/server",
                         "startup": "enabled",
-                        "environment": self._environment_vars,
+                        "environment": self._environment_vars(tls_enabled),
                     }
+                },
+                "checks": {
+                    self.liveness_check_name: self._pebble_check_layer(tls_enabled)
                 },
             }
         )
 
-    @property
-    def _environment_vars(self) -> dict:
+    def _pebble_check_layer(self, tls_enabled: bool) -> CheckDict:
+        return {
+            "override": "replace",
+            "startup": "enabled",
+            "threshold": 3,
+            "tcp": {
+                "port": self.https_port if tls_enabled else self.http_port,
+            },
+        }
+
+    def _environment_vars(self, tls_enabled: bool) -> dict:
         env = {
             "ALLOWED_ORIGINS": ".*",
             "REST_PORT": self.http_port,
@@ -99,7 +115,7 @@ class LitmusAuth:
                     "LITMUS_GQL_GRPC_PORT": backend_endpoint.grpc_server_port,
                 }
             )
-        if self._tls_config_getter():
+        if tls_enabled:
             env.update(
                 {
                     "ENABLE_INTERNAL_TLS": "true",

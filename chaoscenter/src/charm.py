@@ -27,7 +27,7 @@ from coordinated_workers.nginx import (
 )
 
 from litmus_libs.status_manager import StatusManager
-from nginx_config import get_config, http_server_port
+from nginx_config import get_config, http_server_port, all_pebble_checks, container_name
 from traefik_config import ingress_config, static_ingress_config
 
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
@@ -97,7 +97,8 @@ class LitmusChaoscenterCharm(CharmBase):
         self.nginx = Nginx(
             self,
             options=None,
-            container_name="chaoscenter",
+            container_name=container_name,
+            liveness_check_endpoint_getter=self._nginx_liveness_endpoint,
         )
 
         self._self_monitoring = SelfMonitoring(self)
@@ -151,6 +152,9 @@ class LitmusChaoscenterCharm(CharmBase):
             tracing_config=self._nginx_tracing_config(),
         )
 
+    def _nginx_liveness_endpoint(self, tls: bool) -> str:
+        return f"http{'s' if tls else ''}://{self._fqdn}:{http_server_port}/health"
+
     ##################
     # EVENT HANDLERS #
     ##################
@@ -202,9 +206,10 @@ class LitmusChaoscenterCharm(CharmBase):
                 "backend http API endpoint url": self.backend_url,
                 "auth http API endpoint url": self.auth_url,
             },
+            block_if_pebble_checks_failing={
+                container_name: all_pebble_checks,
+            },
         ).collect_status(e)
-        # TODO: add pebble check to verify frontend is up
-        #  https://github.com/canonical/litmus-operators/issues/36
         e.add_status(
             ActiveStatus(
                 f"Ready at {self._most_external_frontend_url}:{http_server_port}."
@@ -219,7 +224,7 @@ class LitmusChaoscenterCharm(CharmBase):
         self.unit.set_ports(http_server_port)
         self.unit.set_workload_version(
             get_litmus_version(
-                container=self.unit.get_container("chaoscenter"),
+                container=self.unit.get_container(container_name),
             )
             or ""
         )

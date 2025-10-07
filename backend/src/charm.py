@@ -51,6 +51,8 @@ class LitmusBackendCharm(CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
+        self._backend_container = self.unit.get_container(LitmusBackend.container_name)
+
         self._database = DatabaseRequires(
             self,
             relation_name=DATABASE_ENDPOINT,
@@ -75,14 +77,14 @@ class LitmusBackendCharm(CharmBase):
         )
 
         self._tls = TlsReconciler(
-            container=self.unit.get_container(LitmusBackend.name),
+            container=self._backend_container,
             tls_cert_path=TLS_CERT_PATH,
             tls_key_path=TLS_KEY_PATH,
             tls_ca_path=TLS_CA_PATH,
             tls_config_getter=lambda: self._tls_config,
         )
         self.litmus_backend = LitmusBackend(
-            container=self.unit.get_container(LitmusBackend.name),
+            container=self._backend_container,
             db_config=self.database_config,
             tls_config_getter=lambda: self._tls_config,
             tls_cert_path=TLS_CERT_PATH,
@@ -136,9 +138,10 @@ class LitmusBackendCharm(CharmBase):
                 "auth gRPC endpoint": self.auth_grpc_endpoint,
                 "frontend url": self.frontend_url,
             },
+            block_if_pebble_checks_failing={
+                LitmusBackend.container_name: LitmusBackend.all_pebble_checks
+            },
         ).collect_status(e)
-        # TODO: add pebble check to verify backend is up
-        #  https://github.com/canonical/litmus-operators/issues/36
         e.add_status(ActiveStatus(""))
 
     ###################
@@ -185,7 +188,7 @@ class LitmusBackendCharm(CharmBase):
         self.litmus_backend.reconcile()
         self.unit.set_ports(*self.litmus_backend.litmus_backend_ports)
         self.unit.set_workload_version(
-            get_litmus_version(self.unit.get_container(LitmusBackend.name)) or ""
+            get_litmus_version(self._backend_container) or ""
         )
         if self.unit.is_leader():
             self._auth.publish_endpoint(
