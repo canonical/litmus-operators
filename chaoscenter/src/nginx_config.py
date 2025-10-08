@@ -10,10 +10,11 @@ from typing import Dict, List, Optional, Set
 from coordinated_workers.nginx import (
     CERT_PATH,
     KEY_PATH,
-    NginxUpstream,
-    NginxLocationConfig,
     NginxConfig,
+    NginxLocationConfig,
+    NginxMapConfig,
     NginxTracingConfig,
+    NginxUpstream,
 )
 
 from urllib.parse import urlparse, ParseResult
@@ -26,6 +27,14 @@ http_server_port = 8185
 container_name = "chaoscenter"
 liveness_check_name = "chaoscenter-up"
 all_pebble_checks = [liveness_check_name]
+upgrade_to_websocket_map_config = NginxMapConfig(
+    source_variable="$http_upgrade",
+    target_variable="$connection_upgrade",
+    value_mappings={
+        "default": ["upgrade"],
+        "": ["close"],
+    },
+)
 
 
 def get_config(
@@ -54,6 +63,7 @@ def get_config(
             auth_scheme=auth_scheme,
             backend_scheme=backend_scheme,
         ),
+        map_configs=[upgrade_to_websocket_map_config],
         enable_status_page=False,
     )
     return config.get_config(
