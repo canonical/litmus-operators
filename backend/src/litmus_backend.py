@@ -97,7 +97,7 @@ class LitmusBackend:
         }
 
     def _environment_vars(self, tls_enabled: bool) -> dict:
-        workload_version = self._workload_version.strip() or ""
+        workload_version = self._workload_version.strip() if self._workload_version else ""
         env = {
             "REST_PORT": self.http_port,
             "GRPC_PORT": self.grpc_port,
