@@ -41,4 +41,4 @@ def get_litmus_version(container: Container) -> Optional[str]:
     if not container.exists(version_file_path):
         logger.warning("Version file not found at %s", version_file_path)
         return None
-    return container.pull(version_file_path, encoding="utf-8").read()
+    return container.pull(version_file_path, encoding="utf-8").read().strip()
