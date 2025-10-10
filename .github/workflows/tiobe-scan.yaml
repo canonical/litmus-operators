@@ -4,10 +4,6 @@ on:
     workflow_dispatch:
     schedule:
     - cron: "0 0 * * 1"  # Runs at midnight UTC every Monday
-    # FIXME: remove before merging
-    pull_request:
-        branches:
-        - main
 jobs:
     tiobe-scan:
         name: TiCs
