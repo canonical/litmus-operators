@@ -125,10 +125,6 @@ class LitmusChaoscenterCharm(CharmBase):
             or ""
         )
 
-        if any(not bool(x) for x in self.consistency_checks.values()):
-            logger.info("deployment inconsistent; skipping reconcile")
-            return
-
         self._metrics_endpoint_provider.set_scrape_job_spec()
         self._self_monitoring.reconcile(
             ca_cert=self._tls_config.ca_cert if self._tls_config else None
