@@ -121,7 +121,6 @@ class LitmusChaoscenterCharm(CharmBase):
     ##################
     # CONFIG METHODS #
     ##################
-
     def _nginx_tracing_config(self) -> Optional[NginxTracingConfig]:
         endpoint = (
             self._workload_tracing.get_endpoint("otlp_grpc")
@@ -237,6 +236,7 @@ class LitmusChaoscenterCharm(CharmBase):
                 nginx_config=self._nginx_config(), tls_config=self._tls_config
             )
             self.nginx_exporter.reconcile()
+
         if self.unit.is_leader() and self.ingress.is_ready():
             self.ingress.submit_to_traefik(
                 ingress_config(
