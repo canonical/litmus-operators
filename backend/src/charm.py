@@ -21,7 +21,6 @@ from litmus_libs import (
     TLSConfigData,
     TlsReconciler,
     get_app_hostname,
-    get_litmus_version,
 )
 from cosl.reconciler import all_events, observe_events
 
@@ -135,7 +134,6 @@ class LitmusBackendCharm(CharmBase):
 
         return True
 
-
     @property
     def consistency_checks(self) -> Dict[str, Optional[bool]]:
         """Verify the control plane deployment is consistent.
@@ -151,19 +149,26 @@ class LitmusBackendCharm(CharmBase):
             "database config": self.database_config,
             # do we have the auth's endpoint?
             "auth gRPC endpoint": auth_endpoint,
+            # do we have the frontend's url?
+            "frontend url": self.frontend_url,
         }
 
         if auth_endpoint:
             # if auth is on tls, we should have a tls relation too
             # StatusManager API demands 'None' to fail this check
-            inconsistencies["tls certificate"] = self._tls_is_consistent(auth_endpoint.insecure) or None
+            inconsistencies["tls certificate"] = (
+                self._tls_is_consistent(auth_endpoint.insecure) or None
+            )
         return inconsistencies
 
     def _on_collect_unit_status(self, e: CollectStatusEvent):
         required_relations = [
-            DATABASE_ENDPOINT, LITMUS_AUTH_ENDPOINT,
+            DATABASE_ENDPOINT,
+            LITMUS_AUTH_ENDPOINT,
         ]
-        if (grpc_endpoint:=self.auth_grpc_endpoint) and not self._tls_is_consistent(grpc_endpoint.insecure):
+        if (grpc_endpoint := self.auth_grpc_endpoint) and not self._tls_is_consistent(
+            grpc_endpoint.insecure
+        ):
             required_relations.append(TLS_CERTIFICATES_ENDPOINT)
 
         StatusManager(

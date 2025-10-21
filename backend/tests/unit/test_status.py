@@ -56,7 +56,6 @@ def test_missing_relations_blocked_status(
 def test_waiting_status(ctx, data_missing_from, event, backend_container):
     # GIVEN a running container
     # AND remote hasn't sent any data yet for any one relation
-
     required_relations = {
         "database": Relation("database", remote_app_data=db_remote_databag()),
         "litmus-auth": Relation("litmus-auth", remote_app_data=auth_remote_databag()),

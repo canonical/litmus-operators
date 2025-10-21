@@ -101,6 +101,7 @@ def auth_remote_databag():
         "version": json.dumps(0),
         "grpc_server_host": json.dumps("host"),
         "grpc_server_port": json.dumps(80),
+        "insecure": "true",
     }
 
 
