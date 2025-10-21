@@ -30,7 +30,7 @@ from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseRequires,
 )
 
-from typing import Optional
+from typing import Optional, Dict
 from litmus_libs.interfaces.http_api import LitmusBackendApiProvider
 from litmus_libs.interfaces.self_monitoring import SelfMonitoring
 from litmus_libs.status_manager import StatusManager
@@ -128,16 +128,48 @@ class LitmusBackendCharm(CharmBase):
     ##################
     # EVENT HANDLERS #
     ##################
+    def _tls_is_consistent(self, remote_insecure: bool) -> bool:
+        # if the other end is integrated with TLS, but this charm isn't, we have a problem
+        if not remote_insecure and not self._tls_config:
+            return False
+
+        return True
+
+
+    @property
+    def consistency_checks(self) -> Dict[str, Optional[bool]]:
+        """Verify the control plane deployment is consistent.
+
+        - check that we have an auth endpoint URL
+        - check that if auth is giving us a secure endpoint, we also have a TLS relation
+        """
+        # to function, the frontend needs auth and auth servers URLs.
+
+        auth_endpoint = self.auth_grpc_endpoint
+        inconsistencies = {
+            # do we have a db relation?
+            "database config": self.database_config,
+            # do we have the auth's endpoint?
+            "auth gRPC endpoint": auth_endpoint,
+        }
+
+        if auth_endpoint:
+            # if auth is on tls, we should have a tls relation too
+            # StatusManager API demands 'None' to fail this check
+            inconsistencies["tls certificate"] = self._tls_is_consistent(auth_endpoint.insecure) or None
+        return inconsistencies
 
     def _on_collect_unit_status(self, e: CollectStatusEvent):
+        required_relations = [
+            DATABASE_ENDPOINT, LITMUS_AUTH_ENDPOINT,
+        ]
+        if (grpc_endpoint:=self.auth_grpc_endpoint) and not self._tls_is_consistent(grpc_endpoint.insecure):
+            required_relations.append(TLS_CERTIFICATES_ENDPOINT)
+
         StatusManager(
             charm=self,
-            block_if_relations_missing=(DATABASE_ENDPOINT, LITMUS_AUTH_ENDPOINT),
-            wait_for_config={
-                "database config": self.database_config,
-                "auth gRPC endpoint": self.auth_grpc_endpoint,
-                "frontend url": self.frontend_url,
-            },
+            block_if_relations_missing=required_relations,
+            wait_for_config=self.consistency_checks,
             block_if_pebble_checks_failing={
                 LitmusBackend.container_name: LitmusBackend.all_pebble_checks
             },
@@ -186,10 +218,6 @@ class LitmusBackendCharm(CharmBase):
             ca_cert=self._tls_config.ca_cert if self._tls_config else None
         )
         self.litmus_backend.reconcile()
-        self.unit.set_ports(*self.litmus_backend.litmus_backend_ports)
-        self.unit.set_workload_version(
-            get_litmus_version(self._backend_container) or ""
-        )
         if self.unit.is_leader():
             self._auth.publish_endpoint(
                 Endpoint(
