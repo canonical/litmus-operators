@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 
 from coordinated_workers.nginx import CERT_PATH, KEY_PATH, NGINX_CONFIG
 import nginx_config
-from tests.unit.conftest import patch_cert_and_key_ctx
+from conftest import patch_cert_and_key_ctx
 
 
 @pytest.mark.parametrize(

@@ -5,7 +5,7 @@
 
 import logging
 import socket
-from typing import Optional, Dict
+from typing import Optional, Dict, cast
 
 from charms.tls_certificates_interface.v4.tls_certificates import (
     TLSCertificatesRequiresV4,
@@ -125,19 +125,23 @@ class LitmusChaoscenterCharm(CharmBase):
             or ""
         )
 
-        if any(not bool(x) for x in self.consistency_checks.values()):
-            logger.info("deployment inconsistent; skipping reconcile")
-            return
-
         self._metrics_endpoint_provider.set_scrape_job_spec()
         self._self_monitoring.reconcile(
             ca_cert=self._tls_config.ca_cert if self._tls_config else None
         )
 
-        self.nginx.reconcile(
-            nginx_config=self._nginx_config(), tls_config=self._tls_config
-        )
-        self.nginx_exporter.reconcile()
+        if any(not bool(x) for x in self.consistency_checks.values()):
+            logger.info("deployment inconsistent; skipping nginx reconcile")
+        else:
+            self.nginx.reconcile(
+                nginx_config=self._nginx_config(
+                    # consistency checks would fail if these were unset
+                    auth_url=cast(str, self.auth_url),
+                    backend_url=cast(str, self.backend_url),
+                ),
+                tls_config=self._tls_config,
+            )
+            self.nginx_exporter.reconcile()
 
         self._receive_backend_http_api.publish_endpoint(
             f"{self._most_external_frontend_url}:{http_server_port}"
@@ -178,11 +182,11 @@ class LitmusChaoscenterCharm(CharmBase):
             else None
         )
 
-    def _nginx_config(self) -> str:
+    def _nginx_config(self, backend_url: str, auth_url: str) -> str:
         return get_config(
             hostname=self._fqdn,
-            auth_url=self.auth_url,
-            backend_url=self.backend_url,
+            auth_url=auth_url,
+            backend_url=backend_url,
             tls_available=bool(self._tls_config),
             tracing_config=self._nginx_tracing_config(),
         )
