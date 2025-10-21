@@ -6,7 +6,12 @@ import json
 
 from ops import BlockedStatus, ActiveStatus
 
-from conftest import patch_cert_and_key_ctx
+from conftest import (
+    patch_cert_and_key_ctx,
+    auth_remote_databag,
+    db_remote_databag,
+    http_api_remote_databag,
+)
 from litmus_libs.interfaces.litmus_auth import Endpoint
 from ops.testing import State, Model, CharmEvents
 
@@ -154,42 +159,38 @@ def test_tls_consistency(
     ctx,
     auth_relation,
     event,
-    authserver_container,
+    backend_container,
     leader,
     backend_tls,
     local_tls,
+    http_api_relation,
     database_relation,
     tls_certificates_relation,
 ):
     # GIVEN a litmus-auth integration with remote app data (secure or not)
-    auth_relation = dataclasses.replace(
-        auth_relation,
-        remote_app_data={
-            "grpc_server_host": json.dumps("host"),
-            "grpc_server_port": json.dumps(80),
-            "version": json.dumps(0),
-            "insecure": json.dumps(not backend_tls),
-        },
-    )
-    database_relation = dataclasses.replace(
-        database_relation,
-        remote_app_data={
-            "username": "admin",
-            "password": "pass",
-            "uris": "uri.fqdn.1:port,uri.fqdn.2:port",
-        },
-    )
-
     # WHEN any event fires
     with patch_cert_and_key_ctx(local_tls):
         state_out = ctx.run(
             state=State(
                 relations={
-                    auth_relation,
-                    database_relation,
+                    dataclasses.replace(
+                        auth_relation,
+                        remote_app_data={
+                            **auth_remote_databag(),
+                            "insecure": json.dumps(not backend_tls),
+                        },
+                    ),
+                    dataclasses.replace(
+                        database_relation,
+                        remote_app_data=db_remote_databag(),
+                    ),
+                    dataclasses.replace(
+                        http_api_relation,
+                        remote_app_data=http_api_remote_databag(),
+                    ),
                     *((tls_certificates_relation,) if local_tls else ()),
                 },
-                containers={authserver_container},
+                containers={backend_container},
                 leader=leader,
             ),
             event=event,

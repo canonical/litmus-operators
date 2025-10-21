@@ -21,6 +21,7 @@ from litmus_libs import (
     TLSConfigData,
     TlsReconciler,
     get_app_hostname,
+    get_litmus_version,
 )
 from cosl.reconciler import all_events, observe_events
 
@@ -217,6 +218,10 @@ class LitmusBackendCharm(CharmBase):
 
     def _reconcile(self):
         """Run all logic that is independent of what event we're processing."""
+        self.unit.set_ports(*self.litmus_backend.litmus_backend_ports)
+        self.unit.set_workload_version(
+            get_litmus_version(self._backend_container) or ""
+        )
         self._tls_certificates.sync()
         self._tls.reconcile()
         self._self_monitoring.reconcile(
