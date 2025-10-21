@@ -152,29 +152,46 @@ def test_get_backend_grpc_endpoint(
     ),
 )
 def test_tls_consistency(
-    ctx, auth_relation, event, authserver_container, leader, backend_tls, local_tls, database_relation, tls_certificates_relation
+    ctx,
+    auth_relation,
+    event,
+    authserver_container,
+    leader,
+    backend_tls,
+    local_tls,
+    database_relation,
+    tls_certificates_relation,
 ):
     # GIVEN a litmus-auth integration with remote app data (secure or not)
-    auth_relation = dataclasses.replace(auth_relation, remote_app_data={
+    auth_relation = dataclasses.replace(
+        auth_relation,
+        remote_app_data={
             "grpc_server_host": json.dumps("host"),
             "grpc_server_port": json.dumps(80),
             "version": json.dumps(0),
             "insecure": json.dumps(not backend_tls),
-        }
+        },
     )
-    database_relation = dataclasses.replace(database_relation, remote_app_data={
-                "username": "admin",
-                "password": "pass",
-                "uris": "uri.fqdn.1:port,uri.fqdn.2:port",
-            },
+    database_relation = dataclasses.replace(
+        database_relation,
+        remote_app_data={
+            "username": "admin",
+            "password": "pass",
+            "uris": "uri.fqdn.1:port,uri.fqdn.2:port",
+        },
     )
 
     # WHEN any event fires
     with patch_cert_and_key_ctx(local_tls):
         state_out = ctx.run(
             state=State(
-                relations={auth_relation, database_relation, *((tls_certificates_relation, ) if local_tls else () ) },
-                containers={authserver_container}, leader=leader
+                relations={
+                    auth_relation,
+                    database_relation,
+                    *((tls_certificates_relation,) if local_tls else ()),
+                },
+                containers={authserver_container},
+                leader=leader,
             ),
             event=event,
         )

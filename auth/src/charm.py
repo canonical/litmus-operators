@@ -92,7 +92,6 @@ class LitmusAuthCharm(CharmBase):
         )
         self._self_monitoring = SelfMonitoring(self)
 
-
         self.framework.observe(
             self.on.collect_unit_status, self._on_collect_unit_status
         )
@@ -145,15 +144,19 @@ class LitmusAuthCharm(CharmBase):
         if backend_endpoint:
             # if backend is on tls, we should have a tls relation too
             # StatusManager API demands 'None' to fail this check
-            inconsistencies["tls certificate"] = self._tls_is_consistent(backend_endpoint.insecure) or None
+            inconsistencies["tls certificate"] = (
+                self._tls_is_consistent(backend_endpoint.insecure) or None
+            )
         return inconsistencies
-
 
     def _on_collect_unit_status(self, e: CollectStatusEvent):
         required_relations = [
-            DATABASE_ENDPOINT, LITMUS_AUTH_ENDPOINT,
+            DATABASE_ENDPOINT,
+            LITMUS_AUTH_ENDPOINT,
         ]
-        if (grpc_endpoint:=self.backend_grpc_endpoint) and not self._tls_is_consistent(grpc_endpoint.insecure):
+        if (
+            grpc_endpoint := self.backend_grpc_endpoint
+        ) and not self._tls_is_consistent(grpc_endpoint.insecure):
             required_relations.append(TLS_CERTIFICATES_ENDPOINT)
 
         StatusManager(
