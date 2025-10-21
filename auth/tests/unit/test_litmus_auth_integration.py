@@ -1,10 +1,15 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 import dataclasses
+
 import pytest
 import json
+
+from ops import BlockedStatus, ActiveStatus
+
+from conftest import patch_cert_and_key_ctx
 from litmus_libs.interfaces.litmus_auth import Endpoint
-from ops.testing import State, Model
+from ops.testing import State, Model, CharmEvents
 
 
 @pytest.mark.parametrize(
@@ -132,3 +137,51 @@ def test_get_backend_grpc_endpoint(
         charm = mgr.charm
         # THEN the backend_grpc_endpoint is the same as expected
         assert charm.backend_grpc_endpoint == expected
+
+
+@pytest.mark.parametrize("leader", (False, True))
+@pytest.mark.parametrize("backend_tls", (False, True))
+@pytest.mark.parametrize("local_tls", (False, True))
+@pytest.mark.parametrize(
+    "event",
+    (
+        CharmEvents.upgrade_charm(),
+        CharmEvents.install(),
+        CharmEvents.update_status(),
+        CharmEvents.install(),
+    ),
+)
+def test_tls_consistency(
+    ctx, auth_relation, event, authserver_container, leader, backend_tls, local_tls, database_relation, tls_certificates_relation
+):
+    # GIVEN a litmus-auth integration with remote app data (secure or not)
+    auth_relation = dataclasses.replace(auth_relation, remote_app_data={
+            "grpc_server_host": json.dumps("host"),
+            "grpc_server_port": json.dumps(80),
+            "version": json.dumps(0),
+            "insecure": json.dumps(not backend_tls),
+        }
+    )
+    database_relation = dataclasses.replace(database_relation, remote_app_data={
+                "username": "admin",
+                "password": "pass",
+                "uris": "uri.fqdn.1:port,uri.fqdn.2:port",
+            },
+    )
+
+    # WHEN any event fires
+    with patch_cert_and_key_ctx(local_tls):
+        state_out = ctx.run(
+            state=State(
+                relations={auth_relation, database_relation, *((tls_certificates_relation, ) if local_tls else () ) },
+                containers={authserver_container}, leader=leader
+            ),
+            event=event,
+        )
+
+    # THEN only in the inconsistent scenario we set blocked
+    expect_inconsistent = backend_tls and not local_tls
+    if expect_inconsistent:
+        assert isinstance(state_out.unit_status, BlockedStatus)
+    else:
+        assert isinstance(state_out.unit_status, ActiveStatus)
