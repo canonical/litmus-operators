@@ -125,7 +125,7 @@ class LitmusChaoscenterCharm(CharmBase):
             or ""
         )
 
-        if self.is_deployment_consistent:
+        if any(not bool(x) for x in self.consistency_checks.values()):
             logger.info("deployment inconsistent; skipping reconcile")
             return
 
@@ -250,11 +250,6 @@ class LitmusChaoscenterCharm(CharmBase):
     ###################
     # UTILITY METHODS #
     ###################
-
-    @property
-    def is_deployment_consistent(self) -> bool:
-        """Whether any consistency check is falsy."""
-        return any(not bool(x) for x in self.consistency_checks.values())
 
     @property
     def consistency_checks(self) -> Dict[str, bool]:
