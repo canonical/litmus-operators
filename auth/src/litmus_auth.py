@@ -20,6 +20,7 @@ class LitmusAuth:
 
     container_name = "auth"
     layer_name = "auth"
+    service_name = "auth"
     liveness_check_name = "auth-up"
     http_port = 3000
     https_port = 3001
@@ -52,11 +53,12 @@ class LitmusAuth:
 
     def _reconcile_workload_config(self):
         self._container.add_layer(self.layer_name, self._pebble_layer, combine=True)
-        # replan only if the available env var config is sufficient for the workload to run
+        # replan only if the available env var config is sufficient for the workload to run;
         if self._db_config:
             self._container.replan()
+        # else stop all services
         else:
-            self._container.stop(self.container_name)
+            self._container.stop(self.service_name)
 
     @property
     def _pebble_layer(self) -> Layer:
@@ -65,7 +67,7 @@ class LitmusAuth:
         return Layer(
             {
                 "services": {
-                    self.layer_name: {
+                    self.service_name: {
                         "override": "replace",
                         "summary": "litmus auth server layer",
                         "command": "/bin/server",
