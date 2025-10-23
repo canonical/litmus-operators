@@ -194,7 +194,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo snap install concierge --classic
-          sudo concierge prepare -p microk8s --extra-snaps=astral-uv
+          sudo concierge prepare -p microk8s --extra-snaps=astral-uv,terraform
           sudo snap install kubectl --classic
           juju model-defaults automatically-retry-hooks=true
       - name: Download auth charm artifact
