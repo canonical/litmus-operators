@@ -267,25 +267,28 @@ class LitmusChaoscenterCharm(CharmBase):
         - check that if auth OR backend are giving us a https endpoint, we also have a TLS relation
         """
         # to function, the frontend needs backend and auth servers URLs.
-        auth_url = self.auth_url
-        backend_url = self.backend_url
         inconsistencies = {
             # we need an auth API endpoint
-            "auth http API endpoint url": auth_url,
+            "auth http API endpoint url": self.auth_url,
             # we need a backend API endpoint
-            "backend http API endpoint url": backend_url,
+            "backend http API endpoint url": self.backend_url,
             # if either auth or backend are on tls, we should have a tls relation too
-            "tls certificate": self._tls_is_consistent(
-                auth_url or "", backend_url or ""
-            )
-            or None,  # StatusManager API demands 'None' to fail this check
+            # StatusManager API demands 'None' to fail this check
+            "tls certificate": None if self._is_missing_tls_certificate else "ok",
         }
         return inconsistencies
 
-    def _tls_is_consistent(self, *urls: str) -> bool:
-        # if auth or backend are integrated with TLS, but chaoscenter isn't, nginx will fail to start because of the
-        #  proxy_ssl_certificate configuration (cfr. https://github.com/canonical/litmus-operators/issues/94)
-        if any(url.startswith("https://") for url in urls) and not self._tls_config:
+    @property
+    def _is_missing_tls_certificate(self) -> bool:
+        """Return whether this unit needs a tls certificate to function."""
+        # if auth or backend are integrated with TLS, but this charm isn't, we have a problem
+        #  cfr. https://github.com/canonical/litmus-operators/issues/94
+        any_endpoint_https = any(
+            endpoint.startswith("https://")
+            for endpoint in (self.auth_url, self.backend_url)
+            if endpoint
+        )
+        if any_endpoint_https and not self._tls_config:
             return False
 
         return True
@@ -299,7 +302,7 @@ class LitmusChaoscenterCharm(CharmBase):
             AUTH_HTTP_API_ENDPOINT,
             BACKEND_HTTP_API_ENDPOINT,
         ]
-        if not self._tls_is_consistent(self.backend_url or "", self.auth_url or ""):
+        if self._is_missing_tls_certificate:
             required_relations.append(TLS_CERTIFICATES_ENDPOINT)
 
         StatusManager(
