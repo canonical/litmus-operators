@@ -122,10 +122,9 @@ class LitmusAuthCharm(CharmBase):
         """Return whether this unit needs a tls certificate to function."""
         # if the backend is integrated with TLS, but this charm isn't, we have a problem
         endpoint = self.backend_grpc_endpoint
-        if not endpoint or (not endpoint.insecure and not self._tls_config):
-            return False
-
-        return True
+        if endpoint and (not endpoint.insecure and not self._tls_config):
+            return True
+        return False
 
     def _on_collect_unit_status(self, e: CollectStatusEvent):
         required_relations = [
