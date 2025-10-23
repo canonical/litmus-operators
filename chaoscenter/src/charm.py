@@ -5,7 +5,7 @@
 
 import logging
 import socket
-from typing import Optional, Dict, cast, Union
+from typing import Optional, Dict, cast, Any
 
 from charms.tls_certificates_interface.v4.tls_certificates import (
     TLSCertificatesRequiresV4,
@@ -260,7 +260,7 @@ class LitmusChaoscenterCharm(CharmBase):
     ###################
 
     @property
-    def consistency_checks(self) -> Dict[str, Optional[str]]:
+    def consistency_checks(self) -> Dict[str, Optional[Any]]:
         """Verify the control plane deployment is consistent.
 
         - check that we have auth and backend endpoint URLs
