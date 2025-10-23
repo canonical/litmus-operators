@@ -130,8 +130,12 @@ class LitmusChaoscenterCharm(CharmBase):
             ca_cert=self._tls_config.ca_cert if self._tls_config else None
         )
 
-        if any(not bool(x) for x in self.consistency_checks.values()):
+        if None in self.consistency_checks.values():
+            # a None in consistency check results means: check failed
+            # we skip nginx reconcile because for it to succeed, we need auth/backend urls,
+            # and tls consistency.
             logger.info("deployment inconsistent; skipping nginx reconcile")
+
         else:
             self.nginx.reconcile(
                 nginx_config=self._nginx_config(
@@ -256,7 +260,7 @@ class LitmusChaoscenterCharm(CharmBase):
     ###################
 
     @property
-    def consistency_checks(self) -> Dict[str, bool]:
+    def consistency_checks(self) -> Dict[str, Optional[bool]]:
         """Verify the control plane deployment is consistent.
 
         - check that we have auth and backend endpoint URLs
