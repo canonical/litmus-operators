@@ -39,8 +39,8 @@ upgrade_to_websocket_map_config = NginxMapConfig(
 
 def get_config(
     hostname: str,
-    auth_url: Optional[str],
-    backend_url: Optional[str],
+    auth_url: str,
+    backend_url: str,
     tls_available: bool = False,
     tracing_config: Optional[NginxTracingConfig] = None,
 ) -> str:
