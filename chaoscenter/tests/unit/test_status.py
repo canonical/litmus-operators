@@ -111,7 +111,7 @@ def test_tls_inconsistent_blocked_status(
     with ctx(event, state=state) as mgr:
         charm = mgr.charm
         assert not charm._tls_config
-        assert not charm._tls_is_consistent(charm.auth_url, charm.backend_url)
+        assert charm._is_missing_tls_certificate
         state_out = mgr.run()
 
     # THEN the unit sets blocked
@@ -150,7 +150,7 @@ def test_tls_waiting_status(
     with ctx(event, state=state) as mgr:
         charm = mgr.charm
         assert not charm._tls_config
-        assert not charm._tls_is_consistent(charm.auth_url, charm.backend_url)
+        assert charm._is_missing_tls_certificate
         state_out = mgr.run()
 
     # THEN the unit sets waiting
@@ -191,7 +191,7 @@ def test_tls_active_status(
     with ctx(event, state=state) as mgr:
         charm = mgr.charm
         assert charm._tls_config
-        assert charm._tls_is_consistent(charm.auth_url, charm.backend_url)
+        assert not charm._is_missing_tls_certificate
         state_out = mgr.run()
 
     # THEN the unit sets active
