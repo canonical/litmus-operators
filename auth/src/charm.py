@@ -5,7 +5,7 @@
 
 import logging
 import socket
-from typing import Optional, Dict
+from typing import Optional
 
 from ops.charm import CharmBase
 
@@ -117,52 +117,36 @@ class LitmusAuthCharm(CharmBase):
     ##################
     # EVENT HANDLERS #
     ##################
-    def _tls_is_consistent(self, remote_insecure: bool) -> bool:
-        # if the other end is integrated with TLS, but this charm isn't, we have a problem
-        if not remote_insecure and not self._tls_config:
+    @property
+    def _is_missing_tls_certificate(self) -> bool:
+        """Return whether this unit needs a tls certificate to function."""
+        # if the backend is integrated with TLS, but this charm isn't, we have a problem
+        endpoint = self.backend_grpc_endpoint
+        if not endpoint or (not endpoint.insecure and not self._tls_config):
             return False
 
         return True
-
-    @property
-    def consistency_checks(self) -> Dict[str, Optional[bool]]:
-        """Verify the control plane deployment is consistent.
-
-        - check that we have a backend endpoint URL
-        - check that if backend is giving us a secure endpoint, we also have a TLS relation
-        """
-        # to function, the frontend needs backend and auth servers URLs.
-
-        backend_endpoint = self.backend_grpc_endpoint
-        inconsistencies = {
-            # do we have a db relation?
-            "database config": self.database_config,
-            # do we have the backend's endpoint?
-            "backend gRPC endpoint": backend_endpoint,
-        }
-
-        if backend_endpoint:
-            # if backend is on tls, we should have a tls relation too
-            # StatusManager API demands 'None' to fail this check
-            inconsistencies["tls certificate"] = (
-                self._tls_is_consistent(backend_endpoint.insecure) or None
-            )
-        return inconsistencies
 
     def _on_collect_unit_status(self, e: CollectStatusEvent):
         required_relations = [
             DATABASE_ENDPOINT,
             LITMUS_AUTH_ENDPOINT,
         ]
-        if (
-            grpc_endpoint := self.backend_grpc_endpoint
-        ) and not self._tls_is_consistent(grpc_endpoint.insecure):
+        if self._is_missing_tls_certificate:
             required_relations.append(TLS_CERTIFICATES_ENDPOINT)
 
         StatusManager(
             charm=self,
             block_if_relations_missing=required_relations,
-            wait_for_config=self.consistency_checks,
+            wait_for_config={
+                # do we have a db relation?
+                "database config": self.database_config,
+                # do we have the backend's endpoint?
+                "backend gRPC endpoint": self.backend_grpc_endpoint,
+                # if backend is on tls, we should have a tls relation too
+                # StatusManager API demands 'None' to fail this check
+                "tls certificate": None if self._is_missing_tls_certificate else "ok",
+            },
             block_if_pebble_checks_failing={
                 LitmusAuth.container_name: LitmusAuth.all_pebble_checks
             },
