@@ -289,9 +289,9 @@ class LitmusChaoscenterCharm(CharmBase):
             if endpoint
         )
         if any_endpoint_https and not self._tls_config:
-            return False
+            return True
 
-        return True
+        return False
 
     ###################
     # EVENT OBSERVERS #
