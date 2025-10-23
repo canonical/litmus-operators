@@ -21,6 +21,7 @@ class LitmusBackend:
 
     container_name = "backend"
     layer_name = "backend"
+    service_name = "backend"
     liveness_check_name = "backend-up"
     http_port = 8080
     https_port = 8081
@@ -63,7 +64,7 @@ class LitmusBackend:
             logger.warning(
                 "cannot start/restart pebble service: missing database config or workload version.",
             )
-            self._container.stop(self.container_name)
+            self._container.stop(self.service_name)
 
     @property
     def _pebble_layer(self) -> Layer:
@@ -72,7 +73,7 @@ class LitmusBackend:
         return Layer(
             {
                 "services": {
-                    self.layer_name: {
+                    self.service_name: {
                         "override": "replace",
                         "summary": "litmus backend server layer",
                         "command": "/bin/server",

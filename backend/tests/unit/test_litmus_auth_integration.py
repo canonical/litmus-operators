@@ -3,8 +3,17 @@
 import dataclasses
 import pytest
 import json
+
+from ops import BlockedStatus, ActiveStatus
+
+from conftest import (
+    patch_cert_and_key_ctx,
+    auth_remote_databag,
+    db_remote_databag,
+    http_api_remote_databag,
+)
 from litmus_libs.interfaces.litmus_auth import Endpoint
-from ops.testing import State, Model
+from ops.testing import State, Model, CharmEvents
 
 
 @pytest.mark.parametrize("leader", (False, True))
@@ -132,3 +141,64 @@ def test_publish_endpoint_with_tls(
     # THEN the leader unit will publish it's grpc server endpoint
     relation_out = state_out.get_relation(auth_relation.id)
     assert relation_out.local_app_data == expected
+
+
+@pytest.mark.parametrize("leader", (False, True))
+@pytest.mark.parametrize("backend_tls", (False, True))
+@pytest.mark.parametrize("local_tls", (False, True))
+@pytest.mark.parametrize(
+    "event",
+    (
+        CharmEvents.upgrade_charm(),
+        CharmEvents.install(),
+        CharmEvents.update_status(),
+        CharmEvents.install(),
+    ),
+)
+def test_tls_consistency(
+    ctx,
+    auth_relation,
+    event,
+    backend_container,
+    leader,
+    backend_tls,
+    local_tls,
+    http_api_relation,
+    database_relation,
+    tls_certificates_relation,
+):
+    # GIVEN a litmus-auth integration with remote app data (secure or not)
+    # WHEN any event fires
+    with patch_cert_and_key_ctx(local_tls):
+        state_out = ctx.run(
+            state=State(
+                relations={
+                    dataclasses.replace(
+                        auth_relation,
+                        remote_app_data={
+                            **auth_remote_databag(),
+                            "insecure": json.dumps(not backend_tls),
+                        },
+                    ),
+                    dataclasses.replace(
+                        database_relation,
+                        remote_app_data=db_remote_databag(),
+                    ),
+                    dataclasses.replace(
+                        http_api_relation,
+                        remote_app_data=http_api_remote_databag(),
+                    ),
+                    *((tls_certificates_relation,) if local_tls else ()),
+                },
+                containers={backend_container},
+                leader=leader,
+            ),
+            event=event,
+        )
+
+    # THEN only in the inconsistent scenario we set blocked
+    expect_inconsistent = backend_tls and not local_tls
+    if expect_inconsistent:
+        assert isinstance(state_out.unit_status, BlockedStatus)
+    else:
+        assert isinstance(state_out.unit_status, ActiveStatus)

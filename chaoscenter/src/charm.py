@@ -162,7 +162,6 @@ class LitmusChaoscenterCharm(CharmBase):
     ##################
     # CONFIG METHODS #
     ##################
-
     def _nginx_tracing_config(self) -> Optional[NginxTracingConfig]:
         endpoint = (
             self._workload_tracing.get_endpoint("otlp_grpc")

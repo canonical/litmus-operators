@@ -128,15 +128,36 @@ class LitmusBackendCharm(CharmBase):
     ##################
     # EVENT HANDLERS #
     ##################
+    @property
+    def _is_missing_tls_certificate(self) -> bool:
+        """Return whether this unit needs a tls certificate to function."""
+        # if the auth server is integrated with TLS, but this charm isn't, we have a problem
+        endpoint = self.auth_grpc_endpoint
+        if endpoint and (not endpoint.insecure and not self._tls_config):
+            return True
+        return False
 
     def _on_collect_unit_status(self, e: CollectStatusEvent):
+        required_relations = [
+            DATABASE_ENDPOINT,
+            LITMUS_AUTH_ENDPOINT,
+        ]
+        if self._is_missing_tls_certificate:
+            required_relations.append(TLS_CERTIFICATES_ENDPOINT)
+
         StatusManager(
             charm=self,
-            block_if_relations_missing=(DATABASE_ENDPOINT, LITMUS_AUTH_ENDPOINT),
+            block_if_relations_missing=required_relations,
             wait_for_config={
+                # do we have a db relation?
                 "database config": self.database_config,
+                # do we have the auth's endpoint?
                 "auth gRPC endpoint": self.auth_grpc_endpoint,
+                # do we have the frontend's url?
                 "frontend url": self.frontend_url,
+                # if auth is on tls, we should have a tls relation too
+                # StatusManager API demands 'None' to fail this check
+                "tls certificate": None if self._is_missing_tls_certificate else "ok",
             },
             block_if_pebble_checks_failing={
                 LitmusBackend.container_name: LitmusBackend.all_pebble_checks
@@ -180,16 +201,16 @@ class LitmusBackendCharm(CharmBase):
 
     def _reconcile(self):
         """Run all logic that is independent of what event we're processing."""
+        self.unit.set_ports(*self.litmus_backend.litmus_backend_ports)
+        self.unit.set_workload_version(
+            get_litmus_version(self._backend_container) or ""
+        )
         self._tls_certificates.sync()
         self._tls.reconcile()
         self._self_monitoring.reconcile(
             ca_cert=self._tls_config.ca_cert if self._tls_config else None
         )
         self.litmus_backend.reconcile()
-        self.unit.set_ports(*self.litmus_backend.litmus_backend_ports)
-        self.unit.set_workload_version(
-            get_litmus_version(self._backend_container) or ""
-        )
         if self.unit.is_leader():
             self._auth.publish_endpoint(
                 Endpoint(

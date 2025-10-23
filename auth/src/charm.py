@@ -117,14 +117,34 @@ class LitmusAuthCharm(CharmBase):
     ##################
     # EVENT HANDLERS #
     ##################
+    @property
+    def _is_missing_tls_certificate(self) -> bool:
+        """Return whether this unit needs a tls certificate to function."""
+        # if the backend is integrated with TLS, but this charm isn't, we have a problem
+        endpoint = self.backend_grpc_endpoint
+        if endpoint and (not endpoint.insecure and not self._tls_config):
+            return True
+        return False
 
     def _on_collect_unit_status(self, e: CollectStatusEvent):
+        required_relations = [
+            DATABASE_ENDPOINT,
+            LITMUS_AUTH_ENDPOINT,
+        ]
+        if self._is_missing_tls_certificate:
+            required_relations.append(TLS_CERTIFICATES_ENDPOINT)
+
         StatusManager(
             charm=self,
-            block_if_relations_missing=(DATABASE_ENDPOINT, LITMUS_AUTH_ENDPOINT),
+            block_if_relations_missing=required_relations,
             wait_for_config={
+                # do we have a db relation?
                 "database config": self.database_config,
+                # do we have the backend's endpoint?
                 "backend gRPC endpoint": self.backend_grpc_endpoint,
+                # if backend is on tls, we should have a tls relation too
+                # StatusManager API demands 'None' to fail this check
+                "tls certificate": None if self._is_missing_tls_certificate else "ok",
             },
             block_if_pebble_checks_failing={
                 LitmusAuth.container_name: LitmusAuth.all_pebble_checks
