@@ -39,8 +39,8 @@ upgrade_to_websocket_map_config = NginxMapConfig(
 
 def get_config(
     hostname: str,
-    auth_url: Optional[str],
-    backend_url: Optional[str],
+    auth_url: str,
+    backend_url: str,
     tls_available: bool = False,
     tracing_config: Optional[NginxTracingConfig] = None,
 ) -> str:
@@ -134,10 +134,7 @@ def _generate_http_locations(
             rewrite=["^/api(/.*)$", "$1", "break"],
             # Headers below are needed to upgrade connection to the WebSocket
             # Ref: https://nginx.org/en/docs/http/websocket.html
-            headers={
-                "Upgrade": "$http_upgrade",
-                "Connection": "$connection_upgrade"
-            },
+            headers={"Upgrade": "$http_upgrade", "Connection": "$connection_upgrade"},
             upstream_tls=True if backend_scheme == "https" else False,
             extra_directives=_extra_directives(backend_scheme),
         ),

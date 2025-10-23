@@ -5,7 +5,7 @@
 
 import logging
 import socket
-from typing import Optional
+from typing import Optional, Dict, cast, Any
 
 from charms.tls_certificates_interface.v4.tls_certificates import (
     TLSCertificatesRequiresV4,
@@ -13,8 +13,6 @@ from charms.tls_certificates_interface.v4.tls_certificates import (
 )
 from ops.charm import CharmBase
 from ops import (
-    LifecycleEvent,
-    EventBase,
     CollectStatusEvent,
     ActiveStatus,
 )
@@ -40,7 +38,8 @@ from litmus_libs.interfaces.http_api import (
 )
 from litmus_libs.interfaces.self_monitoring import SelfMonitoring
 from charms.tempo_coordinator_k8s.v0.tracing import TracingEndpointRequirer
-from cosl import JujuTopology
+import cosl
+import cosl.reconciler
 
 
 logger = logging.getLogger(__name__)
@@ -112,11 +111,53 @@ class LitmusChaoscenterCharm(CharmBase):
             self.on.collect_unit_status, self._on_collect_unit_status
         )
 
-        for event in self.on.events().values():
-            # ignore LifecycleEvents: we want to execute the reconciler exactly once per juju hook.
-            if issubclass(event.event_type, LifecycleEvent):
-                continue
-            self.framework.observe(event, self._on_any_event)
+        cosl.reconciler.observe_events(
+            self, cosl.reconciler.all_events, self._reconcile
+        )
+
+    def _reconcile(self):
+        """Run all logic that is independent of what event we're processing."""
+        self.unit.set_ports(http_server_port)
+        self.unit.set_workload_version(
+            get_litmus_version(
+                container=self.unit.get_container(container_name),
+            )
+            or ""
+        )
+
+        self._metrics_endpoint_provider.set_scrape_job_spec()
+        self._self_monitoring.reconcile(
+            ca_cert=self._tls_config.ca_cert if self._tls_config else None
+        )
+
+        if None in self.consistency_checks.values():
+            # a None in consistency check results means: check failed
+            # we skip nginx reconcile because for it to succeed, we need auth/backend urls,
+            # and tls consistency.
+            logger.info("deployment inconsistent; skipping nginx reconcile")
+
+        else:
+            self.nginx.reconcile(
+                nginx_config=self._nginx_config(
+                    # consistency checks would fail if these were unset
+                    auth_url=cast(str, self.auth_url),
+                    backend_url=cast(str, self.backend_url),
+                ),
+                tls_config=self._tls_config,
+            )
+            self.nginx_exporter.reconcile()
+
+        self._receive_backend_http_api.publish_endpoint(
+            f"{self._most_external_frontend_url}:{http_server_port}"
+        )
+
+        if self.unit.is_leader() and self.ingress.is_ready():
+            self.ingress.submit_to_traefik(
+                ingress_config(
+                    self.model.name, self.app.name, self._tls_config is not None
+                ),
+                static=static_ingress_config(),
+            )
 
     ##################
     # CONFIG METHODS #
@@ -135,7 +176,9 @@ class LitmusChaoscenterCharm(CharmBase):
                 # insert juju topology into the trace resource attributes
                 resource_attributes={
                     "juju_{}".format(key): value
-                    for key, value in JujuTopology.from_charm(self).as_dict().items()
+                    for key, value in cosl.JujuTopology.from_charm(self)
+                    .as_dict()
+                    .items()
                     if value
                 },
             )
@@ -143,21 +186,45 @@ class LitmusChaoscenterCharm(CharmBase):
             else None
         )
 
-    def _nginx_config(self) -> str:
+    def _nginx_config(self, backend_url: str, auth_url: str) -> str:
         return get_config(
             hostname=self._fqdn,
-            auth_url=self.auth_url,
-            backend_url=self.backend_url,
+            auth_url=auth_url,
+            backend_url=backend_url,
             tls_available=bool(self._tls_config),
             tracing_config=self._nginx_tracing_config(),
+        )
+
+    @property
+    def _certificate_request_attributes(self) -> CertificateRequestAttributes:
+        return CertificateRequestAttributes(
+            common_name=self.app.name,
+            sans_dns=frozenset(
+                (
+                    self._fqdn,
+                    get_app_hostname(self.app.name, self.model.name),
+                    # TODO: Once Ingress is in use, its address should also be added here
+                )
+            ),
+        )
+
+    @property
+    def _tls_config(self) -> Optional[TLSConfig]:
+        """Returns the TLS configuration, including certificates and private key, if available; None otherwise."""
+        certificates, private_key = self._tls_certificates.get_assigned_certificate(
+            self._certificate_request_attributes
+        )
+        if not (certificates and private_key):
+            return None
+        return TLSConfig(
+            server_cert=certificates.certificate.raw,
+            private_key=private_key.raw,
+            ca_cert=certificates.ca.raw,
         )
 
     def _nginx_liveness_endpoint(self, tls: bool) -> str:
         return f"http{'s' if tls else ''}://{self._fqdn}:{http_server_port}/health"
 
-    ##################
-    # EVENT HANDLERS #
-    ##################
     @property
     def _most_external_frontend_url(self):
         """Litmus ChaosCenter URL.
@@ -188,24 +255,60 @@ class LitmusChaoscenterCharm(CharmBase):
         """The auth's http API url."""
         return self._receive_auth_http_api.auth_endpoint
 
-    def _on_any_event(self, _: EventBase):
-        """Common entry hook."""
-        self._reconcile()
-        self._receive_backend_http_api.publish_endpoint(
-            f"{self._most_external_frontend_url}:{http_server_port}"
+    ###################
+    # UTILITY METHODS #
+    ###################
+
+    @property
+    def consistency_checks(self) -> Dict[str, Optional[Any]]:
+        """Verify the control plane deployment is consistent.
+
+        - check that we have auth and backend endpoint URLs
+        - check that if auth OR backend are giving us a https endpoint, we also have a TLS relation
+        """
+        # to function, the frontend needs backend and auth servers URLs.
+        inconsistencies = {
+            # we need an auth API endpoint
+            "auth http API endpoint url": self.auth_url,
+            # we need a backend API endpoint
+            "backend http API endpoint url": self.backend_url,
+            # if either auth or backend are on tls, we should have a tls relation too
+            # StatusManager API demands 'None' to fail this check
+            "tls certificate": None if self._is_missing_tls_certificate else "ok",
+        }
+        return inconsistencies
+
+    @property
+    def _is_missing_tls_certificate(self) -> bool:
+        """Return whether this unit needs a tls certificate to function."""
+        # if auth or backend are integrated with TLS, but this charm isn't, we have a problem
+        #  cfr. https://github.com/canonical/litmus-operators/issues/94
+        any_endpoint_https = any(
+            endpoint.startswith("https://")
+            for endpoint in (self.auth_url, self.backend_url)
+            if endpoint
         )
+        if any_endpoint_https and not self._tls_config:
+            return True
+
+        return False
+
+    ###################
+    # EVENT OBSERVERS #
+    ###################
 
     def _on_collect_unit_status(self, e: CollectStatusEvent):
+        required_relations = [
+            AUTH_HTTP_API_ENDPOINT,
+            BACKEND_HTTP_API_ENDPOINT,
+        ]
+        if self._is_missing_tls_certificate:
+            required_relations.append(TLS_CERTIFICATES_ENDPOINT)
+
         StatusManager(
             charm=self,
-            block_if_relations_missing=(
-                AUTH_HTTP_API_ENDPOINT,
-                BACKEND_HTTP_API_ENDPOINT,
-            ),
-            wait_for_config={
-                "backend http API endpoint url": self.backend_url,
-                "auth http API endpoint url": self.auth_url,
-            },
+            block_if_relations_missing=required_relations,
+            wait_for_config=self.consistency_checks,
             block_if_pebble_checks_failing={
                 container_name: all_pebble_checks,
             },
@@ -214,62 +317,6 @@ class LitmusChaoscenterCharm(CharmBase):
             ActiveStatus(
                 f"Ready at {self._most_external_frontend_url}:{http_server_port}."
             )
-        )
-
-    ###################
-    # UTILITY METHODS #
-    ###################
-    def _reconcile(self):
-        """Run all logic that is independent of what event we're processing."""
-        self.unit.set_ports(http_server_port)
-        self.unit.set_workload_version(
-            get_litmus_version(
-                container=self.unit.get_container(container_name),
-            )
-            or ""
-        )
-        self._metrics_endpoint_provider.set_scrape_job_spec()
-        self._self_monitoring.reconcile(
-            ca_cert=self._tls_config.ca_cert if self._tls_config else None
-        )
-        if self.backend_url and self.auth_url:
-            self.nginx.reconcile(
-                nginx_config=self._nginx_config(), tls_config=self._tls_config
-            )
-            self.nginx_exporter.reconcile()
-        if self.unit.is_leader() and self.ingress.is_ready():
-            self.ingress.submit_to_traefik(
-                ingress_config(
-                    self.model.name, self.app.name, self._tls_config is not None
-                ),
-                static=static_ingress_config(),
-            )
-
-    @property
-    def _certificate_request_attributes(self) -> CertificateRequestAttributes:
-        return CertificateRequestAttributes(
-            common_name=self.app.name,
-            sans_dns=frozenset(
-                (
-                    self._fqdn,
-                    get_app_hostname(self.app.name, self.model.name),
-                    # TODO: Once Ingress is in use, its address should also be added here
-                )
-            ),
-        )
-
-    @property
-    def _tls_config(self) -> Optional[TLSConfig]:
-        """Returns the TLS configuration, including certificates and private key, if available; None otherwise."""
-        certificates, private_key = self._tls_certificates.get_assigned_certificate(
-            self._certificate_request_attributes
-        )
-        if not (certificates and private_key):
-            return None
-        return TLSConfig(
-            server_cert=certificates.certificate.raw,
-            private_key=private_key.raw,
-            ca_cert=certificates.ca.raw,
         )
 
 
