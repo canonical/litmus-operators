@@ -58,6 +58,9 @@ class LitmusAuth:
             self._container.replan()
         # else stop all services
         else:
+            logger.warning(
+                "cannot start/restart pebble service: missing required database config",
+            )
             self._container.stop(self.service_name)
 
     @property
