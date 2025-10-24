@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 
 from coordinated_workers.nginx import CERT_PATH, KEY_PATH, NGINX_CONFIG
 import nginx_config
+from conftest import patch_cert_and_key_ctx
 
 
 @pytest.mark.parametrize(
@@ -28,12 +29,16 @@ import nginx_config
         "https://127.0.0.1",
     ),
 )
+@pytest.mark.parametrize("tls_enabled", (True, False))
 def test_config_contains_correct_urls(
     ctx,
     nginx_container,
     nginx_prometheus_exporter_container,
     auth_endpoint,
     backend_endpoint,
+    tls_certificates_relation,
+    patch_write_to_ca_path,
+    tls_enabled,
 ):
     # GIVEN chaoscenter related to backend and auth
     auth_relation = Relation(
@@ -52,18 +57,34 @@ def test_config_contains_correct_urls(
         },
     )
 
-    state_out = ctx.run(
-        ctx.on.update_status(),
-        state=State(
-            leader=True,
-            relations={auth_relation, backend_relation},
-            containers={nginx_container, nginx_prometheus_exporter_container},
-        ),
-    )
+    with patch_cert_and_key_ctx(tls_enabled):
+        state_out = ctx.run(
+            ctx.on.update_status(),
+            state=State(
+                leader=True,
+                relations={
+                    auth_relation,
+                    backend_relation,
+                    *({tls_certificates_relation} if tls_enabled else {}),
+                },
+                containers={
+                    nginx_container,
+                    nginx_prometheus_exporter_container,
+                },
+            ),
+        )
 
     # WHEN we peek into the generated nginx config
     nginx_container_out = state_out.get_container(nginx_container.name)
     nginx_config_path = nginx_container_out.get_filesystem(ctx) / NGINX_CONFIG[1:]
+
+    # if we don't have TLS enabled and either endpoint is https, we won't generate a config at all.
+    # Inconsistent state.
+    if not tls_enabled and (
+        auth_endpoint.startswith("https") or backend_endpoint.startswith("https")
+    ):
+        assert not nginx_config_path.exists()
+        return
 
     config = nginx_config_path.read_text()
 
