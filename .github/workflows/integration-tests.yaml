@@ -251,3 +251,12 @@ jobs:
             exit 1
           fi
           uvx tox -e integration -- -k "${{ matrix.suite }}"
+
+  terraform-deploy-tests:
+    name: Run terraform deployment tests
+    uses: canonical/observability/.github/workflows/run-tox-environment.yaml@main
+    with:
+      tox-env-name: terraform-deploy
+      prepare-host-env: true
+      extra-snaps: terraform
+    secrets: inherit
