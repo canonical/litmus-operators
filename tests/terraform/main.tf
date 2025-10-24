@@ -4,5 +4,5 @@
 module "litmus" {
   source         = "../../terraform"
   model          = var.model
-  litmus_channel = "2/edge"
+  litmus_channel = var.channel
 }

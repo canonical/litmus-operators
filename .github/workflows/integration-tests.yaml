@@ -157,95 +157,104 @@ jobs:
             name: chaoscenter-charms-tests
             path: chaoscenter/*.charm
   integration-matrix:
-      name: Define Integration Tests Matrix
-      runs-on: ubuntu-latest
-      needs: [pack-charms]
-      outputs:
-          suites: ${{ steps.suites.outputs.suites }}
-      steps:
-        - name: Checkout
-          uses: actions/checkout@v4
-        - name: Generate matrix list
-          id: suites
-          run: |
-              list="$(find tests/integration -name 'test_*.py' -printf '%f\n' | jq -r -ncR '[inputs]')"
-              echo "suites=$list"
-              echo "suites=$list" >> "$GITHUB_OUTPUT"
+    name: Define Integration Tests Matrix
+    runs-on: ubuntu-latest
+    needs: [pack-charms]
+    outputs:
+      suites: ${{ steps.suites.outputs.suites }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Generate matrix list
+        id: suites
+        run: |
+          list="$(find tests/integration -name 'test_*.py' -printf '%f\n' | jq -r -ncR '[inputs]')"
+          echo "suites=$list"
+          echo "suites=$list" >> "$GITHUB_OUTPUT"
 
   integration-test:
-      name: Integration Tests (${{ matrix.mode }} | ${{ matrix.suite }})
-      runs-on: ubuntu-latest
-      needs: [modes-matrix, pack-charms, integration-matrix]
-      strategy:
-          fail-fast: false
-          matrix:
-              suite: ${{ fromJSON(needs.integration-matrix.outputs.suites) }}
-              # Run the solution-level integration tests in the following deployment modes.
-              mode: ${{ fromJson(needs.modes-matrix.outputs.modes) }}
-      env:
-          CONCIERGE_JUJU_CHANNEL: 3.6/stable
-          CONCIERGE_MICROK8S_CHANNEL: 1.32-strict/stable
-          CONCIERGE_CHARMCRAFT_CHANNEL: 3.x/candidate
-      steps:
-          - name: Checkout
-            uses: actions/checkout@v4
-          - name: Install dependencies
-            run: |
-              sudo snap install concierge --classic
-              sudo concierge prepare -p microk8s --extra-snaps=astral-uv
-              sudo snap install kubectl --classic
-              juju model-defaults automatically-retry-hooks=true
-          - name: Download auth charm artifact
-            uses: actions/download-artifact@v4
-            with:
-              name: auth-charms-tests
-              path: ./auth
-          - name: Download backend charm artifact
-            uses: actions/download-artifact@v4
-            with:
-              name: backend-charms-tests
-              path: ./backend
-          - name: Download chaoscenter charm artifact
-            uses: actions/download-artifact@v4
-            with:
-              name: chaoscenter-charms-tests
-              path: ./chaoscenter
-          - name: Run integration tests
-            run: |
-              auth_relative_path="$(find ./auth -maxdepth 1 -name '*.charm' | tail -n1)"
-              backend_relative_path="$(find ./backend -maxdepth 1 -name '*.charm' | tail -n1)"
-              chaoscenter_relative_path="$(find ./chaoscenter -maxdepth 1 -name '*.charm' | tail -n1)"
-              channel="2/edge"
-              if [ "${{ matrix.mode }}" = "local-auth" ]; then
-                  AUTH_CHARM_PATH="$(realpath "$auth_relative_path")"
-                  export AUTH_CHARM_PATH
-                  BACKEND_CHARM_CHANNEL="$channel"
-                  CHAOSCENTER_CHARM_CHANNEL="$channel"
-                  export BACKEND_CHARM_CHANNEL
-                  export CHAOSCENTER_CHARM_CHANNEL
-              elif [ "${{ matrix.mode }}" = "local-backend" ]; then
-                  BACKEND_CHARM_PATH="$(realpath "$backend_relative_path")"
-                  export BACKEND_CHARM_PATH
-                  AUTH_CHARM_CHANNEL="$channel"
-                  CHAOSCENTER_CHARM_CHANNEL="$channel"
-                  export AUTH_CHARM_CHANNEL
-                  export CHAOSCENTER_CHARM_CHANNEL
-              elif [ "${{ matrix.mode }}" = "local-chaoscenter" ]; then
-                  CHAOSCENTER_CHARM_PATH="$(realpath "$chaoscenter_relative_path")"
-                  export CHAOSCENTER_CHARM_PATH
-                  AUTH_CHARM_CHANNEL="$channel"
-                  BACKEND_CHARM_CHANNEL="$channel"
-                  export AUTH_CHARM_CHANNEL
-                  export BACKEND_CHARM_CHANNEL
-              elif [ "${{ matrix.mode }}" = "local-all" ]; then
-                  AUTH_CHARM_PATH="$(realpath "$auth_relative_path")"
-                  export AUTH_CHARM_PATH
-                  BACKEND_CHARM_PATH="$(realpath "$backend_relative_path")"
-                  export BACKEND_CHARM_PATH
-                  CHAOSCENTER_CHARM_PATH="$(realpath "$chaoscenter_relative_path")"
-                  export CHAOSCENTER_CHARM_PATH
-              else
-                  echo "Unknown mode: ${{ matrix.mode }}"
-                  exit 1
-              fi
-              uvx tox -e integration -- -k "${{ matrix.suite }}"
+    name: Integration Tests (${{ matrix.mode }} | ${{ matrix.suite }})
+    runs-on: ubuntu-latest
+    needs: [modes-matrix, pack-charms, integration-matrix]
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: ${{ fromJSON(needs.integration-matrix.outputs.suites) }}
+        # Run the solution-level integration tests in the following deployment modes.
+        mode: ${{ fromJson(needs.modes-matrix.outputs.modes) }}
+    env:
+      CONCIERGE_JUJU_CHANNEL: 3.6/stable
+      CONCIERGE_MICROK8S_CHANNEL: 1.32-strict/stable
+      CONCIERGE_CHARMCRAFT_CHANNEL: 3.x/candidate
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo snap install concierge --classic
+          sudo concierge prepare -p microk8s --extra-snaps=astral-uv,terraform
+          sudo snap install kubectl --classic
+          juju model-defaults automatically-retry-hooks=true
+      - name: Download auth charm artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: auth-charms-tests
+          path: ./auth
+      - name: Download backend charm artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-charms-tests
+          path: ./backend
+      - name: Download chaoscenter charm artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: chaoscenter-charms-tests
+          path: ./chaoscenter
+      - name: Run integration tests
+        run: |
+          auth_relative_path="$(find ./auth -maxdepth 1 -name '*.charm' | tail -n1)"
+          backend_relative_path="$(find ./backend -maxdepth 1 -name '*.charm' | tail -n1)"
+          chaoscenter_relative_path="$(find ./chaoscenter -maxdepth 1 -name '*.charm' | tail -n1)"
+          channel="2/edge"
+          if [ "${{ matrix.mode }}" = "local-auth" ]; then
+            AUTH_CHARM_PATH="$(realpath "$auth_relative_path")"
+            export AUTH_CHARM_PATH
+            BACKEND_CHARM_CHANNEL="$channel"
+            CHAOSCENTER_CHARM_CHANNEL="$channel"
+            export BACKEND_CHARM_CHANNEL
+            export CHAOSCENTER_CHARM_CHANNEL
+          elif [ "${{ matrix.mode }}" = "local-backend" ]; then
+            BACKEND_CHARM_PATH="$(realpath "$backend_relative_path")"
+            export BACKEND_CHARM_PATH
+            AUTH_CHARM_CHANNEL="$channel"
+            CHAOSCENTER_CHARM_CHANNEL="$channel"
+            export AUTH_CHARM_CHANNEL
+            export CHAOSCENTER_CHARM_CHANNEL
+          elif [ "${{ matrix.mode }}" = "local-chaoscenter" ]; then
+            CHAOSCENTER_CHARM_PATH="$(realpath "$chaoscenter_relative_path")"
+            export CHAOSCENTER_CHARM_PATH
+            AUTH_CHARM_CHANNEL="$channel"
+            BACKEND_CHARM_CHANNEL="$channel"
+            export AUTH_CHARM_CHANNEL
+            export BACKEND_CHARM_CHANNEL
+          elif [ "${{ matrix.mode }}" = "local-all" ]; then
+            AUTH_CHARM_PATH="$(realpath "$auth_relative_path")"
+            export AUTH_CHARM_PATH
+            BACKEND_CHARM_PATH="$(realpath "$backend_relative_path")"
+            export BACKEND_CHARM_PATH
+            CHAOSCENTER_CHARM_PATH="$(realpath "$chaoscenter_relative_path")"
+            export CHAOSCENTER_CHARM_PATH
+          else
+            echo "Unknown mode: ${{ matrix.mode }}"
+            exit 1
+          fi
+          uvx tox -e integration -- -k "${{ matrix.suite }}"
+
+  terraform-deploy-tests:
+    name: Run terraform deployment tests
+    uses: canonical/observability/.github/workflows/run-tox-environment.yaml@v1
+    with:
+      tox-env-name: terraform
+      prepare-host-env: true
+      extra-snaps: terraform
+    secrets: inherit

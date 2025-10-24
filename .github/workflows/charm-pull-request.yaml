@@ -82,9 +82,3 @@ jobs:
     secrets: inherit
     with:
       charm-path: backend
-  terraform-tests:
-    name: Run terraform tests
-    uses: ./.github/workflows/_terraform-tests-auto.yaml
-    with:
-      charm-channel: 2/edge
-    secrets: inherit
