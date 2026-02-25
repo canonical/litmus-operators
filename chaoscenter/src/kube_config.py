@@ -6,18 +6,20 @@
 
 import base64
 import logging
+from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 from lightkube import KubeConfig
-from typing import Any, Dict
 
 
 logger = logging.getLogger(__name__)
 
 
+KUBECONFIG_PATH = Path("/.kube/config")
+
+
 def generate_kubeconfig() -> str:
     config = KubeConfig.from_service_account()
-    config = vars(config)
 
     env = Environment(loader=FileSystemLoader("./src/templates/"))
     template = env.get_template("kubeconfig.yaml.j2")
@@ -33,31 +35,27 @@ def generate_kubeconfig() -> str:
     return kubeconfig
 
 
-def _get_cluster_name(config: Dict[str, Any]) -> str:
-    ctx = vars(config["contexts"][config["current_context"]])
-    return getattr(ctx, "cluster", ctx["cluster"])
+def _get_cluster_name(config: KubeConfig) -> str:
+    return config.current_context
 
 
-def _get_server_url(config: Dict[str, Any]) -> str:
+def _get_server_url(config: KubeConfig) -> str:
     cluster_name = _get_cluster_name(config)
-    cluster = vars(config["clusters"][cluster_name])
-    return getattr(cluster, "server", cluster["server"])
+    return config.clusters[cluster_name].server
 
 
-def _get_namespace(config: Dict[str, Any]) -> str:
-    ctx = vars(config["contexts"][config["current_context"]])
-    return getattr(ctx, "namespace", ctx["namespace"])
-
-
-def _get_ca_data(config: Dict[str, Any]) -> str:
+def _get_namespace(config: KubeConfig) -> str:
     cluster_name = _get_cluster_name(config)
-    cluster = vars(config["clusters"][cluster_name])
-    cert_path = getattr(cluster, "certificate_auth", cluster["certificate_auth"])
+    return config.contexts[cluster_name].namespace
+
+
+def _get_ca_data(config: KubeConfig) -> str:
+    cluster_name = _get_cluster_name(config)
+    cert_path = config.clusters[cluster_name].certificate_auth
     with open(cert_path, "rb") as cert_file:
         return base64.b64encode(cert_file.read()).decode()
 
 
-def _get_user_token(config: Dict[str, Any]) -> str:
+def _get_user_token(config: KubeConfig) -> str:
     cluster_name = _get_cluster_name(config)
-    user = vars(config["users"][cluster_name])
-    return getattr(user, "token", user["token"])
+    return config.users[cluster_name].token

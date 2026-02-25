@@ -27,32 +27,34 @@ TEST_TOKEN = "fake-test.token"
 
 
 @pytest.fixture
-def fake_config_dict(tmp_path):
+def fake_k8s_config(tmp_path):
     cert_file = tmp_path / "ca.crt"
     cert_file.write_bytes(TEST_CA_CERT_CONTENT)
 
-    return {
-        "clusters": {
-            TEST_CLUSTER_NAME: Cluster(
-                server=TEST_SERVER_URL,
-                certificate_auth=str(cert_file),
-                insecure=False,
-            )
-        },
-        "contexts": {
-            "default": KubeContext(
-                cluster=TEST_CLUSTER_NAME,
-                user="default",
-                namespace=TEST_NAMESPACE,
-            )
-        },
-        "current_context": "default",
-        "users": {
-            TEST_CLUSTER_NAME: User(
-                token=TEST_TOKEN,
-            )
+    return KubeConfig(
+        **{
+            "clusters": {
+                TEST_CLUSTER_NAME: Cluster(
+                    server=TEST_SERVER_URL,
+                    certificate_auth=str(cert_file),
+                    insecure=False,
+                )
+            },
+            "contexts": {
+                TEST_CLUSTER_NAME: KubeContext(
+                    cluster=TEST_CLUSTER_NAME,
+                    user=TEST_CLUSTER_NAME,
+                    namespace=TEST_NAMESPACE,
+                )
+            },
+            "current_context": TEST_CLUSTER_NAME,
+            "users": {
+                TEST_CLUSTER_NAME: User(
+                    token=TEST_TOKEN,
+                )
+            }
         }
-    }
+    )
 
 
 @pytest.fixture(scope="session")
@@ -61,12 +63,12 @@ def unit_fqdn():
 
 
 @pytest.fixture
-def chaoscenter_charm(unit_fqdn, fake_config_dict):
+def chaoscenter_charm(unit_fqdn, fake_k8s_config):
     with (
         patch("socket.getfqdn", return_value=unit_fqdn),
         patch(
             "lightkube.KubeConfig.from_service_account",
-            return_value=KubeConfig(**fake_config_dict),
+            return_value=fake_k8s_config,
         ),
     ):
         yield LitmusChaoscenterCharm
