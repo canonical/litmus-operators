@@ -25,6 +25,7 @@ from coordinated_workers.nginx import (
 )
 
 from litmus_libs.status_manager import StatusManager
+from kube_config import generate_kubeconfig
 from nginx_config import get_config, http_server_port, all_pebble_checks, container_name
 from traefik_config import ingress_config, static_ingress_config
 
@@ -47,6 +48,7 @@ AUTH_HTTP_API_ENDPOINT = "auth-http-api"
 BACKEND_HTTP_API_ENDPOINT = "backend-http-api"
 TLS_CERTIFICATES_ENDPOINT = "tls-certificates"
 NGINX_EXPORTER_PORT = 9113
+KUBECONFIG_PATH = "/.kubeconfig"
 
 NGINX_OVERRIDES: NginxMappingOverrides = {
     "nginx_port": http_server_port,
@@ -146,7 +148,7 @@ class LitmusChaoscenterCharm(CharmBase):
                 tls_config=self._tls_config,
             )
             self.nginx_exporter.reconcile()
-
+            self._store_kubeconfig()
         self._receive_backend_http_api.publish_endpoint(
             f"{self._most_external_frontend_url}:{http_server_port}"
         )
@@ -220,6 +222,11 @@ class LitmusChaoscenterCharm(CharmBase):
             private_key=private_key.raw,
             ca_cert=certificates.ca.raw,
         )
+
+    def _store_kubeconfig(self):
+        container = self.unit.get_container(container_name)
+        container.push(KUBECONFIG_PATH, generate_kubeconfig(), make_dirs=True)
+        logger.info(f"kubeconfig stored under {KUBECONFIG_PATH}")
 
     def _nginx_liveness_endpoint(self, tls: bool) -> str:
         return f"http{'s' if tls else ''}://{self._fqdn}:{http_server_port}/health"

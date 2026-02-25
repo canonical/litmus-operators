@@ -5,13 +5,54 @@ import json
 import pathlib
 from unittest.mock import patch
 
-from ops.testing import Container, Context
 import pytest
-from scenario import Relation
 from certificates_helpers import mock_cert_and_key
-from coordinated_workers.nginx import CA_CERT_PATH
 from charm import LitmusChaoscenterCharm
-from ops.testing import Exec
+from coordinated_workers.nginx import CA_CERT_PATH
+from lightkube.config.kubeconfig import KubeConfig
+from lightkube.config.models import (
+    Cluster,
+    Context as KubeContext,
+    User,
+)
+from ops.testing import Container, Context, Exec
+from scenario import Relation
+
+
+TEST_CLUSTER_NAME = "test-cluster"
+TEST_SERVER_URL = "https://1.2.3.4:443"
+TEST_NAMESPACE = "test-namespace"
+TEST_CA_CERT_CONTENT = b"test-ca"
+TEST_TOKEN = "fake-test.token"
+
+
+@pytest.fixture
+def fake_config_dict(tmp_path):
+    cert_file = tmp_path / "ca.crt"
+    cert_file.write_bytes(TEST_CA_CERT_CONTENT)
+
+    return {
+        "clusters": {
+            TEST_CLUSTER_NAME: Cluster(
+                server=TEST_SERVER_URL,
+                certificate_auth=str(cert_file),
+                insecure=False,
+            )
+        },
+        "contexts": {
+            "default": KubeContext(
+                cluster=TEST_CLUSTER_NAME,
+                user="default",
+                namespace=TEST_NAMESPACE,
+            )
+        },
+        "current_context": "default",
+        "users": {
+            TEST_CLUSTER_NAME: User(
+                token=TEST_TOKEN,
+            )
+        }
+    }
 
 
 @pytest.fixture(scope="session")
@@ -20,10 +61,13 @@ def unit_fqdn():
 
 
 @pytest.fixture
-def chaoscenter_charm(unit_fqdn):
-    with patch(
-        "socket.getfqdn",
-        return_value=unit_fqdn,
+def chaoscenter_charm(unit_fqdn, fake_config_dict):
+    with (
+        patch("socket.getfqdn", return_value=unit_fqdn),
+        patch(
+            "lightkube.KubeConfig.from_service_account",
+            return_value=KubeConfig(**fake_config_dict),
+        ),
     ):
         yield LitmusChaoscenterCharm
 
