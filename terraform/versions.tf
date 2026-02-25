@@ -5,7 +5,7 @@ terraform {
   required_providers {
     juju = {
       source  = "juju/juju"
-      version = ">= 0.14.0, < 1.0" # Using 0.14.0 to match MongoDB's strict version requirement
+      version = ">= 0.14.0" # Using 0.14.0 to match MongoDB's strict version requirement
     }
   }
 }

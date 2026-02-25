@@ -25,13 +25,13 @@ like shown below:
 
 ```text
 data "juju_model" "my_model" {
-  name = var.model
+  uuid = var.model_uuid
 }
 
 module "chaoscenter" {
   source = "git::https://github.com/canonical/litmus-operators/chaoscenter//terraform"
   
-  model = juju_model.my_model.name
+  model_uuid = juju_model.my_model.uuid
   (Customize configuration variables here if needed)
 }
 ```
@@ -40,7 +40,7 @@ Create integrations, for instance:
 
 ```text
 resource "juju_integration" "chaoscenter-auth" {
-  model = juju_model.my_model.name
+  model_uuid = juju_model.my_model.uuid
   application {
     name     = module.chaoscenter.app_name
     endpoint = module.chaoscenter.endpoints.auth-http-api
