@@ -69,22 +69,7 @@ jobs:
             icon.svg
             .gitignore
             .github/**
-      # check infrastructure changes
-      - name: Determine changed files in the infrastructure component
-        id: infrastructure-changed-files
-        uses: tj-actions/changed-files@v45
-        with:
-          files: infrastructure/**
-          files_ignore: |
-            README.md
-            CONTRIBUTING.md
-            INTEGRATING.md
-            CODEOWNERS
-            LICENSE
-            icon.svg
-            .gitignore
-            .github/**
-
+            
       # check top-level changes
       - name: Determine changed files in the top-level tests
         id: tests-changed-files
@@ -112,12 +97,9 @@ jobs:
           if [[ "${{ steps.chaoscenter-changed-files.outputs.any_modified }}" == "true" ]]; then
             modes+=("local-chaoscenter")
           fi
-          if [[ "${{ steps.infrastructure-changed-files.outputs.any_modified }}" == "true" ]]; then
-            modes+=("local-infrastructure")
-          fi
 
           # detect "all" mode if top-level tests changed OR all components' files have been modified
-          if [[ "${{ steps.tests-changed-files.outputs.any_modified }}" == "true" || ${#modes[@]} -eq 4 ]]; then
+          if [[ "${{ steps.tests-changed-files.outputs.any_modified }}" == "true" || ${#modes[@]} -eq 3 ]]; then
             modes+=("local-all")
           fi
           # convert to JSON array
@@ -159,10 +141,6 @@ jobs:
           run: |
             cd chaoscenter
             charmcraft pack -v
-        - name: Run charmcraft pack on the infrastructure component
-          run: |
-            cd infrastructure
-            charmcraft pack -v
         - name: Upload auth charm artifact
           uses: actions/upload-artifact@v4
           with:
@@ -178,11 +156,6 @@ jobs:
           with:
             name: chaoscenter-charms-tests
             path: chaoscenter/*.charm
-        - name: Upload infrastructure charm artifact
-          uses: actions/upload-artifact@v4
-          with:
-            name: infrastructure-charms-tests
-            path: infrastructure/*.charm
   integration-matrix:
     name: Define Integration Tests Matrix
     runs-on: ubuntu-latest
@@ -237,54 +210,33 @@ jobs:
         with:
           name: chaoscenter-charms-tests
           path: ./chaoscenter
-      - name: Download infrastructure charm artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: infrastructure-charms-tests
-          path: ./infrastructure
       - name: Run integration tests
         run: |
           auth_relative_path="$(find ./auth -maxdepth 1 -name '*.charm' | tail -n1)"
           backend_relative_path="$(find ./backend -maxdepth 1 -name '*.charm' | tail -n1)"
           chaoscenter_relative_path="$(find ./chaoscenter -maxdepth 1 -name '*.charm' | tail -n1)"
-          infrastructure_relative_path="$(find ./infrastructure -maxdepth 1 -name '*.charm' | tail -n1)"
-          channel="2/dev"
+          channel="dev/edge"
           if [ "${{ matrix.mode }}" = "local-auth" ]; then
             AUTH_CHARM_PATH="$(realpath "$auth_relative_path")"
             export AUTH_CHARM_PATH
             BACKEND_CHARM_CHANNEL="$channel"
             CHAOSCENTER_CHARM_CHANNEL="$channel"
-            INFRASTRUCTURE_CHARM_CHANNEL="$channel"
             export BACKEND_CHARM_CHANNEL
             export CHAOSCENTER_CHARM_CHANNEL
-            export INFRASTRUCTURE_CHARM_CHANNEL
           elif [ "${{ matrix.mode }}" = "local-backend" ]; then
             BACKEND_CHARM_PATH="$(realpath "$backend_relative_path")"
             export BACKEND_CHARM_PATH
             AUTH_CHARM_CHANNEL="$channel"
             CHAOSCENTER_CHARM_CHANNEL="$channel"
-            INFRASTRUCTURE_CHARM_CHANNEL="$channel"
             export AUTH_CHARM_CHANNEL
             export CHAOSCENTER_CHARM_CHANNEL
-            export INFRASTRUCTURE_CHARM_CHANNEL
           elif [ "${{ matrix.mode }}" = "local-chaoscenter" ]; then
             CHAOSCENTER_CHARM_PATH="$(realpath "$chaoscenter_relative_path")"
             export CHAOSCENTER_CHARM_PATH
             AUTH_CHARM_CHANNEL="$channel"
             BACKEND_CHARM_CHANNEL="$channel"
-            INFRASTRUCTURE_CHARM_CHANNEL="$channel"
             export AUTH_CHARM_CHANNEL
             export BACKEND_CHARM_CHANNEL
-            export INFRASTRUCTURE_CHARM_CHANNEL
-          elif [ "${{ matrix.mode }}" = "local-infrastructure" ]; then
-            INFRASTRUCTURE_CHARM_PATH="$(realpath "$infrastructure_relative_path")"
-            export INFRASTRUCTURE_CHARM_PATH
-            AUTH_CHARM_CHANNEL="$channel"
-            BACKEND_CHARM_CHANNEL="$channel"
-            CHAOSCENTER_CHARM_CHANNEL="$channel"
-            export AUTH_CHARM_CHANNEL
-            export BACKEND_CHARM_CHANNEL
-            export CHAOSCENTER_CHARM_CHANNEL
           elif [ "${{ matrix.mode }}" = "local-all" ]; then
             AUTH_CHARM_PATH="$(realpath "$auth_relative_path")"
             export AUTH_CHARM_PATH
@@ -292,8 +244,6 @@ jobs:
             export BACKEND_CHARM_PATH
             CHAOSCENTER_CHARM_PATH="$(realpath "$chaoscenter_relative_path")"
             export CHAOSCENTER_CHARM_PATH
-            INFRASTRUCTURE_CHARM_PATH="$(realpath "$infrastructure_relative_path")"
-            export INFRASTRUCTURE_CHARM_PATH
           else
             echo "Unknown mode: ${{ matrix.mode }}"
             exit 1

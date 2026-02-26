@@ -37,5 +37,5 @@ jobs:
     name: Run terraform tests
     uses: ./.github/workflows/_terraform-tests-auto.yaml
     with:
-      charm-channel: 2/dev
+      charm-channel: dev/edge
     secrets: inherit
