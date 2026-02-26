@@ -27,9 +27,15 @@ jobs:
     secrets: inherit
     with:
       charm-path: backend
+  quality-gates-infrastructure:
+    name: Run quality gates
+    uses: canonical/observability/.github/workflows/charm-quality-gates.yaml@v1
+    secrets: inherit
+    with:
+      charm-path: infrastructure
   terraform-tests:
     name: Run terraform tests
     uses: ./.github/workflows/_terraform-tests-auto.yaml
     with:
-      charm-channel: 2/edge
+      charm-channel: 2/dev
     secrets: inherit

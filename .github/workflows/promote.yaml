@@ -17,6 +17,7 @@ on:
           - auth
           - backend
           - chaoscenter
+          - infrastructure
 
 jobs:
   promote:

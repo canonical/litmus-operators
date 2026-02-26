@@ -1,0 +1,40 @@
+# Copyright 2025 Canonical Ltd.
+# See LICENSE file for licensing details.
+name: litmus-infrastructure-k8s
+type: charm
+title: Litmus Infrastructure
+
+assumes:
+  - k8s-api
+  - juju >= 3.6.0
+
+description: |
+  Litmus Infrastructure is a workloadless beacon charm that, when integrated with Litmus ChaosCenter, 
+  signals the control plane to provision the execution-plane infrastructure required to run chaos experiments in the Juju model where the charm is deployed.
+
+summary: |
+  Workloadless beacon charm that signals Litmus ChaosCenter to provision the execution-plane infrastructure in the Juju model where it is deployed.
+
+
+links:
+  documentation: https://discourse.charmhub.io/t/18789
+  website: https://charmhub.io/litmus-infrastructure-k8s
+  source: https://github.com/canonical/litmus-operators/tree/main/infrastructure
+  issues: https://github.com/canonical/litmus-operators/issues
+
+platforms:
+  ubuntu@24.04:amd64:
+
+parts:
+  charm:
+    source: .
+    plugin: uv
+    build-packages:
+      - git # handy for git+ dependencies during development
+    build-snaps: [astral-uv]
+    # FIXME: override-build with "git describe --always > $CRAFT_PART_INSTALL/version" causes
+    # charm pack to fail "fatal: not a git repository (or any of the parent directories): .git"
+
+    # override-build: |
+    #   craftctl default
+    #   git describe --always > $CRAFT_PART_INSTALL/version
