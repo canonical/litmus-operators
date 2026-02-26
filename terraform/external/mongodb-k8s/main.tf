@@ -10,7 +10,7 @@ resource "juju_application" "mongodb-k8s" {
     base     = "ubuntu@22.04"
   }
   config      = var.config
-  model       = var.model
+  model_uuid  = var.model_uuid
   name        = var.app_name
   units       = var.units
   constraints = var.constraints
