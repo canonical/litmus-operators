@@ -3,6 +3,6 @@
 
 module "litmus" {
   source         = "../../terraform"
-  model          = var.model
+  model_uuid     = var.model_uuid
   litmus_channel = var.channel
 }

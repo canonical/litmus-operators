@@ -2,44 +2,44 @@
 # See LICENSE file for licensing details.
 
 data "juju_model" "charmed-litmus" {
-  name = var.model
+  uuid = var.model_uuid
 }
 
 module "auth" {
-  source    = "git::https://github.com/canonical/litmus-operators//auth/terraform"
-  model     = data.juju_model.charmed-litmus.name
-  channel   = var.litmus_channel
-  revision  = var.auth_revision
-  resources = var.auth_resources
+  source     = "git::https://github.com/canonical/litmus-operators//auth/terraform"
+  model_uuid = data.juju_model.charmed-litmus.uuid
+  channel    = var.litmus_channel
+  revision   = var.auth_revision
+  resources  = var.auth_resources
 }
 
 module "backend" {
-  source    = "git::https://github.com/canonical/litmus-operators//backend/terraform"
-  model     = data.juju_model.charmed-litmus.name
-  channel   = var.litmus_channel
-  revision  = var.backend_revision
-  resources = var.backend_resources
+  source     = "git::https://github.com/canonical/litmus-operators//backend/terraform"
+  model_uuid = data.juju_model.charmed-litmus.uuid
+  channel    = var.litmus_channel
+  revision   = var.backend_revision
+  resources  = var.backend_resources
 }
 
 module "chaoscenter" {
-  source    = "git::https://github.com/canonical/litmus-operators//chaoscenter/terraform"
-  model     = data.juju_model.charmed-litmus.name
-  channel   = var.litmus_channel
-  revision  = var.chaoscenter_revision
-  resources = var.chaoscenter_resources
+  source     = "git::https://github.com/canonical/litmus-operators//chaoscenter/terraform"
+  model_uuid = data.juju_model.charmed-litmus.uuid
+  channel    = var.litmus_channel
+  revision   = var.chaoscenter_revision
+  resources  = var.chaoscenter_resources
 }
 
 module "mongodb" {
-  source  = "./external/mongodb-k8s"
-  model   = data.juju_model.charmed-litmus.name
-  channel = var.mongodb_channel
-  config  = var.mongodb_config
+  source     = "./external/mongodb-k8s"
+  model_uuid = data.juju_model.charmed-litmus.uuid
+  channel    = var.mongodb_channel
+  config     = var.mongodb_config
 }
 
 # Juju integrations
 
 resource "juju_integration" "auth-mongodb" {
-  model = data.juju_model.charmed-litmus.name
+  model_uuid = data.juju_model.charmed-litmus.uuid
 
   application {
     name     = module.auth.app_name
@@ -53,7 +53,7 @@ resource "juju_integration" "auth-mongodb" {
 }
 
 resource "juju_integration" "backend-mongodb" {
-  model = data.juju_model.charmed-litmus.name
+  model_uuid = data.juju_model.charmed-litmus.uuid
 
   application {
     name     = module.backend.app_name
@@ -67,7 +67,7 @@ resource "juju_integration" "backend-mongodb" {
 }
 
 resource "juju_integration" "backend-auth" {
-  model = data.juju_model.charmed-litmus.name
+  model_uuid = data.juju_model.charmed-litmus.uuid
 
   application {
     name     = module.backend.app_name
@@ -81,7 +81,7 @@ resource "juju_integration" "backend-auth" {
 }
 
 resource "juju_integration" "chaoscenter-auth" {
-  model = data.juju_model.charmed-litmus.name
+  model_uuid = data.juju_model.charmed-litmus.uuid
 
   application {
     name     = module.chaoscenter.app_name
@@ -95,7 +95,7 @@ resource "juju_integration" "chaoscenter-auth" {
 }
 
 resource "juju_integration" "chaoscenter-backend" {
-  model = data.juju_model.charmed-litmus.name
+  model_uuid = data.juju_model.charmed-litmus.uuid
 
   application {
     name     = module.chaoscenter.app_name
