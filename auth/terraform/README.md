@@ -25,13 +25,13 @@ like shown below:
 
 ```text
 data "juju_model" "my_model" {
-  name = var.model
+  name_uuid = var.model_uuid
 }
 
 module "auth" {
   source = "git::https://github.com/canonical/litmus-operators/auth//terraform"
   
-  model = juju_model.my_model.name
+  model_uuid = juju_model.my_model.uuid
   (Customize configuration variables here if needed)
 }
 ```
@@ -40,7 +40,7 @@ Create integrations, for instance:
 
 ```text
 resource "juju_integration" "auth-mongodb" {
-  model = juju_model.my_model.name
+  model_uuid = juju_model.my_model.uuid
   application {
     name     = module.auth.app_name
     endpoint = module.auth.endpoints.database
