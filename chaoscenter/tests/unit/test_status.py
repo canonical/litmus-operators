@@ -134,6 +134,8 @@ def test_tls_waiting_status(
     auth_https_api_relation,
     backend_https_api_relation,
     tls_certificates_relation,
+    user_secret,
+    user_secrets_config,
     event,
 ):
     # GIVEN relations with auth and backend HTTPS endpoints, and a tls certificate relation but no certs yet
@@ -144,6 +146,8 @@ def test_tls_waiting_status(
             backend_https_api_relation,
             tls_certificates_relation,
         ],
+        config=user_secrets_config,
+        secrets=[user_secret],
     )
 
     # WHEN any event fires
@@ -175,9 +179,12 @@ def test_tls_active_status(
     tls_certificates_relation,
     patch_cert_and_key,
     patch_write_to_ca_path,
+    user_secret,
+    user_secrets_config,
     event,
 ):
-    # GIVEN relations with auth and backend HTTPS endpoints, and a well-configured tls certificate relation (see patches)
+    # GIVEN relations with auth and backend HTTPS endpoints, a well-configured tls certificate relation,
+    # and valid user credentials configured
     state = State(
         containers=[nginx_container, nginx_prometheus_exporter_container],
         relations=[
@@ -185,6 +192,8 @@ def test_tls_active_status(
             backend_https_api_relation,
             tls_certificates_relation,
         ],
+        config=user_secrets_config,
+        secrets=[user_secret],
     )
 
     # WHEN any event fires

@@ -7,15 +7,8 @@ import logging
 import socket
 from typing import Optional, Dict, cast, Any
 
-from charms.tls_certificates_interface.v4.tls_certificates import (
-    TLSCertificatesRequiresV4,
-    CertificateRequestAttributes,
-)
-from ops.charm import CharmBase
-from ops import (
-    CollectStatusEvent,
-    ActiveStatus,
-)
+import cosl
+import cosl.reconciler
 from coordinated_workers.models import TLSConfig
 from coordinated_workers.nginx import (
     Nginx,
@@ -23,24 +16,30 @@ from coordinated_workers.nginx import (
     NginxMappingOverrides,
     NginxTracingConfig,
 )
+from ops import (
+    BlockedStatus,
+    CollectStatusEvent,
+    ActiveStatus, Secret,
+)
+from ops.charm import CharmBase
 
-from litmus_libs.status_manager import StatusManager
-from nginx_config import get_config, http_server_port, all_pebble_checks, container_name
-from traefik_config import ingress_config, static_ingress_config
-
+from chaoscenter import Chaoscenter
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
+from charms.tempo_coordinator_k8s.v0.tracing import TracingEndpointRequirer
+from charms.tls_certificates_interface.v4.tls_certificates import (
+    TLSCertificatesRequiresV4,
+    CertificateRequestAttributes,
+)
 from charms.traefik_k8s.v0.traefik_route import TraefikRouteRequirer
-
 from litmus_libs import get_app_hostname, get_litmus_version
 from litmus_libs.interfaces.http_api import (
     LitmusAuthApiRequirer,
     LitmusBackendApiRequirer,
 )
 from litmus_libs.interfaces.self_monitoring import SelfMonitoring
-from charms.tempo_coordinator_k8s.v0.tracing import TracingEndpointRequirer
-import cosl
-import cosl.reconciler
-
+from litmus_libs.status_manager import StatusManager
+from nginx_config import get_config, http_server_port, all_pebble_checks, container_name
+from traefik_config import ingress_config, static_ingress_config
 
 logger = logging.getLogger(__name__)
 AUTH_HTTP_API_ENDPOINT = "auth-http-api"
@@ -101,6 +100,11 @@ class LitmusChaoscenterCharm(CharmBase):
         )
 
         self._self_monitoring = SelfMonitoring(self)
+        self._chaoscenter = Chaoscenter(
+            user_secret_id=self.config.get("user_secrets"),
+            get_secret=lambda secret_id: self.model.get_secret(id=secret_id),
+            container=self.unit.get_container(container_name),
+        )
 
         self.nginx_exporter = NginxPrometheusExporter(
             self,
@@ -147,6 +151,8 @@ class LitmusChaoscenterCharm(CharmBase):
             )
             self.nginx_exporter.reconcile()
 
+        self._chaoscenter.reconcile()
+
         self._receive_backend_http_api.publish_endpoint(
             f"{self._most_external_frontend_url}:{http_server_port}"
         )
@@ -171,7 +177,8 @@ class LitmusChaoscenterCharm(CharmBase):
         return (
             NginxTracingConfig(
                 endpoint=endpoint,
-                service_name=f"{self.app.name}-nginx",  # append "-nginx" suffix to distinguish workload traces from charm traces
+                service_name=f"{self.app.name}-nginx",
+                # append "-nginx" suffix to distinguish workload traces from charm traces
                 # insert juju topology into the trace resource attributes
                 resource_attributes={
                     "juju_{}".format(key): value
@@ -231,9 +238,9 @@ class LitmusChaoscenterCharm(CharmBase):
         Ingressed URL, if related to ingress, otherwise internal url.
         """
         if (
-            self.ingress.is_ready()
-            and self.ingress.scheme
-            and self.ingress.external_host
+                self.ingress.is_ready()
+                and self.ingress.scheme
+                and self.ingress.external_host
         ):
             return f"{self.ingress.scheme}://{self.ingress.external_host}"
         return self._internal_frontend_url
@@ -292,6 +299,11 @@ class LitmusChaoscenterCharm(CharmBase):
 
         return False
 
+    @property
+    def _user_credentials_secret(self) -> Optional[str]:
+        """The secret ID configured for user credentials, or None if not set."""
+        return self.config.get("user_secrets")
+
     ###################
     # EVENT OBSERVERS #
     ###################
@@ -304,10 +316,15 @@ class LitmusChaoscenterCharm(CharmBase):
         if self._is_missing_tls_certificate:
             required_relations.append(TLS_CERTIFICATES_ENDPOINT)
 
+        if not self._user_credentials_secret:
+            e.add_status(BlockedStatus("Set the 'user_secrets' config option to continue."))
+
         StatusManager(
             charm=self,
             block_if_relations_missing=required_relations,
-            wait_for_config=self.consistency_checks,
+            wait_for_config={
+                **self.consistency_checks,
+            },
             block_if_pebble_checks_failing={
                 container_name: all_pebble_checks,
             },
