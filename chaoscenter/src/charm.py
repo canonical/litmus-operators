@@ -12,6 +12,7 @@ from charms.tls_certificates_interface.v4.tls_certificates import (
     CertificateRequestAttributes,
 )
 from ops.charm import CharmBase
+from ops.pebble import PathError
 from ops import (
     CollectStatusEvent,
     ActiveStatus,
@@ -25,6 +26,7 @@ from coordinated_workers.nginx import (
 )
 
 from litmus_libs.status_manager import StatusManager
+from kube_config import KUBECONFIG_PATH, generate_kubeconfig
 from nginx_config import get_config, http_server_port, all_pebble_checks, container_name
 from traefik_config import ingress_config, static_ingress_config
 
@@ -59,6 +61,7 @@ class LitmusChaoscenterCharm(CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
+        self._container = self.unit.get_container(container_name)
         self._fqdn = socket.getfqdn()
         self._receive_auth_http_api = LitmusAuthApiRequirer(
             relation=self.model.get_relation(AUTH_HTTP_API_ENDPOINT), app=self.app
@@ -120,7 +123,7 @@ class LitmusChaoscenterCharm(CharmBase):
         self.unit.set_ports(http_server_port)
         self.unit.set_workload_version(
             get_litmus_version(
-                container=self.unit.get_container(container_name),
+                container=self._container,
             )
             or ""
         )
@@ -146,7 +149,7 @@ class LitmusChaoscenterCharm(CharmBase):
                 tls_config=self._tls_config,
             )
             self.nginx_exporter.reconcile()
-
+            self._reconcile_kubeconfig()
         self._receive_backend_http_api.publish_endpoint(
             f"{self._most_external_frontend_url}:{http_server_port}"
         )
@@ -220,6 +223,19 @@ class LitmusChaoscenterCharm(CharmBase):
             private_key=private_key.raw,
             ca_cert=certificates.ca.raw,
         )
+
+    def _reconcile_kubeconfig(self):
+        new_kubeconfig = generate_kubeconfig()
+        try:
+            with self._container.pull(KUBECONFIG_PATH) as current_kubeconfig:
+                if current_kubeconfig.read() == new_kubeconfig:
+                    logger.info("kubeconfig is up to date")
+                    return
+        except PathError:
+            logger.warning(f"kubeconfig not found under {KUBECONFIG_PATH}")
+
+        self._container.push(KUBECONFIG_PATH, new_kubeconfig, make_dirs=True)
+        logger.info(f"kubeconfig stored under {KUBECONFIG_PATH}")
 
     def _nginx_liveness_endpoint(self, tls: bool) -> str:
         return f"http{'s' if tls else ''}://{self._fqdn}:{http_server_port}/health"
