@@ -5,7 +5,7 @@ import json
 import pathlib
 from unittest.mock import patch
 
-from ops.testing import Container, Context
+from ops.testing import Container, Context, Secret
 import pytest
 from scenario import Relation
 from certificates_helpers import mock_cert_and_key
@@ -138,3 +138,17 @@ def workload_tracing_relation():
             )
         },
     )
+
+
+@pytest.fixture
+def user_secret():
+    """A Juju secret carrying valid admin and charm passwords."""
+    return Secret(
+        tracked_content={"admin_password": "admin123", "charm_password": "charm123"},
+    )
+
+
+@pytest.fixture
+def user_secrets_config(user_secret):
+    """Config dict that satisfies the 'user_secrets' config option."""
+    return {"user_secrets": user_secret.id}

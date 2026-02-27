@@ -28,7 +28,7 @@ resources:
   litmus-chaoscenter-image:
     type: oci-image
     description: OCI image for Litmus frontend server 
-    upstream-source: ubuntu/litmuschaos-frontend:3-24.04_edge
+    upstream-source: ubuntu/litmuschaos-frontend:3.26-24.04_edge
   nginx-prometheus-exporter-image:
     type: oci-image
     description: OCI image for nginx-prometheus-exporter
@@ -38,6 +38,29 @@ storage:
   certs:
     type: filesystem
     minimum-size: 1M
+
+config:
+  options:
+    user_secrets:
+      description: |
+        Secret ID for a user secret containing the usernames and passwords for two users of the ChaosCenter application:
+        - admin: a user with administrator privileges, that the human operator can use to log in to the ChaosCenter 
+          application and perform any action, including creating other users and managing resources
+        - charm: a 'bot' account that the charm will use to manage resources in the ChaosCenter application
+        
+        The secret must contain the following fields:
+        - admin_password:str
+        - charm_password:str
+        
+        The admin can create this secret and provide it to the charm using the juju CLI as follows:
+        ```
+        SECRET_ID=$(juju add-secret chaoscenter-creds admin_password=admin123 charm_password=charm123)
+        juju grant-secret chaoscenter-creds chaoscenter
+        juju config litmus-chaoscenter-k8s user_secrets="$SECRET_ID"
+        ```
+        
+        If this config is unset, the charm will set blocked status.
+      type: string
 
 requires:
   auth-http-api:
