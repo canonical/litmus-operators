@@ -39,7 +39,7 @@ class LitmusInfrastructureProvider:
             def __init__(self, *args):
                 super().__init__(*args)
                 self._litmus_infra = LitmusInfrastructureProvider(
-                    self.model.get_relation("litmus-infrastructure"),
+                    self.model.relations["litmus-infrastructure"],
                     self.app,
                 )
                 self._publish_infra_data()
@@ -103,7 +103,7 @@ class LitmusInfrastructureRequirer:
             def __init__(self, *args):
                 super().__init__(*args)
                 self._litmus_infra = LitmusInfrastructureRequirer(
-                    self.model.get_relation("litmus-infrastructure"),
+                    self.model.relations["litmus-infrastructure"],
                     self.app,
                 )
 
