@@ -215,7 +215,7 @@ jobs:
           auth_relative_path="$(find ./auth -maxdepth 1 -name '*.charm' | tail -n1)"
           backend_relative_path="$(find ./backend -maxdepth 1 -name '*.charm' | tail -n1)"
           chaoscenter_relative_path="$(find ./chaoscenter -maxdepth 1 -name '*.charm' | tail -n1)"
-          channel="2/edge"
+          channel="dev/edge"
           if [ "${{ matrix.mode }}" = "local-auth" ]; then
             AUTH_CHARM_PATH="$(realpath "$auth_relative_path")"
             export AUTH_CHARM_PATH

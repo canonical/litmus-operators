@@ -28,3 +28,11 @@ jobs:
     with:
       charm-path: backend
       git-branch: chore/auto-libs/backend
+  update-lib-infrastructure:
+    name: Check libraries
+    uses: canonical/observability/.github/workflows/charm-update-libs.yaml@v1
+    secrets: inherit
+    with:
+      charm-path: infrastructure
+      git-branch: chore/auto-libs/infrastructure
+
