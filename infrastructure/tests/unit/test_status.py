@@ -3,11 +3,9 @@
 
 import pytest
 import ops
-from ops.testing import State, CharmEvents
+from ops.testing import Relation, State, CharmEvents
 
 
-# TODO: we'll probably update the test once we have some real logic in the charm,
-# but for now let's just check that the charm sets active on all events.
 @pytest.mark.parametrize(
     "event",
     (
@@ -18,12 +16,30 @@ from ops.testing import State, CharmEvents
     ),
 )
 def test_active_status(ctx, event):
-    # GIVEN a running charm container
+    # GIVEN a charm with the litmus-infrastructure relation joined
+    infra_rel = Relation(endpoint="litmus-infrastructure")
 
-    # WHEN we receive any event
+    # WHEN we receive any standard lifecycle event
     state_out = ctx.run(
         event,
-        State(),
+        state=State(
+            relations={infra_rel},
+            leader=True,
+        ),
     )
-    # THEN the unit sets active
+
+    # THEN the unit sets active because the dependency is met
     assert isinstance(state_out.unit_status, ops.ActiveStatus)
+
+
+def test_blocked_status_missing_relation(ctx):
+    # GIVEN a charm with NO relations
+
+    # WHEN an event fires
+    state_out = ctx.run(
+        "update-status",
+        state=State(relations=set()),
+    )
+
+    # THEN the unit status is Blocked
+    assert isinstance(state_out.unit_status, ops.BlockedStatus)

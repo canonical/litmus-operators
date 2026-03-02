@@ -38,3 +38,10 @@ parts:
     # override-build: |
     #   craftctl default
     #   git describe --always > $CRAFT_PART_INSTALL/version
+
+provides: 
+  litmus-infrastructure:
+    interface: litmus-infrastructure
+    description: |
+      Provide the necessary metadata needed to provision a Litmus infrastructure in this Juju model.
+    optional: false
