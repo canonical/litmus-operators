@@ -30,7 +30,7 @@ class LitmusInfraCharm(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
         self.provider = LitmusInfrastructureProvider(
-            self.model.get_relation("infra-provider"), self.app
+            self.model.relations["infra-provider"], self.app
         )
         self.requirer = LitmusInfrastructureRequirer(
             self.model.relations["infra-requirer"], self.app
@@ -56,24 +56,26 @@ def mock_metadata():
 
 
 def test_provider_publishes_metadata(ctx, mock_metadata):
-    # GIVEN the provider is a leader and has metadata to share
+    # GIVEN a charm with two relations
+    rel1 = Relation(endpoint="infra-provider", id=1)
+    rel2 = Relation(endpoint="infra-provider", id=2)
+
     LitmusInfraCharm._PUBLISH_DATA = mock_metadata
 
-    relation = Relation(endpoint="infra-provider")
-
-    # WHEN a hook fires
+    # WHEN the provider publishes metadata
     state_out = ctx.run(
         ctx.on.update_status(),
         state=State(
-            relations={relation},
+            relations={rel1, rel2},
             leader=True,
         ),
     )
 
-    # THEN the application databag contains the expected metadata keys
-    databag = state_out.get_relation(relation.id).local_app_data
-    assert databag["infrastructure_name"] == json.dumps(mock_metadata.infrastructure_name)
-    assert databag["model_name"] == json.dumps(mock_metadata.model_name)
+    # THEN both relations receive the data
+    for rel_id in (1, 2):
+        databag = state_out.get_relation(rel_id).local_app_data
+        assert databag["infrastructure_name"] == json.dumps(mock_metadata.infrastructure_name)
+        assert databag["model_name"] == json.dumps(mock_metadata.model_name)
 
 
 def test_requirer_collects_multiple_providers(ctx):

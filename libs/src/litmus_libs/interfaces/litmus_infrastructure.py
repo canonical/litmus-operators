@@ -57,10 +57,10 @@ class LitmusInfrastructureProvider:
 
     def __init__(
         self,
-        relation: ops.Relation | None,
+        relations: list[ops.Relation],
         app: ops.Application,
     ):
-        self._relation = relation
+        self._relations = relations
         self._app = app
 
     def publish_infrastructure_metadata(
@@ -72,9 +72,6 @@ class LitmusInfrastructureProvider:
         Raises:
             pydantic.ValidationError: If the provided data does not conform to the expected schema.
         """
-        if not self._relation:
-            return
-
         try:
             infra_data = _LitmusInfraProviderAppDatabagModel(
                 **infrastructure_metadata.model_dump()
@@ -83,10 +80,14 @@ class LitmusInfrastructureProvider:
             logger.error("Attempting to publish invalid data: %s", infrastructure_metadata)
             raise
 
-        try:
-            self._relation.save(infra_data, self._app)
-        except ops.ModelError:
-            logger.debug("failed to publish relation data; is the relation still being created?")
+        for relation in self._relations:
+            try:
+                relation.save(infra_data, self._app)
+            except ops.ModelError:
+                logger.debug(
+                    "failed to publish relation data to %s; is the relation still being created?",
+                    relation,
+                )
 
 
 class LitmusInfrastructureRequirer:
@@ -116,10 +117,10 @@ class LitmusInfrastructureRequirer:
 
     def __init__(
         self,
-        relations: list[ops.Relation] | None,
+        relations: list[ops.Relation],
         app: ops.Application,
     ):
-        self._relations = relations or []
+        self._relations = relations
         self._app = app
 
     def get_infrastructure_metadata(self) -> list[InfrastructureMetadata]:
