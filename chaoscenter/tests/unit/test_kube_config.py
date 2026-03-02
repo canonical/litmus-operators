@@ -1,57 +1,78 @@
-import base64
+import yaml
 from unittest.mock import patch
 
+import pytest
+from lightkube.core.exceptions import ConfigError
+
+import kube_config
 from conftest import (
     TEST_CLUSTER_NAME,
     TEST_SERVER_URL,
+    TEST_CERT_FILE_PATH,
     TEST_NAMESPACE,
-    TEST_CA_CERT_CONTENT,
     TEST_TOKEN,
 )
 
-import kube_config
 
-
-def test_get_cluster_name(fake_k8s_config):
-    name = kube_config._get_cluster_name(fake_k8s_config)
-    assert name == TEST_CLUSTER_NAME
-
-
-def test_get_server_url(fake_k8s_config):
-    url = kube_config._get_server_url(fake_k8s_config)
-    assert url == TEST_SERVER_URL
-
-
-def test_get_namespace(fake_k8s_config):
-    namespace = kube_config._get_namespace(fake_k8s_config)
-    assert namespace == TEST_NAMESPACE
-
-
-def test_get_ca_data(fake_k8s_config):
-    result = kube_config._get_ca_data(fake_k8s_config)
-    expected = base64.b64encode(TEST_CA_CERT_CONTENT).decode()
-    assert result == expected
-
-
-def test_get_user_token(fake_k8s_config):
-    token = kube_config._get_user_token(fake_k8s_config)
-    assert token == TEST_TOKEN
-
-
-@patch("kube_config.Environment")
-@patch("kube_config.KubeConfig")
-def test_generate_kubeconfig_file_renders_template(
-    mock_kubeconfig, mock_jinja_env, fake_k8s_config
+@patch("kube_config.KubeConfig.from_service_account")
+def test_generate_kubeconfig_renders_correct_config(
+    mock_kubeconfig, fake_k8s_config
 ):
-    mock_kubeconfig.from_service_account.return_value = fake_k8s_config
-    mock_template = mock_jinja_env.return_value.get_template.return_value
+    mock_kubeconfig.return_value = fake_k8s_config
 
-    kube_config.generate_kubeconfig()
+    output = kube_config.generate_kubeconfig()
+    kubeconfig = yaml.safe_load(output)
 
-    mock_template.render.assert_called_once_with(
-        cluster_name=TEST_CLUSTER_NAME,
-        server_url=TEST_SERVER_URL,
-        namespace=TEST_NAMESPACE,
-        ca_data=base64.b64encode(TEST_CA_CERT_CONTENT).decode(),
-        user_token=TEST_TOKEN,
-    )
+    assert kubeconfig["api_version"] == kube_config.KUBECONFIG_API_VERSION
+    assert kubeconfig["kind"] == kube_config.KUBECONFIG_KIND
+    assert kubeconfig["current-context"] == TEST_CLUSTER_NAME
+
+    assert kubeconfig["clusters"][0]["name"] == TEST_CLUSTER_NAME
+    assert kubeconfig["clusters"][0]["cluster"]["server"] == TEST_SERVER_URL
+    assert kubeconfig["clusters"][0]["cluster"]["certificate_auth"] == TEST_CERT_FILE_PATH
+
+    assert kubeconfig["contexts"][0]["name"] == TEST_CLUSTER_NAME
+    assert kubeconfig["contexts"][0]["context"]["namespace"] == TEST_NAMESPACE
+
+    assert kubeconfig["users"][0]["name"] == TEST_CLUSTER_NAME
+    assert kubeconfig["users"][0]["user"]["token"] == TEST_TOKEN
+
+
+@patch("kube_config.KubeConfig.from_service_account")
+def test_generate_kubeconfig_raises_when_configerror(mock_kubeconfig):
+    mock_kubeconfig.side_effect = ConfigError()
+
+    with pytest.raises(kube_config.KubernetesConfigError):
+        kube_config.generate_kubeconfig()
+
+
+@patch("kube_config.KubeConfig.from_service_account")
+def test_generate_kubeconfig_raises_when_no_current_context(mock_kubeconfig, fake_k8s_config):
+    fake_k8s_config.current_context = None
+    mock_kubeconfig.return_value = fake_k8s_config
+
+    with pytest.raises(kube_config.KubernetesConfigError):
+        kube_config.generate_kubeconfig()
+
+
+def test_remove_none_removes_none_from_dict():
+    test_dict = {
+        "this": 1,
+        "is": None,
+        "just": {"a": None, "test": 2},
+    }
+
+    cleaned = kube_config.remove_none(test_dict)
+
+    assert cleaned == {
+        "this": 1,
+        "just": {"test": 2},
+    }
+
+
+def test_remove_none_removes_none_from_list():
+    test_list = [1, None, {"try": None, "me": 2}, [None, 3]]
+
+    cleaned = kube_config.remove_none(test_list)
+
+    assert cleaned == [1, {"me": 2}, [3]]

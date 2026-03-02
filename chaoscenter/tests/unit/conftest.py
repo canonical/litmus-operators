@@ -21,38 +21,33 @@ from scenario import Relation
 
 TEST_CLUSTER_NAME = "test-cluster"
 TEST_SERVER_URL = "https://1.2.3.4:443"
+TEST_CERT_FILE_PATH = "/test/.kube/config"
 TEST_NAMESPACE = "test-namespace"
-TEST_CA_CERT_CONTENT = b"test-ca"
 TEST_TOKEN = "fake-test.token"
 
 
 @pytest.fixture
-def fake_k8s_config(tmp_path):
-    cert_file = tmp_path / "ca.crt"
-    cert_file.write_bytes(TEST_CA_CERT_CONTENT)
-
+def fake_k8s_config():
     return KubeConfig(
-        **{
-            "clusters": {
-                TEST_CLUSTER_NAME: Cluster(
-                    server=TEST_SERVER_URL,
-                    certificate_auth=str(cert_file),
-                    insecure=False,
-                )
-            },
-            "contexts": {
-                TEST_CLUSTER_NAME: KubeContext(
-                    cluster=TEST_CLUSTER_NAME,
-                    user=TEST_CLUSTER_NAME,
-                    namespace=TEST_NAMESPACE,
-                )
-            },
-            "current_context": TEST_CLUSTER_NAME,
-            "users": {
-                TEST_CLUSTER_NAME: User(
-                    token=TEST_TOKEN,
-                )
-            }
+        clusters={
+            TEST_CLUSTER_NAME: Cluster(
+                server=TEST_SERVER_URL,
+                certificate_auth=TEST_CERT_FILE_PATH,
+                insecure=False,
+            )
+        },
+        contexts={
+            TEST_CLUSTER_NAME: KubeContext(
+                cluster=TEST_CLUSTER_NAME,
+                user=TEST_CLUSTER_NAME,
+                namespace=TEST_NAMESPACE,
+            )
+        },
+        current_context=TEST_CLUSTER_NAME,
+        users={
+            TEST_CLUSTER_NAME: User(
+                token=TEST_TOKEN,
+            )
         }
     )
 

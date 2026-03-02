@@ -12,7 +12,6 @@ from charms.tls_certificates_interface.v4.tls_certificates import (
     CertificateRequestAttributes,
 )
 from ops.charm import CharmBase
-from ops.pebble import PathError
 from ops import (
     CollectStatusEvent,
     ActiveStatus,
@@ -26,7 +25,7 @@ from coordinated_workers.nginx import (
 )
 
 from litmus_libs.status_manager import StatusManager
-from kube_config import KUBECONFIG_PATH, generate_kubeconfig
+from kube_config import KUBECONFIG_PATH, KubernetesConfigError, generate_kubeconfig
 from nginx_config import get_config, http_server_port, all_pebble_checks, container_name
 from traefik_config import ingress_config, static_ingress_config
 
@@ -225,17 +224,19 @@ class LitmusChaoscenterCharm(CharmBase):
         )
 
     def _reconcile_kubeconfig(self):
-        new_kubeconfig = generate_kubeconfig()
+        if not self._container.can_connect():
+            return
+        curr_config = (
+            self._container.pull(KUBECONFIG_PATH).read() if self._container.exists(KUBECONFIG_PATH)
+            else ""
+        )
         try:
-            with self._container.pull(KUBECONFIG_PATH) as current_kubeconfig:
-                if current_kubeconfig.read() == new_kubeconfig:
-                    logger.info("kubeconfig is up to date")
-                    return
-        except PathError:
-            logger.warning(f"kubeconfig not found under {KUBECONFIG_PATH}")
-
-        self._container.push(KUBECONFIG_PATH, new_kubeconfig, make_dirs=True)
-        logger.info(f"kubeconfig stored under {KUBECONFIG_PATH}")
+            new_config = generate_kubeconfig()
+        except KubernetesConfigError as e:
+            logger.error(f"Unable to generate Kubernetes config: {e.msg}")
+            return
+        if new_config and curr_config != new_config:
+            self._container.push(KUBECONFIG_PATH, new_config, make_dirs=True)
 
     def _nginx_liveness_endpoint(self, tls: bool) -> str:
         return f"http{'s' if tls else ''}://{self._fqdn}:{http_server_port}/health"
