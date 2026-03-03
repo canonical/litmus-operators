@@ -2,7 +2,7 @@
 # Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-"""Helper for building the K8s config file inside the workload container."""
+"""Helper for generating content of the KUBECONFIG file."""
 
 import logging
 import yaml
@@ -23,8 +23,8 @@ KUBECONFIG_KIND = "Config"
 KUBECONFIG_PATH = Path("/.kube/config")
 
 
-class KubernetesConfigError(Exception):
-    """Exception raised when KubernetesConfig can't be generated."""
+class KubeconfigError(Exception):
+    """Exception raised when Kubeconfig can't be generated."""
 
     def __init__(self, msg: str):
         self.msg = msg
@@ -49,7 +49,7 @@ class KubernetesUser:
 
 
 @dataclass
-class KubernetesConfig:
+class Kubeconfig:
     api_version: str
     kind: str
     clusters: List[KubernetesCluster]
@@ -62,12 +62,12 @@ def generate_kubeconfig() -> str:
     try:
         config = KubeConfig.from_service_account()
     except ConfigError as e:
-        raise KubernetesConfigError("Unable to get Kubernetes config from SA.") from e
+        raise KubeconfigError("Unable to get Kubernetes config from SA.") from e
 
     if not config.current_context:
-        raise KubernetesConfigError("Unable to get current Kubernetes context.")
+        raise KubeconfigError("Unable to get current Kubernetes context.")
 
-    kubeconfig = KubernetesConfig(
+    kubeconfig = Kubeconfig(
         api_version=KUBECONFIG_API_VERSION,
         kind=KUBECONFIG_KIND,
         clusters=[
@@ -84,18 +84,23 @@ def generate_kubeconfig() -> str:
     # do not allow that.
     kubeconfig["current-context"] = kubeconfig.pop("current_context")
 
-    return yaml.safe_dump(remove_none(kubeconfig))
+    # The KubeConfig object returned by the `KubeConfig.from_service_account()` contains
+    # all the fields available in the config file. We remove those that are not set (None)
+    # to make the config file clean and easy to ready; otherwise it would be full
+    # of `some_key: nil`.
+    clean_config = _remove_none(kubeconfig)
+    return yaml.safe_dump(clean_config)
 
 
-def remove_none(obj):
+def _remove_none(obj):
     """Recursively remove all config fields whose value is None."""
     if isinstance(obj, dict):
         return {
-            key: remove_none(value)
+            key: _remove_none(value)
             for key, value in obj.items()
             if value is not None
         }
     elif isinstance(obj, list):
-        return [remove_none(value) for value in obj if value is not None]
+        return [_remove_none(value) for value in obj if value is not None]
     else:
         return obj

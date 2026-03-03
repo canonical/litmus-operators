@@ -25,7 +25,7 @@ from coordinated_workers.nginx import (
 )
 
 from litmus_libs.status_manager import StatusManager
-from kube_config import KUBECONFIG_PATH, KubernetesConfigError, generate_kubeconfig
+from kubeconfig import KUBECONFIG_PATH, KubeconfigError, generate_kubeconfig
 from nginx_config import get_config, http_server_port, all_pebble_checks, container_name
 from traefik_config import ingress_config, static_ingress_config
 
@@ -235,7 +235,7 @@ class LitmusChaoscenterCharm(CharmBase):
             if curr_config != new_config:
                 # only update on change so we skip an unnecessary write operation (which costs more than read)
                 self._container.push(KUBECONFIG_PATH, new_config, make_dirs=True)
-        except KubernetesConfigError as e:
+        except KubeconfigError as e:
             logger.error(f"Unable to generate Kubernetes config: {e.msg}")
             return
 

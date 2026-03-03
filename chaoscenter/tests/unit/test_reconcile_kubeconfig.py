@@ -5,7 +5,7 @@ from unittest.mock import call, patch
 from lightkube.core.exceptions import ConfigError
 from scenario import State
 
-import kube_config
+import kubeconfig
 from conftest import (
     TEST_CLUSTER_NAME,
     TEST_SERVER_URL,
@@ -20,7 +20,7 @@ SAMPLE_CONFIG_PATH = (
 )
 
 
-@patch("kube_config.KubeConfig.from_service_account")
+@patch("kubeconfig.KubeConfig.from_service_account")
 def test_kubeconfig_stored_in_the_charm(
     mock_kubeconfig,
     fake_k8s_config,
@@ -45,13 +45,13 @@ def test_kubeconfig_stored_in_the_charm(
     )
 
     nginx_container_out = state_out.get_container(nginx_container.name)
-    kubeconfig_path = nginx_container_out.get_filesystem(ctx) / str(kube_config.KUBECONFIG_PATH)[1:]
+    kubeconfig_path = nginx_container_out.get_filesystem(ctx) / str(kubeconfig.KUBECONFIG_PATH)[1:]
     generated_config = kubeconfig_path.read_text()
 
     assert SAMPLE_CONFIG_PATH.read_text() == generated_config
 
 
-@patch("kube_config.KubeConfig.from_service_account")
+@patch("kubeconfig.KubeConfig.from_service_account")
 @patch("ops.model.Container.push")
 def test_kubeconfig_not_pushed_to_the_charm_when_configerror_from_lightkube(
     mock_push,
@@ -77,12 +77,12 @@ def test_kubeconfig_not_pushed_to_the_charm_when_configerror_from_lightkube(
     )
 
     assert not any(
-        mock_call.args[0] == kube_config.KUBECONFIG_PATH
+        mock_call.args[0] == kubeconfig.KUBECONFIG_PATH
         for mock_call in mock_push.mock_calls
     )
 
 
-@patch("kube_config.KubeConfig.from_service_account")
+@patch("kubeconfig.KubeConfig.from_service_account")
 @patch("ops.model.Container.push")
 def test_kubeconfig_updated_when_stored_config_is_different_than_generated(
     mock_push,
@@ -100,7 +100,7 @@ def test_kubeconfig_updated_when_stored_config_is_different_than_generated(
         f"{nginx_container.get_filesystem(ctx)}/.kube",
         exist_ok=True,
     )
-    kubeconfig_path = nginx_container.get_filesystem(ctx) / str(kube_config.KUBECONFIG_PATH)[1:]
+    kubeconfig_path = nginx_container.get_filesystem(ctx) / str(kubeconfig.KUBECONFIG_PATH)[1:]
     kubeconfig_path.write_text("whatever")
 
     _ = ctx.run(
@@ -116,8 +116,8 @@ def test_kubeconfig_updated_when_stored_config_is_different_than_generated(
     )
 
     expected_call = call(
-        kube_config.KUBECONFIG_PATH,
-        f"api_version: {kube_config.KUBECONFIG_API_VERSION}\nclusters:\n- cluster:\n    certificate_auth: {TEST_CERT_FILE_PATH}\n    insecure: false\n    server: {TEST_SERVER_URL}\n  name: {TEST_CLUSTER_NAME}\ncontexts:\n- context:\n    cluster: {TEST_CLUSTER_NAME}\n    namespace: {TEST_NAMESPACE}\n    user: {TEST_CLUSTER_NAME}\n  name: {TEST_CLUSTER_NAME}\ncurrent-context: {TEST_CLUSTER_NAME}\nkind: Config\nusers:\n- name: {TEST_CLUSTER_NAME}\n  user:\n    token: {TEST_TOKEN}\n",
+        kubeconfig.KUBECONFIG_PATH,
+        f"api_version: {kubeconfig.KUBECONFIG_API_VERSION}\nclusters:\n- cluster:\n    certificate_auth: {TEST_CERT_FILE_PATH}\n    insecure: false\n    server: {TEST_SERVER_URL}\n  name: {TEST_CLUSTER_NAME}\ncontexts:\n- context:\n    cluster: {TEST_CLUSTER_NAME}\n    namespace: {TEST_NAMESPACE}\n    user: {TEST_CLUSTER_NAME}\n  name: {TEST_CLUSTER_NAME}\ncurrent-context: {TEST_CLUSTER_NAME}\nkind: Config\nusers:\n- name: {TEST_CLUSTER_NAME}\n  user:\n    token: {TEST_TOKEN}\n",
         make_dirs=True,
     )
 
