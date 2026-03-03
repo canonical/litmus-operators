@@ -21,7 +21,7 @@ from scenario import Relation
 
 TEST_CLUSTER_NAME = "test-cluster"
 TEST_SERVER_URL = "https://1.2.3.4:443"
-TEST_CERT_FILE_PATH = "/test/.kube/config"
+TEST_CERT_FILE_PATH = "/test/.kube/config/ca.crt"
 TEST_NAMESPACE = "test-namespace"
 TEST_TOKEN = "fake-test.token"
 

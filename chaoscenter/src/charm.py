@@ -232,11 +232,11 @@ class LitmusChaoscenterCharm(CharmBase):
         )
         try:
             new_config = generate_kubeconfig()
+            if curr_config != new_config:
+                self._container.push(KUBECONFIG_PATH, new_config, make_dirs=True)
         except KubernetesConfigError as e:
             logger.error(f"Unable to generate Kubernetes config: {e.msg}")
             return
-        if new_config and curr_config != new_config:
-            self._container.push(KUBECONFIG_PATH, new_config, make_dirs=True)
 
     def _nginx_liveness_endpoint(self, tls: bool) -> str:
         return f"http{'s' if tls else ''}://{self._fqdn}:{http_server_port}/health"

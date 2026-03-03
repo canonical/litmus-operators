@@ -12,7 +12,7 @@ from dataclasses import asdict, dataclass
 from lightkube import KubeConfig
 from lightkube.config.models import Context, Cluster, User
 from lightkube.core.exceptions import ConfigError
-from typing import List, Optional
+from typing import List
 
 
 logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ class KubernetesConfig:
     users: List[KubernetesUser]
 
 
-def generate_kubeconfig() -> Optional[str]:
+def generate_kubeconfig() -> str:
     try:
         config = KubeConfig.from_service_account()
     except ConfigError as e:
