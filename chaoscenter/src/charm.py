@@ -25,6 +25,7 @@ from coordinated_workers.nginx import (
 )
 
 from litmus_libs.status_manager import StatusManager
+from kubeconfig import KUBECONFIG_PATH, KubeconfigError, generate_kubeconfig
 from nginx_config import get_config, http_server_port, all_pebble_checks, container_name
 from traefik_config import ingress_config, static_ingress_config
 
@@ -59,6 +60,7 @@ class LitmusChaoscenterCharm(CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
+        self._container = self.unit.get_container(container_name)
         self._fqdn = socket.getfqdn()
         self._receive_auth_http_api = LitmusAuthApiRequirer(
             relation=self.model.get_relation(AUTH_HTTP_API_ENDPOINT), app=self.app
@@ -120,7 +122,7 @@ class LitmusChaoscenterCharm(CharmBase):
         self.unit.set_ports(http_server_port)
         self.unit.set_workload_version(
             get_litmus_version(
-                container=self.unit.get_container(container_name),
+                container=self._container,
             )
             or ""
         )
@@ -146,7 +148,7 @@ class LitmusChaoscenterCharm(CharmBase):
                 tls_config=self._tls_config,
             )
             self.nginx_exporter.reconcile()
-
+            self._reconcile_kubeconfig()
         self._receive_backend_http_api.publish_endpoint(
             f"{self._most_external_frontend_url}:{http_server_port}"
         )
@@ -220,6 +222,22 @@ class LitmusChaoscenterCharm(CharmBase):
             private_key=private_key.raw,
             ca_cert=certificates.ca.raw,
         )
+
+    def _reconcile_kubeconfig(self):
+        if not self._container.can_connect():
+            return
+        curr_config = (
+            self._container.pull(KUBECONFIG_PATH).read() if self._container.exists(KUBECONFIG_PATH)
+            else ""
+        )
+        try:
+            new_config = generate_kubeconfig()
+            if curr_config != new_config:
+                # only update on change so we skip an unnecessary write operation (which costs more than read)
+                self._container.push(KUBECONFIG_PATH, new_config, make_dirs=True)
+        except KubeconfigError as e:
+            logger.error(f"Unable to generate Kubernetes config: {e.msg}")
+            return
 
     def _nginx_liveness_endpoint(self, tls: bool) -> str:
         return f"http{'s' if tls else ''}://{self._fqdn}:{http_server_port}/health"
