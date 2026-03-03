@@ -88,7 +88,7 @@ def generate_kubeconfig() -> str:
 
 
 def remove_none(obj):
-    """Recursively remove all configs which value is None."""
+    """Recursively remove all config fields whose value is None."""
     if isinstance(obj, dict):
         return {
             key: remove_none(value)
