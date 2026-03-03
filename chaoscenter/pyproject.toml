@@ -12,7 +12,6 @@ dependencies = [
     "coordinated-workers",
     # for juju topology
     "cosl",
-    "jinja2",
 ]
 
 [project.optional-dependencies]
