@@ -75,7 +75,7 @@ class LitmusClient:
                 )
                 return None
 
-            return data
+            return data.get("data", {})
         except requests.RequestException as e:
             logger.error("REST request failed: %s", e)
             return None
