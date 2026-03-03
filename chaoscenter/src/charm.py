@@ -40,7 +40,7 @@ from litmus_libs.interfaces.self_monitoring import SelfMonitoring
 from charms.tempo_coordinator_k8s.v0.tracing import TracingEndpointRequirer
 import cosl
 import cosl.reconciler
-from litmus_client import DEFAULT_ADMIN_PASSWORD, DEFAULT_ADMIN_USERNAME, LitmusClient
+from litmus_client import LitmusClient
 
 
 logger = logging.getLogger(__name__)
@@ -109,9 +109,7 @@ class LitmusChaoscenterCharm(CharmBase):
             options=NGINX_OVERRIDES,
         )
 
-        self._litmus_client = LitmusClient(
-            container=self._container, endpoint=self._internal_frontend_url
-        )
+        self._litmus_client = LitmusClient(endpoint=self._internal_frontend_url)
 
         self.framework.observe(
             self.on.collect_unit_status, self._on_collect_unit_status
@@ -163,13 +161,6 @@ class LitmusChaoscenterCharm(CharmBase):
                     self.model.name, self.app.name, self._tls_config is not None
                 ),
                 static=static_ingress_config(),
-            )
-
-        # litmus client operations
-        if self._container.can_connect() and self.unit.is_leader():
-            # refresh the session token
-            self._litmus_client.config_set_account(
-                username=DEFAULT_ADMIN_USERNAME, password=DEFAULT_ADMIN_PASSWORD
             )
 
     ##################

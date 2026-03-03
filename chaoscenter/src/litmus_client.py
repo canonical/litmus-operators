@@ -4,12 +4,10 @@
 """High-level client for interacting with the Litmus API and CLI (litmusctl)."""
 
 from dataclasses import dataclass
-import json
 import logging
-from typing import List
+from typing import Any, List
 
-import ops
-import ops.pebble
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -19,105 +17,116 @@ DEFAULT_ADMIN_PASSWORD = "litmus"
 
 
 @dataclass
-class ChaosInfra:
-    id: str
-    name: str
-    project_id: str
-    environment_id: str
-
-
-@dataclass
 class ChaosProject:
     id: str
     name: str
 
 
-class LitmusctlError(Exception):
-    """Raised when litmusctl exits with a non-zero status code."""
+class LitmusClient:
+    """High-level Litmus client using Litmus auth/graphql APIs."""
 
+    def __init__(
+        self,
+        endpoint: str,
+        username: str = DEFAULT_ADMIN_USERNAME,
+        password: str = DEFAULT_ADMIN_PASSWORD,
+    ):
+        self._endpoint = endpoint.rstrip("/")
+        self._username = username
+        self._password = password
+        self._token: str | None = None
 
-class _LitmusCLI:
-    """Low-level wrapper around litmusctl CLI commands."""
+    def _get_auth_header(self) -> dict[str, str]:
+        """Provides the Bearer token header."""
+        if not self._token:
+            self._login()
+        return {"Authorization": f"Bearer {self._token}"}
 
-    def __init__(self, container: ops.Container):
-        self._container = container
-
-    def _run(self, args: List[str]) -> str:
-        """Run litmusctl with the given arguments.
-
-        Returns stdout output.
-        Raises LitmusctlError if the process exits with a non-zero status.
-        """
-
-        cmd = [LITMUSCTL_BIN] + args
-        logger.debug("running: %s", " ".join(cmd))
+    def _login(self) -> None:
+        """Internal login to fetch the JWT."""
+        url = f"{self._endpoint}/auth/login"
+        payload = {"username": self._username, "password": self._password}
         try:
-            proc = self._container.exec(cmd)
-            stdout, _ = proc.wait_output()
-        except ops.pebble.ExecError as e:
-            raise LitmusctlError(
-                f"litmusctl command failed (exit {e.exit_code}): {' '.join(args)}\n"
-                f"stderr: {e.stderr}"
-            ) from e
-        return stdout
+            resp = requests.post(url, json=payload, timeout=10)
+            resp.raise_for_status()
+            self._token = resp.json().get("accessToken")
+        except Exception as e:
+            logger.error("Litmus login failed: %s", e)
+            self._token = None
 
-    def config_set_account(self, endpoint: str, username: str, password: str) -> None:
-        self._run(
-            [
-                "config",
-                "set-account",
-                "--endpoint",
-                endpoint,
-                "--username",
-                username,
-                "--password",
-                password,
-                "--non-interactive",
-            ]
-        )
+    def _execute_rest(self, method: str, path: str) -> dict[str, Any] | None:
+        """Executes a RESTful request."""
+        url = f"{self._endpoint}{path}"
+        try:
+            resp = requests.request(
+                method=method, url=url, headers=self._get_auth_header(), timeout=10
+            )
 
-    def get_projects(self) -> list[ChaosProject]:
-        out = json.loads(self._run(["get", "projects", "--output", "json"]))
+            if resp.status_code != 200:
+                logger.error(
+                    "REST request failed (Status %s): %s", resp.status_code, resp.text
+                )
+                return None
+
+            data = resp.json()
+            if data.get("errors"):
+                logger.error(
+                    "REST request returned errors: %s", data["errors"][0].get("message")
+                )
+                return None
+
+            return data
+        except requests.RequestException as e:
+            logger.error("REST request failed: %s", e)
+            return None
+
+    def _execute_gql(self, query: str, variables: dict | None = None) -> dict | None:
+        """Executes a GraphQL request."""
+        url = f"{self._endpoint}/api/query"
+        payload = {"query": query, "variables": variables or {}}
+        try:
+            resp = requests.post(
+                url=url, json=payload, headers=self._get_auth_header(), timeout=10
+            )
+            resp.raise_for_status()
+            data = resp.json()
+
+            if data.get("errors"):
+                logger.error("GraphQL error: %s", data["errors"][0]["message"])
+                return None
+
+            return data.get("data", {})
+        except requests.RequestException as e:
+            logger.error("GraphQL request failed: %s", e)
+            return None
+
+    def get_projects(self) -> List[ChaosProject]:
+        """List all projects accessible to the current account."""
+        data = self._execute_rest("GET", "/auth/list_projects")
         return [
-            ChaosProject(id=item["projectID"], name=item["name"])
-            for item in out.get("projects", [])
+            ChaosProject(id=p["projectID"], name=p["name"])
+            for p in data.get("projects", [])
         ]
 
-    def create_chaos_environment(self, project_id: str, name: str) -> None:
-        return self._run(
-            [
-                "create",
-                "chaos-environment",
-                "--project-id",
-                project_id,
-                "--name",
-                name,
-            ]
-        )
-
-
-class LitmusClient:
-    """High-level Litmus client.
-
-    Some operations use the CLI (litmusctl).
-    others use the API when CLI support is missing.
-    """
-
-    def __init__(self, container: ops.Container, endpoint: str):
-        self._container = container
-        self._endpoint = endpoint
-        self._cli = _LitmusCLI(container)
-        # TODO: implement a _LitmusAPI class for direct API calls when needed, and initialize it here
-        # self._api = _LitmusAPI()
-
-    def config_set_account(self, username: str, password: str) -> None:
-        """Register a ChaosCenter account and initialize session tokens (litmusctl config set-account)."""
-        self._cli.config_set_account(self._endpoint, username, password)
-
-    def get_projects(self) -> list[ChaosProject]:
-        """List all projects accessible to the current account (litmusctl get projects)."""
-        return self._cli.get_projects()
-
-    def create_chaos_environment(self, project_id: str, name: str) -> str:
-        """Create a Chaos Environment (litmusctl create chaos-environment)."""
-        return self._cli.create_chaos_environment(project_id, name)
+    def create_chaos_environment(self, project_id: str, name: str):
+        """Create a Chaos Environment."""
+        query = """
+        mutation createEnvironment($projectID: ID!, $request: CreateEnvironmentRequest!) {
+            createEnvironment(projectID: $projectID, request: $request) {
+                environmentID
+                name
+            }
+        }
+        """
+        variables = {
+            "projectID": project_id,
+            "request": {
+                "environmentID": name,
+                "name": name,
+                "description": "",
+                "tags": [],
+                # TODO: make the env type configurable
+                "type": "NON_PROD",
+            },
+        }
+        self._execute_gql(query, variables)
