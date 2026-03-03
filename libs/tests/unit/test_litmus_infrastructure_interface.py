@@ -30,7 +30,9 @@ class LitmusInfraCharm(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
         self.provider = LitmusInfrastructureProvider(
-            self.model.relations["infra-provider"], self.app
+            self.model.relations["infra-provider"],
+            self.app,
+            self.unit,
         )
         self.requirer = LitmusInfrastructureRequirer(
             self.model.relations["infra-requirer"], self.app
@@ -47,7 +49,9 @@ class LitmusInfraCharm(CharmBase):
 
 @pytest.fixture(scope="function")
 def ctx():
-    return Context(LitmusInfraCharm, meta=LitmusInfraCharm.META)
+    yield Context(LitmusInfraCharm, meta=LitmusInfraCharm.META)
+    LitmusInfraCharm._PUBLISH_DATA = None
+    LitmusInfraCharm._RECEIVED_DATA = []
 
 
 @pytest.fixture
@@ -76,6 +80,22 @@ def test_provider_publishes_metadata(ctx, mock_metadata):
         databag = state_out.get_relation(rel_id).local_app_data
         assert databag["infrastructure_name"] == json.dumps(mock_metadata.infrastructure_name)
         assert databag["model_name"] == json.dumps(mock_metadata.model_name)
+
+
+def test_provider_fails_if_not_leader(ctx, mock_metadata):
+    LitmusInfraCharm._PUBLISH_DATA = mock_metadata
+
+    # GIVEN a charm where the unit is not the leader
+    # WHEN the provider tries to publish metadata
+    # THEN it raises an error
+    with pytest.raises(RuntimeError):
+        ctx.run(
+            ctx.on.update_status(),
+            state=State(
+                relations={Relation(endpoint="infra-provider", id=1)},
+                leader=False,
+            ),
+        )
 
 
 def test_requirer_collects_multiple_providers(ctx):

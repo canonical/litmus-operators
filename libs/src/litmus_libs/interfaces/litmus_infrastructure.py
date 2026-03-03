@@ -41,6 +41,7 @@ class LitmusInfrastructureProvider:
                 self._litmus_infra = LitmusInfrastructureProvider(
                     self.model.relations["litmus-infrastructure"],
                     self.app,
+                    self.unit,
                 )
                 self._publish_infra_data()
 
@@ -59,9 +60,11 @@ class LitmusInfrastructureProvider:
         self,
         relations: list[ops.Relation],
         app: ops.Application,
+        unit: ops.Unit,
     ):
         self._relations = relations
         self._app = app
+        self._unit = unit
 
     def publish_infrastructure_metadata(
         self,
@@ -79,6 +82,9 @@ class LitmusInfrastructureProvider:
         except pydantic.ValidationError:
             logger.error("Attempting to publish invalid data: %s", infrastructure_metadata)
             raise
+
+        if not self._unit.is_leader():
+            raise RuntimeError("Only the leader unit can publish to the app databag")
 
         for relation in self._relations:
             try:
