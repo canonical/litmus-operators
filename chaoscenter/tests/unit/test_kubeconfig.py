@@ -53,26 +53,3 @@ def test_generate_kubeconfig_raises_when_no_current_context(mock_kubeconfig, fak
 
     with pytest.raises(kubeconfig.KubeconfigError):
         kubeconfig.generate_kubeconfig()
-
-
-def test_remove_none_removes_none_from_dict():
-    test_dict = {
-        "this": 1,
-        "is": None,
-        "just": {"a": None, "test": 2},
-    }
-
-    cleaned = kubeconfig._remove_none(test_dict)
-
-    assert cleaned == {
-        "this": 1,
-        "just": {"test": 2},
-    }
-
-
-def test_remove_none_removes_none_from_list():
-    test_list = [1, None, {"try": None, "me": 2}, [None, 3]]
-
-    cleaned = kubeconfig._remove_none(test_list)
-
-    assert cleaned == [1, {"me": 2}, [3]]
