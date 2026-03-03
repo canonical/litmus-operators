@@ -233,6 +233,7 @@ class LitmusChaoscenterCharm(CharmBase):
         try:
             new_config = generate_kubeconfig()
             if curr_config != new_config:
+                # only update on change so we skip an unnecessary write operation (which costs more than read)
                 self._container.push(KUBECONFIG_PATH, new_config, make_dirs=True)
         except KubernetesConfigError as e:
             logger.error(f"Unable to generate Kubernetes config: {e.msg}")
