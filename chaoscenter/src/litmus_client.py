@@ -1,7 +1,8 @@
 # Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-"""High-level client for interacting with the Litmus API and CLI (litmusctl)."""
+
+"""High-level client for interacting with the Litmus API."""
 
 from dataclasses import dataclass
 import logging
