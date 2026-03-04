@@ -113,8 +113,8 @@ class LitmusInfrastructureRequirer:
 
             @property
             def _infrastructure_data(self) -> list[InfrastructureDatabagModel]:
-                # Get the infrastructure data from the infrastructure providers
-                return self._litmus_infra.get_data()
+                # Get the infrastructure data from all the infrastructure providers
+                return self._litmus_infra.get_all_data()
 
         ```
     """
@@ -127,25 +127,41 @@ class LitmusInfrastructureRequirer:
         self._relations = relations
         self._app = app
 
-    def get_data(self) -> list[InfrastructureDatabagModel]:
-        """Get the infrastructure data from the infrastructure providers.
+    def get_data(self, relation_id: int) -> InfrastructureDatabagModel | None:
+        """Get the infrastructure data from a specific relation.
+
+        Args:
+            relation_id: The relation ID to get the data from.
 
         Returns:
-            A list of InfrastructureDatabagModel objects for each provider.
+            An InfrastructureDatabagModel object for the specified relation, or None if not found.
+
+        """
+        relation = next((r for r in self._relations if r.id == relation_id), None)
+        if not relation:
+            logger.error("Relation with ID %s not found", relation_id)
+            return None
+
+        if not (relation.app and relation.data and relation.data.get(relation.app)):
+            return None
+
+        try:
+            remote_data = relation.load(_LitmusInfraProviderAppDatabagModel, relation.app)
+        except pydantic.ValidationError:
+            logger.error("Validation failed for %s; invalid schema?", relation)
+            return None
+
+        return InfrastructureDatabagModel(**remote_data.model_dump())
+
+    def get_all_data(self) -> list[InfrastructureDatabagModel]:
+        """Get the infrastructure data from all the relations.
+
+        Returns:
+            A list of InfrastructureDatabagModel objects for each relation.
         """
         infras: list[InfrastructureDatabagModel] = []
         for relation in sorted(self._relations, key=lambda r: r.id):
-            if not relation.app or not relation.data:
-                continue
-
-            if not relation.data.get(relation.app):
-                continue
-
-            try:
-                remote_data = relation.load(_LitmusInfraProviderAppDatabagModel, relation.app)
-            except pydantic.ValidationError:
-                logger.error("Validation failed for %s; invalid schema?", relation)
-                continue
-
-            infras.append(InfrastructureDatabagModel(**remote_data.model_dump()))
+            relation_data = self.get_data(relation.id)
+            if relation_data:
+                infras.append(relation_data)
         return infras
