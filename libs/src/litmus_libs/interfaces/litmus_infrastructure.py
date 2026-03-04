@@ -11,8 +11,8 @@ import pydantic
 logger = logging.getLogger()
 
 
-class InfrastructureMetadata(pydantic.BaseModel):
-    """User-facing data model representing the infrastructure metadata published by litmus_infrastructure providers."""
+class InfrastructureDatabagModel(pydantic.BaseModel):
+    """User-facing data model representing the infrastructure data published by litmus_infrastructure providers."""
 
     # Note: we set extra=ignore in the model config to allow for forward compatibility in case we want to add new fields in the future without breaking existing requirers.
     model_config = pydantic.ConfigDict(extra="ignore")
@@ -22,7 +22,7 @@ class InfrastructureMetadata(pydantic.BaseModel):
 
 
 # internal alias for clarity in the library, though they are identical
-_LitmusInfraProviderAppDatabagModel = InfrastructureMetadata
+_LitmusInfraProviderAppDatabagModel = InfrastructureDatabagModel
 """Provider application databag model for the litmus_infrastructure interface."""
 
 
@@ -33,7 +33,7 @@ class LitmusInfrastructureProvider:
         ```python
         # In your provider's charm code
         from typing import Optional
-        from litmus_libs.interfaces.litmus_infrastructure import LitmusInfrastructureProvider, InfrastructureMetadata
+        from litmus_libs.interfaces.litmus_infrastructure import LitmusInfrastructureProvider, InfrastructureDatabagModel
 
         class LitmusInfraProviderCharm(CharmBase):
             def __init__(self, *args):
@@ -47,8 +47,8 @@ class LitmusInfrastructureProvider:
 
 
             def _publish_infra_data(self):
-                self._litmus_infra.publish_infrastructure_metadata(
-                    InfrastructureMetadata(
+                self._litmus_infra.publish_data(
+                    InfrastructureDatabagModel(
                         infrastructure_name=f"{self.model.name}-{self.model.uuid}",
                         model_name=self.model.name,
                     ),
@@ -66,21 +66,19 @@ class LitmusInfrastructureProvider:
         self._app = app
         self._unit = unit
 
-    def publish_infrastructure_metadata(
+    def publish_data(
         self,
-        infrastructure_metadata: InfrastructureMetadata,
+        data: InfrastructureDatabagModel,
     ):
-        """Publish Litmus infrastructure metadata to the ChaosCenter.
+        """Publish Litmus infrastructure data to the ChaosCenter.
 
         Raises:
             pydantic.ValidationError: If the provided data does not conform to the expected schema.
         """
         try:
-            infra_data = _LitmusInfraProviderAppDatabagModel(
-                **infrastructure_metadata.model_dump()
-            )
+            infra_data = _LitmusInfraProviderAppDatabagModel(**data.model_dump())
         except pydantic.ValidationError:
-            logger.error("Attempting to publish invalid data: %s", infrastructure_metadata)
+            logger.error("Attempting to publish invalid data: %s", data)
             raise
 
         if not self._unit.is_leader():
@@ -103,7 +101,7 @@ class LitmusInfrastructureRequirer:
         ```python
         # In your requirer's charm code
         from typing import Optional
-        from litmus_libs.interfaces.litmus_infrastructure import LitmusInfrastructureRequirer, InfrastructureMetadata
+        from litmus_libs.interfaces.litmus_infrastructure import LitmusInfrastructureRequirer, InfrastructureDatabagModel
 
         class LitmusInfraRequirerCharm(CharmBase):
             def __init__(self, *args):
@@ -114,9 +112,9 @@ class LitmusInfrastructureRequirer:
                 )
 
             @property
-            def _infrastructure_metadata(self) -> list[InfrastructureMetadata]:
-                # Get the infrastructure metadata from the infrastructure providers
-                return self._litmus_infra.get_infrastructure_metadata()
+            def _infrastructure_data(self) -> list[InfrastructureDatabagModel]:
+                # Get the infrastructure data from the infrastructure providers
+                return self._litmus_infra.get_data()
 
         ```
     """
@@ -129,13 +127,13 @@ class LitmusInfrastructureRequirer:
         self._relations = relations
         self._app = app
 
-    def get_infrastructure_metadata(self) -> list[InfrastructureMetadata]:
-        """Get the infrastructure metadata from the infrastructure providers.
+    def get_data(self) -> list[InfrastructureDatabagModel]:
+        """Get the infrastructure data from the infrastructure providers.
 
         Returns:
-            A list of InfrastructureMetadata objects for each provider.
+            A list of InfrastructureDatabagModel objects for each provider.
         """
-        infras: list[InfrastructureMetadata] = []
+        infras: list[InfrastructureDatabagModel] = []
         for relation in sorted(self._relations, key=lambda r: r.id):
             if not relation.app or not relation.data:
                 continue
@@ -149,5 +147,5 @@ class LitmusInfrastructureRequirer:
                 logger.error("Validation failed for %s; invalid schema?", relation)
                 continue
 
-            infras.append(InfrastructureMetadata(**remote_data.model_dump()))
+            infras.append(InfrastructureDatabagModel(**remote_data.model_dump()))
         return infras

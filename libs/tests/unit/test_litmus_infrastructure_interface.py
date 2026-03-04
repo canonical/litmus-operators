@@ -8,7 +8,7 @@ from ops import CharmBase
 from ops.testing import Context, Relation, State
 
 from litmus_libs.interfaces.litmus_infrastructure import (
-    InfrastructureMetadata,
+    InfrastructureDatabagModel,
     LitmusInfrastructureProvider,
     LitmusInfrastructureRequirer,
 )
@@ -24,8 +24,8 @@ class LitmusInfraCharm(CharmBase):
     }
 
     # Static storage for test assertions
-    _PUBLISH_DATA: InfrastructureMetadata = None
-    _RECEIVED_DATA: list[InfrastructureMetadata] = []
+    _PUBLISH_DATA: InfrastructureDatabagModel = None
+    _RECEIVED_DATA: list[InfrastructureDatabagModel] = []
 
     def __init__(self, *args):
         super().__init__(*args)
@@ -42,9 +42,9 @@ class LitmusInfraCharm(CharmBase):
 
     def _on_update_status(self, _):
         if self._PUBLISH_DATA:
-            self.provider.publish_infrastructure_metadata(self._PUBLISH_DATA)
+            self.provider.publish_data(self._PUBLISH_DATA)
 
-        LitmusInfraCharm._RECEIVED_DATA = self.requirer.get_infrastructure_metadata()
+        LitmusInfraCharm._RECEIVED_DATA = self.requirer.get_data()
 
 
 @pytest.fixture(scope="function")
@@ -56,7 +56,9 @@ def ctx():
 
 @pytest.fixture
 def mock_metadata():
-    return InfrastructureMetadata(infrastructure_name="test-cluster-123", model_name="production")
+    return InfrastructureDatabagModel(
+        infrastructure_name="test-cluster-123", model_name="production"
+    )
 
 
 def test_provider_publishes_metadata(ctx, mock_metadata):
