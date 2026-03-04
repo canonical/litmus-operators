@@ -109,7 +109,9 @@ class LitmusChaoscenterCharm(CharmBase):
             options=NGINX_OVERRIDES,
         )
 
-        self._litmus_client = LitmusClient(endpoint=f"{self._internal_frontend_url}:{http_server_port}")
+        self._litmus_client = LitmusClient(
+            endpoint=f"{self._internal_frontend_url}:{http_server_port}"
+        )
 
         self.framework.observe(
             self.on.collect_unit_status, self._on_collect_unit_status

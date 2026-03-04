@@ -102,11 +102,12 @@ class LitmusClient:
 
     def get_projects(self) -> List[ChaosProject]:
         """List all projects accessible to the current account."""
-        data = self._execute_rest("GET", "/auth/list_projects")
-        return [
-            ChaosProject(id=p["projectID"], name=p["name"])
-            for p in data.get("projects", [])
-        ]
+        if data := self._execute_rest("GET", "/auth/list_projects"):
+            return [
+                ChaosProject(id=p["projectID"], name=p["name"])
+                for p in data.get("projects", [])
+            ]
+        return []
 
     def create_chaos_environment(self, project_id: str, name: str):
         """Create a Chaos Environment."""

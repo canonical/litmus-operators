@@ -3,131 +3,119 @@
 
 """Unit tests for litmusctl.Litmusctl."""
 
-import json
-from unittest.mock import MagicMock
-
-import ops
-import ops.pebble
+import requests_mock
 import pytest
 
-from litmus_client import LitmusClient, LitmusctlError, ChaosProject
+from litmus_client import LitmusClient, ChaosProject
 
-MOCK_ENDPOINT = "http://chaos:9091"
+# Configuration for mocks
+BASE_URL = "http://litmus.local"
+AUTH_URL = f"{BASE_URL}/auth/login"
+REST_URL = f"{BASE_URL}/auth/list_projects"
+GQL_URL = f"{BASE_URL}/api/query"
 
 
-def _make_litmus_client(
-    stdout: str = "", exit_code: int = 0
-) -> tuple[LitmusClient, MagicMock]:
-    """Return a LitmusClient wired to a mock container.
+@pytest.fixture
+def client():
+    return LitmusClient(endpoint=BASE_URL, username="admin", password="litmus")
 
-    The mock container's exec() returns a process whose wait_output() either
-    returns (stdout, "") or raises ExecError when exit_code != 0.
-    """
-    container = MagicMock(spec=ops.Container)
-    proc = MagicMock()
-    if exit_code != 0:
-        proc.wait_output.side_effect = ops.pebble.ExecError(
-            command=["litmusctl"],
-            exit_code=exit_code,
-            stdout="",
-            stderr="something went wrong",
+
+@pytest.fixture
+def mock_api():
+    """Context manager for mocking requests."""
+    with requests_mock.Mocker() as m:
+        yield m
+
+
+class TestAuthentication:
+    def test_token_lazy_loading(self, client, mock_api):
+        # GIVEN: A client with no token and a mocked login endpoint
+        mock_api.post(AUTH_URL, json={"accessToken": "new-token"})
+
+        # WHEN: A request is made that requires authentication
+        header = client._get_auth_header()
+
+        # THEN: The client should login and return the correct bearer token
+        assert client._token == "new-token"
+        assert header["Authorization"] == "Bearer new-token"
+        assert mock_api.call_count == 1
+
+    def test_failed_login_clears_token(self, client, mock_api):
+        # GIVEN: A client that previously had a token, but the server now rejects login
+        client._token = "expired-token"
+        mock_api.post(AUTH_URL, status_code=401)
+
+        # WHEN: A login is attempted
+        client._login()
+
+        # THEN: The token should be wiped (set to None)
+        assert client._token is None
+
+    def test_token_persistence(self, client, mock_api):
+        # GIVEN: A client that already possesses a valid token
+        client._token = "existing-token"
+
+        # WHEN: Getting the auth header
+        client._get_auth_header()
+
+        # THEN: No new login request should be triggered
+        assert mock_api.call_count == 0
+
+
+class TestRESTMethods:
+    def test_get_projects_success(self, client, mock_api):
+        # GIVEN: A valid token and a mocked project list response
+        client._token = "valid-token"
+        payload = {"data": {"projects": [{"projectID": "p1", "name": "Default"}]}}
+        mock_api.get(REST_URL, json=payload)
+
+        # WHEN: Requesting the list of projects
+        projects = client.get_projects()
+
+        # THEN: The response should be a list of ChaosProject objects with correct IDs
+        assert len(projects) == 1
+        assert isinstance(projects[0], ChaosProject)
+        assert projects[0].id == "p1"
+
+    def test_get_projects_failure_handling(self, client, mock_api):
+        # GIVEN: The REST endpoint returns a 500 Internal Server Error
+        client._token = "valid-token"
+        mock_api.get(REST_URL, status_code=500)
+
+        # WHEN: Requesting projects
+        projects = client.get_projects()
+
+        # THEN: The method should return an empty list
+        assert projects == []
+
+
+class TestGraphQLMethods:
+    def test_create_environment(self, client, mock_api):
+        # GIVEN: A project ID and a desired environment name
+        client._token = "valid-token"
+        mock_api.post(
+            GQL_URL, json={"data": {"createEnvironment": {"environmentID": "env-1"}}}
         )
-    else:
-        proc.wait_output.return_value = (stdout, "")
-    container.exec.return_value = proc
-    return LitmusClient(container, MOCK_ENDPOINT), container
+        project_id = "proj-123"
+        env_name = "production-cluster"
 
+        # WHEN: Creating a chaos environment
+        client.create_chaos_environment(project_id, env_name)
 
-class TestRun:
-    """Tests for the _run core method (via the internal _cli)."""
+        # THEN: The sent GQL variables must match the expected schema
+        sent_payload = mock_api.request_history[-1].json()
+        assert sent_payload["variables"]["projectID"] == project_id
+        assert sent_payload["variables"]["request"]["name"] == env_name
 
-    def test_exec_called_with_litmusctl_prefix(self):
-        lctl, container = _make_litmus_client()
-        # Testing the underlying run logic
-        lctl._cli._run(["get", "projects"])
-        container.exec.assert_called_once_with(["litmusctl", "get", "projects"])
+    def test_gql_error_handling(self, client, mock_api, caplog):
+        # GIVEN: A GQL response that returns 200 OK but contains application errors
+        client._token = "valid-token"
+        error_payload = {"errors": [{"message": "Environment name already taken"}]}
+        mock_api.post(GQL_URL, json=error_payload)
 
-    def test_returns_stdout(self):
-        lctl, _ = _make_litmus_client(stdout="some output")
-        assert lctl._cli._run(["get", "projects"]) == "some output"
+        # WHEN: Executing the GQL call
+        result = client._execute_gql("mutation { ... }")
 
-    def test_raises_litmusctl_error_on_nonzero_exit(self):
-        lctl, _ = _make_litmus_client(exit_code=1)
-        with pytest.raises(LitmusctlError):
-            lctl._cli._run(["get", "projects"])
-
-    def test_litmusctl_error_contains_exit_code_and_stderr(self):
-        lctl, _ = _make_litmus_client(exit_code=2)
-        with pytest.raises(LitmusctlError, match="exit 2"):
-            lctl._cli._run(["get", "projects"])
-
-
-class TestConfig:
-    """Tests for config methods."""
-
-    def test_config_set_account_uses_provided_endpoint(self):
-        lctl, container = _make_litmus_client()
-        lctl.config_set_account(username="admin", password="s3cr3t")
-        container.exec.assert_called_once_with(
-            [
-                "litmusctl",
-                "config",
-                "set-account",
-                "--endpoint",
-                MOCK_ENDPOINT,
-                "--username",
-                "admin",
-                "--password",
-                "s3cr3t",
-                "--non-interactive",
-            ]
-        )
-
-
-class TestGet:
-    """Tests for get_* methods."""
-
-    def test_get_projects_calls_correct_command(self):
-        # We need a valid JSON string for the new client to parse
-        mock_json = json.dumps({"projects": []})
-        lctl, container = _make_litmus_client(stdout=mock_json)
-        lctl.get_projects()
-        container.exec.assert_called_once_with(
-            ["litmusctl", "get", "projects", "--output", "json"]
-        )
-
-    def test_get_projects_returns_dataclasses(self):
-        mock_json = json.dumps(
-            {"projects": [{"projectID": "proj-123", "name": "Test Project"}]}
-        )
-        lctl, _ = _make_litmus_client(stdout=mock_json)
-        result = lctl.get_projects()
-
-        assert len(result) == 1
-        assert isinstance(result[0], ChaosProject)
-        assert result[0].id == "proj-123"
-        assert result[0].name == "Test Project"
-
-
-class TestCreate:
-    """Tests for create_* methods."""
-
-    def test_create_chaos_environment(self):
-        lctl, container = _make_litmus_client()
-        lctl.create_chaos_environment(project_id="proj-1", name="my-env")
-        container.exec.assert_called_once_with(
-            [
-                "litmusctl",
-                "create",
-                "chaos-environment",
-                "--project-id",
-                "proj-1",
-                "--name",
-                "my-env",
-            ]
-        )
-
-    def test_create_returns_stdout(self):
-        lctl, _ = _make_litmus_client(stdout="successfully created")
-        result = lctl.create_chaos_environment(project_id="proj-1", name="my-env")
-        assert result == "successfully created"
+        # THEN: The result should be None and the error should be logged
+        assert result is None
+        assert "GraphQL error: Environment name already taken" in caplog.text

@@ -23,6 +23,7 @@ dev = [
     "pytest",
     "pytest-cov",
     "coverage[toml]",
+    "requests-mock",
 
 #   INTEGRATION TESTS
     "jubilant",
