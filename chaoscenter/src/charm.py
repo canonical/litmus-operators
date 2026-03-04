@@ -40,6 +40,7 @@ from litmus_libs.interfaces.self_monitoring import SelfMonitoring
 from charms.tempo_coordinator_k8s.v0.tracing import TracingEndpointRequirer
 import cosl
 import cosl.reconciler
+from litmus_client import LitmusClient
 
 
 logger = logging.getLogger(__name__)
@@ -60,6 +61,7 @@ class LitmusChaoscenterCharm(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
         self._fqdn = socket.getfqdn()
+        self._container = self.unit.get_container(container_name)
         self._receive_auth_http_api = LitmusAuthApiRequirer(
             relation=self.model.get_relation(AUTH_HTTP_API_ENDPOINT), app=self.app
         )
@@ -105,6 +107,10 @@ class LitmusChaoscenterCharm(CharmBase):
         self.nginx_exporter = NginxPrometheusExporter(
             self,
             options=NGINX_OVERRIDES,
+        )
+
+        self._litmus_client = LitmusClient(
+            endpoint=f"{self._internal_frontend_url}:{http_server_port}"
         )
 
         self.framework.observe(

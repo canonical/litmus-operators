@@ -12,6 +12,8 @@ dependencies = [
     "coordinated-workers",
     # for juju topology
     "cosl",
+    # for litmus client
+    "requests",
 ]
 
 [project.optional-dependencies]
@@ -21,6 +23,7 @@ dev = [
     "pytest",
     "pytest-cov",
     "coverage[toml]",
+    "requests-mock",
 
 #   INTEGRATION TESTS
     "jubilant",

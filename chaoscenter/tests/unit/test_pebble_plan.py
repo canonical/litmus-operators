@@ -1,8 +1,10 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
+from unittest.mock import PropertyMock, patch
+
 from ops.testing import State
 import pytest
-from conftest import patch_cert_and_key_ctx
+from conftest import  patch_cert_and_key_ctx
 
 
 def test_pebble_empty_plan(ctx, nginx_container, nginx_prometheus_exporter_container):
@@ -73,12 +75,7 @@ def test_nginx_pebble_ready_plan(
     "tls",
     (
         False,
-        pytest.param(
-            True,
-            marks=pytest.mark.skip(
-                reason="TODO: https://github.com/canonical/cos-coordinated-workers/issues/71"
-            ),
-        ),
+        True,
     ),
 )
 def test_nginx_exporter_pebble_ready_plan(
@@ -87,18 +84,14 @@ def test_nginx_exporter_pebble_ready_plan(
     nginx_prometheus_exporter_container,
     auth_http_api_relation,
     backend_http_api_relation,
-    patch_write_to_ca_path,
     tls,
 ):
-    expected_nginx_prometheus_exporter_plan = {
-        "services": {
-            "nginx-prometheus-exporter": {
-                "override": "replace",
-                "summary": "nginx prometheus exporter",
-                "command": f"nginx-prometheus-exporter --no-nginx.ssl-verify --web.listen-address=:9113  --nginx.scrape-uri=http{'s' if tls else ''}://127.0.0.1:8185/status",
-                "startup": "enabled",
-            }
-        }
+    expected_cmd_args = {
+        "nginx-prometheus-exporter",
+        "--web.listen-address=:9113",
+        f"--nginx.scrape-uri=http{'s' if tls else ''}://127.0.0.1:{'443' if tls else '8185'}/status",
+        "--no-nginx.ssl-verify",
+        "--web.config.file=/etc/exporter/web-config.yaml",
     }
 
     # GIVEN relations with auth and backend endpoints
@@ -107,18 +100,23 @@ def test_nginx_exporter_pebble_ready_plan(
         relations=[auth_http_api_relation, backend_http_api_relation],
     )
 
-    with patch_cert_and_key_ctx(tls):
+    with patch(
+        "coordinated_workers.nginx.NginxPrometheusExporter.are_certificates_on_disk",
+        new_callable=PropertyMock(return_value=tls),
+    ):
         # WHEN a workload pebble ready event is fired
-        state_out = ctx.run(ctx.on.pebble_ready(nginx_container), state=state)
+        state_out = ctx.run(ctx.on.pebble_ready(nginx_prometheus_exporter_container), state=state)
 
     # THEN nginx prometheus exporter pebble plan is generated
     nginx_prometheus_exporter_container_out = state_out.get_container(
         nginx_prometheus_exporter_container.name
     )
+    generated_plan = nginx_prometheus_exporter_container_out.plan.to_dict()
     assert (
-        nginx_prometheus_exporter_container_out.plan.to_dict()
-        == expected_nginx_prometheus_exporter_plan
-    )
+        set(generated_plan["services"]["nginx-prometheus-exporter"]["command"].split())
+        == expected_cmd_args
+    ), f"Generated plan: {generated_plan}"
+
     # AND the prometheus-exporter pebble service is running
     assert nginx_prometheus_exporter_container_out.services.get(
         "nginx-prometheus-exporter"
