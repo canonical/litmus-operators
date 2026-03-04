@@ -3,7 +3,7 @@
 import logging
 
 import pytest
-from jubilant import Juju, all_active, any_error
+from jubilant import Juju, all_blocked, any_error
 from pathlib import Path
 from conftest import APP
 
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 def test_setup(juju: Juju, charm: Path):
     juju.deploy(charm, APP, trust=True)
     juju.wait(
-        lambda status: all_active(status, APP),
+        lambda status: all_blocked(status, APP),
         error=lambda status: any_error(status, APP),
         timeout=1000,
         delay=10,
