@@ -453,7 +453,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 55
+LIBPATCH = 58
 
 PYDEPS = ["ops>=2.0.0"]
 
@@ -842,6 +842,11 @@ class CachedSecret:
                 self._secret_meta = self._model.get_secret(label=label)
             except SecretNotFoundError:
                 pass
+            except ModelError as e:
+                # Permission denied can be raised if the secret exists but is not yet granted to us.
+                if "permission denied" in str(e):
+                    return
+                raise
             else:
                 if label != self.label:
                     self.current_label = label
@@ -875,6 +880,8 @@ class CachedSecret:
             self._secret_meta = self.add_secret(content, label=self.label)
         except ModelError as err:
             if MODEL_ERRORS["not_leader"] not in str(err):
+                raise
+            if "permission denied" not in str(err):
                 raise
         self.current_label = None
 
@@ -2071,6 +2078,7 @@ class RequirerData(Data):
         requested_entity_secret: Optional[str] = None,
         requested_entity_name: Optional[str] = None,
         requested_entity_password: Optional[str] = None,
+        prefix_matching: Optional[str] = None,
     ):
         """Manager of base client relations."""
         super().__init__(model, relation_name)
@@ -2081,6 +2089,7 @@ class RequirerData(Data):
         self.requested_entity_secret = requested_entity_secret
         self.requested_entity_name = requested_entity_name
         self.requested_entity_password = requested_entity_password
+        self.prefix_matching = prefix_matching
 
         if (
             self.requested_entity_secret or self.requested_entity_name
@@ -3258,6 +3267,14 @@ class DatabaseRequestedEvent(DatabaseProvidesEvent):
                     logger.warning("Invalid requested-entity-secret: no entity name")
         return names
 
+    @property
+    def prefix_matching(self) -> Optional[str]:
+        """Returns the prefix matching strategy that were requested."""
+        if not self.relation.app:
+            return None
+
+        return self.relation.data[self.relation.app].get("prefix-matching")
+
 
 class DatabaseEntityRequestedEvent(DatabaseProvidesEvent, EntityProvidesEvent):
     """Event emitted when a new entity is requested for use on this relation."""
@@ -3364,6 +3381,16 @@ class DatabaseRequiresEvent(RelationEventWithSecret):
 
         return self.relation.data[self.relation.app].get("version")
 
+    @property
+    def prefix_databases(self) -> Optional[List[str]]:
+        """Returns a list of databases matching a prefix."""
+        if not self.relation.app:
+            return None
+
+        if prefixed_databases := self.relation.data[self.relation.app].get("prefix-databases"):
+            return prefixed_databases.split(",")
+        return []
+
 
 class DatabaseCreatedEvent(AuthenticationEvent, DatabaseRequiresEvent):
     """Event emitted when a new database is created for use on this relation."""
@@ -3381,6 +3408,10 @@ class DatabaseReadOnlyEndpointsChangedEvent(AuthenticationEvent, DatabaseRequire
     """Event emitted when the read only endpoints are changed."""
 
 
+class DatabasePrefixDatabasesChangedEvent(AuthenticationEvent, DatabaseRequiresEvent):
+    """Event emitted when the prefix databases are changed."""
+
+
 class DatabaseRequiresEvents(RequirerCharmEvents):
     """Database events.
 
@@ -3391,6 +3422,7 @@ class DatabaseRequiresEvents(RequirerCharmEvents):
     database_entity_created = EventSource(DatabaseEntityCreatedEvent)
     endpoints_changed = EventSource(DatabaseEndpointsChangedEvent)
     read_only_endpoints_changed = EventSource(DatabaseReadOnlyEndpointsChangedEvent)
+    prefix_databases_changed = EventSource(DatabasePrefixDatabasesChangedEvent)
 
 
 # Database Provider and Requires
@@ -3415,6 +3447,18 @@ class DatabaseProviderData(ProviderData):
             database_name: database name.
         """
         self.update_relation_data(relation_id, {"database": database_name})
+
+    def set_prefix_databases(self, relation_id: int, databases: List[str]) -> None:
+        """Set a coma separated list of databases matching a prefix.
+
+        This function writes in the application data bag, therefore,
+        only the leader unit can call it.
+
+        Args:
+            relation_id: the identifier for a particular relation.
+            databases: list of database names matching the requested prefix.
+        """
+        self.update_relation_data(relation_id, {"prefix-databases": ",".join(sorted(databases))})
 
     def set_endpoints(self, relation_id: int, connection_strings: str) -> None:
         """Set database primary connections.
@@ -3588,6 +3632,7 @@ class DatabaseRequirerData(RequirerData):
         requested_entity_secret: Optional[str] = None,
         requested_entity_name: Optional[str] = None,
         requested_entity_password: Optional[str] = None,
+        prefix_matching: Optional[str] = None,
     ):
         """Manager of database client relations."""
         super().__init__(
@@ -3601,6 +3646,7 @@ class DatabaseRequirerData(RequirerData):
             requested_entity_secret,
             requested_entity_name,
             requested_entity_password,
+            prefix_matching,
         )
         self.database = database_name
         self.relations_aliases = relations_aliases
@@ -3700,6 +3746,10 @@ class DatabaseRequirerEventHandlers(RequirerEventHandlers):
                     f"{relation_alias}_read_only_endpoints_changed",
                     DatabaseReadOnlyEndpointsChangedEvent,
                 )
+                self.on.define_event(
+                    f"{relation_alias}_prefix_databases_changed",
+                    DatabasePrefixDatabasesChangedEvent,
+                )
 
     def _on_secret_changed_event(self, event: SecretChangedEvent):
         """Event notifying about a new value of a secret."""
@@ -3792,6 +3842,8 @@ class DatabaseRequirerEventHandlers(RequirerEventHandlers):
             event_data["entity-permissions"] = self.relation_data.entity_permissions
         if self.relation_data.requested_entity_secret:
             event_data["requested-entity-secret"] = self.relation_data.requested_entity_secret
+        if self.relation_data.prefix_matching:
+            event_data["prefix-matching"] = self.relation_data.prefix_matching
 
         # Create helper secret if needed
         if (
@@ -3884,32 +3936,22 @@ class DatabaseRequirerEventHandlers(RequirerEventHandlers):
             # To avoid unnecessary application restarts do not trigger other events.
             return
 
-        # Emit an endpoints changed event if the database
-        # added or changed this info in the relation databag.
-        if "endpoints" in diff.added or "endpoints" in diff.changed:
-            # Emit the default event (the one without an alias).
-            logger.info("endpoints changed on %s", datetime.now())
-            getattr(self.on, "endpoints_changed").emit(
-                event.relation, app=event.app, unit=event.unit
-            )
+        for key, event_name in [
+            ("endpoints", "endpoints_changed"),
+            ("read-only-endpoints", "read_only_endpoints_changed"),
+            ("prefix-databases", "prefix_databases_changed"),
+        ]:
+            # Emit a change event if the key changed.
+            if key in diff.added or key in diff.changed:
+                # Emit the default event (the one without an alias).
+                logger.info("%s changed on %s", key, datetime.now())
+                getattr(self.on, event_name).emit(event.relation, app=event.app, unit=event.unit)
 
-            # Emit the aliased event (if any).
-            self._emit_aliased_event(event, "endpoints_changed")
+                # Emit the aliased event (if any).
+                self._emit_aliased_event(event, event_name)
 
-            # To avoid unnecessary application restarts do not trigger other events.
-            return
-
-        # Emit a read only endpoints changed event if the database
-        # added or changed this info in the relation databag.
-        if "read-only-endpoints" in diff.added or "read-only-endpoints" in diff.changed:
-            # Emit the default event (the one without an alias).
-            logger.info("read-only-endpoints changed on %s", datetime.now())
-            getattr(self.on, "read_only_endpoints_changed").emit(
-                event.relation, app=event.app, unit=event.unit
-            )
-
-            # Emit the aliased event (if any).
-            self._emit_aliased_event(event, "read_only_endpoints_changed")
+                # To avoid unnecessary application restarts do not trigger other events.
+                return
 
 
 class DatabaseRequires(DatabaseRequirerData, DatabaseRequirerEventHandlers):
@@ -3930,6 +3972,7 @@ class DatabaseRequires(DatabaseRequirerData, DatabaseRequirerEventHandlers):
         requested_entity_secret: Optional[str] = None,
         requested_entity_name: Optional[str] = None,
         requested_entity_password: Optional[str] = None,
+        prefix_matching: Optional[str] = None,
     ):
         DatabaseRequirerData.__init__(
             self,
@@ -3946,6 +3989,7 @@ class DatabaseRequires(DatabaseRequirerData, DatabaseRequirerEventHandlers):
             requested_entity_secret,
             requested_entity_name,
             requested_entity_password,
+            prefix_matching,
         )
         DatabaseRequirerEventHandlers.__init__(self, charm, self)
 
@@ -4230,6 +4274,14 @@ class KafkaProviderEventHandlers(ProviderEventHandlers):
 
         if relation.app == self.charm.app:
             logging.info("Secret changed event ignored for Secret Owner")
+
+        if relation.name != self.relation_data.relation_name:
+            logger.debug(
+                "Ignoring secret-changed from endpoint %s (expected %s)",
+                relation.name,
+                self.relation_data.relation_name,
+            )
+            return
 
         remote_unit = None
         for unit in relation.units:
@@ -5257,6 +5309,14 @@ class OpenSearchRequiresEventHandlers(RequirerEventHandlers):
             )
             return
 
+        if relation.name != self.relation_data.relation_name:
+            logger.debug(
+                "Ignoring secret-changed from endpoint %s (expected %s)",
+                relation.name,
+                self.relation_data.relation_name,
+            )
+            return
+
         if relation.app == self.charm.app:
             logging.info("Secret changed event ignored for Secret Owner")
 
@@ -5519,6 +5579,14 @@ class EtcdProviderEventHandlers(ProviderEventHandlers):
             )
             return
 
+        if relation.name != self.relation_data.relation_name:
+            logger.debug(
+                "Ignoring secret-changed from endpoint %s (expected %s)",
+                relation.name,
+                self.relation_data.relation_name,
+            )
+            return
+
         if relation.app == self.charm.app:
             logging.info("Secret changed event ignored for Secret Owner")
 
@@ -5663,6 +5731,14 @@ class EtcdRequirerEventHandlers(RequirerEventHandlers):
 
         if relation.app == self.charm.app:
             logging.info("Secret changed event ignored for Secret Owner")
+
+        if relation.name != self.relation_data.relation_name:
+            logger.debug(
+                "Ignoring secret-changed from endpoint %s (expected %s)",
+                relation.name,
+                self.relation_data.relation_name,
+            )
+            return
 
         remote_unit = None
         for unit in relation.units:
