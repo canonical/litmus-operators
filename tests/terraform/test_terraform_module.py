@@ -1,6 +1,5 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
-import logging
 import shlex
 import pathlib
 import subprocess
@@ -46,5 +45,7 @@ def test_active(juju):
 
 def _get_juju_model_uuid(juju: jubilant.Juju) -> str:
     """This is a workaround for juju.show_model() not working."""
-    model_details = yaml.safe_load(juju.cli("show-model", juju.model, include_model=False))
+    model_details = yaml.safe_load(
+        juju.cli("show-model", juju.model, include_model=False)
+    )
     return model_details[juju.model]["model-uuid"]
