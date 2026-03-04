@@ -12,7 +12,7 @@ from ops import ActiveStatus, CollectStatusEvent
 from litmus_libs.status_manager import StatusManager
 from litmus_libs.interfaces.litmus_infrastructure import (
     LitmusInfrastructureProvider,
-    InfrastructureMetadata,
+    InfrastructureDatabagModel,
 )
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,9 @@ class LitmusInfrastructureCharm(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
         self._infra_provider = LitmusInfrastructureProvider(
-            self.model.relations["litmus-infrastructure"], self.app
+            self.model.relations["litmus-infrastructure"],
+            self.app,
+            self.unit,
         )
 
         self.framework.observe(
@@ -38,10 +40,9 @@ class LitmusInfrastructureCharm(CharmBase):
     ##################
 
     def _on_collect_unit_status(self, e: CollectStatusEvent):
-
         StatusManager(
             charm=self,
-            block_if_relations_missing="litmus-infrastructure",
+            block_if_relations_missing=("litmus-infrastructure",),
         ).collect_status(e)
         e.add_status(ActiveStatus(""))
 
@@ -52,8 +53,8 @@ class LitmusInfrastructureCharm(CharmBase):
     def _reconcile(self):
         """Run all logic that is independent of what event we're processing."""
         if self.unit.is_leader():
-            self._infra_provider.publish_infrastructure_metadata(
-                InfrastructureMetadata(
+            self._infra_provider.publish_data(
+                InfrastructureDatabagModel(
                     # for now, we can set the infra name as the model name
                     infrastructure_name=self.model.name,
                     model_name=self.model.name,

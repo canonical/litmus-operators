@@ -11,7 +11,7 @@ def test_publish_infrastructure_data(ctx, is_leader):
 
     # WHEN the relation-joined event fires
     state_out = ctx.run(
-        infra_rel.joined_event,
+        ctx.on.relation_joined(infra_rel),
         state=State(
             relations={infra_rel},
             leader=is_leader,

@@ -17,7 +17,7 @@ from ops.testing import Relation, State, CharmEvents
 )
 def test_active_status(ctx, event):
     # GIVEN a charm with the litmus-infrastructure relation joined
-    infra_rel = Relation(endpoint="litmus-infrastructure")
+    infra_rel = Relation("litmus-infrastructure")
 
     # WHEN we receive any standard lifecycle event
     state_out = ctx.run(
@@ -37,8 +37,8 @@ def test_blocked_status_missing_relation(ctx):
 
     # WHEN an event fires
     state_out = ctx.run(
-        "update-status",
-        state=State(relations=set()),
+        ctx.on.update_status(),
+        state=State(),
     )
 
     # THEN the unit status is Blocked
