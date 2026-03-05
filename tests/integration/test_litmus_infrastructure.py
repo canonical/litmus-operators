@@ -16,7 +16,6 @@ from helpers import (
     get_login_response,
     INFRA_APP,
 )
-from src.nginx_config import http_server_port
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +23,7 @@ logger = logging.getLogger(__name__)
 @pytest.fixture(scope="module")
 def token(juju: Juju):
     chaoscenter_ip = get_unit_ip_address(juju, CHAOSCENTER_APP, 0)
-    _, out = get_login_response(chaoscenter_ip, http_server_port, "/auth")
+    _, out = get_login_response(chaoscenter_ip, 8185, "/auth")
     return json.loads(out)["accessToken"]
 
 
@@ -35,7 +34,7 @@ def project_id(juju: Juju, token):
     cmd = (
         "curl -sS -X GET "
         f'-H "Authorization: Bearer {token}" '
-        f"http://{chaoscenter_ip}:{http_server_port}/auth/list_projects"
+        f"http://{chaoscenter_ip}:8185/auth/list_projects"
     )
     out = subprocess.check_output(shlex.split(cmd), text=True)
     return json.loads(out)["data"]["projects"][0]["projectID"]
