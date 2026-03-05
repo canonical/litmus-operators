@@ -342,6 +342,11 @@ class LitmusChaoscenterCharm(CharmBase):
             return
 
         project_id = self._litmus_client.default_project_id
+        if not project_id:
+            logger.warning(
+                "Project ID is not available; cannot register infrastructure"
+            )
+            return
         name = infra_data.infrastructure_name
         model_name = infra_data.model_name
 
@@ -379,6 +384,9 @@ class LitmusChaoscenterCharm(CharmBase):
             return
 
         project_id = self._litmus_client.default_project_id
+        if not project_id:
+            logger.warning("Project ID is not available; cannot delete infrastructure")
+            return
         name = infra_data.infrastructure_name
         model_name = infra_data.model_name
 

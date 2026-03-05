@@ -16,8 +16,8 @@ def patch_apply_manifests():
 
 @pytest.fixture
 def patch_crd_mainfests_path(tmp_path):
-    mock_crd_file = Path(tmp_path / "dummy_crd.yaml")
-    mock_crd_file.write_text("apiVersion: v1\nkind: DummyCRD")
+    mock_crd_file = Path(tmp_path / "sample_crd.yaml")
+    mock_crd_file.write_text("apiVersion: v1\nkind: SampleCRD")
     with patch("charm.LITMUS_CRD_MANIFEST_PATH", mock_crd_file):
         yield mock_crd_file
 
