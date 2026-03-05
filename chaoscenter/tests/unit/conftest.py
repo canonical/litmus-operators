@@ -3,7 +3,7 @@
 from contextlib import contextmanager
 import json
 import pathlib
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from ops.testing import Container, Context
 import pytest
@@ -82,6 +82,12 @@ def patch_write_to_ca_path():
         yield
 
 
+@pytest.fixture(autouse=True)
+def patch_lightkube_client():
+    with patch("charm.Client", new=MagicMock()):
+        yield
+
+
 @pytest.fixture
 def auth_http_api_relation():
     return Relation(
@@ -136,5 +142,16 @@ def workload_tracing_relation():
                     }
                 ]
             )
+        },
+    )
+
+
+@pytest.fixture
+def litmus_infrastructure_relation():
+    return Relation(
+        "litmus-infrastructure",
+        remote_app_data={
+            "infrastructure_name": json.dumps("name"),
+            "model_name": json.dumps("model"),
         },
     )

@@ -6,7 +6,9 @@
 import logging
 import socket
 from typing import Optional, Dict, cast, Any
-
+from lightkube import Client
+from lightkube.codecs import load_all_yaml
+from pathlib import Path
 from charms.tls_certificates_interface.v4.tls_certificates import (
     TLSCertificatesRequiresV4,
     CertificateRequestAttributes,
@@ -15,6 +17,8 @@ from ops.charm import CharmBase
 from ops import (
     CollectStatusEvent,
     ActiveStatus,
+    RelationDepartedEvent,
+    RelationChangedEvent,
 )
 from coordinated_workers.models import TLSConfig
 from coordinated_workers.nginx import (
@@ -37,6 +41,7 @@ from litmus_libs.interfaces.http_api import (
     LitmusBackendApiRequirer,
 )
 from litmus_libs.interfaces.self_monitoring import SelfMonitoring
+from litmus_libs.interfaces.litmus_infrastructure import LitmusInfrastructureRequirer
 from charms.tempo_coordinator_k8s.v0.tracing import TracingEndpointRequirer
 import cosl
 import cosl.reconciler
@@ -53,6 +58,9 @@ NGINX_OVERRIDES: NginxMappingOverrides = {
     "nginx_port": http_server_port,
     "nginx_exporter_port": NGINX_EXPORTER_PORT,
 }
+LITMUS_CRD_MANIFEST_PATH = (
+    Path(__file__).parent / "k8s_manifests" / "litmus_portal_crds.yaml"
+)
 
 
 class LitmusChaoscenterCharm(CharmBase):
@@ -95,6 +103,10 @@ class LitmusChaoscenterCharm(CharmBase):
             protocols=["otlp_grpc"],
         )
 
+        self._litmus_infra = LitmusInfrastructureRequirer(
+            self.model.relations["litmus-infrastructure"], self.app
+        )
+
         self.nginx = Nginx(
             self,
             options=None,
@@ -113,10 +125,22 @@ class LitmusChaoscenterCharm(CharmBase):
             endpoint=f"{self._internal_frontend_url}:{http_server_port}"
         )
 
+        self._k8s_client = Client()
+
         self.framework.observe(
             self.on.collect_unit_status, self._on_collect_unit_status
         )
 
+        # observe the litmus_infrastructure events instead of reconciling the state
+        # reonciling the infrastructure state is expensive due to the unnecessary API calls
+        self.framework.observe(
+            self.on.litmus_infrastructure_relation_changed,
+            self._on_litmus_infrastructure_changed,
+        )
+        self.framework.observe(
+            self.on.litmus_infrastructure_relation_departed,
+            self._on_litmus_infrastructure_departed,
+        )
         cosl.reconciler.observe_events(
             self, cosl.reconciler.all_events, self._reconcile
         )
@@ -136,23 +160,6 @@ class LitmusChaoscenterCharm(CharmBase):
             ca_cert=self._tls_config.ca_cert if self._tls_config else None
         )
 
-        if None in self.consistency_checks.values():
-            # a None in consistency check results means: check failed
-            # we skip nginx reconcile because for it to succeed, we need auth/backend urls,
-            # and tls consistency.
-            logger.info("deployment inconsistent; skipping nginx reconcile")
-
-        else:
-            self.nginx.reconcile(
-                nginx_config=self._nginx_config(
-                    # consistency checks would fail if these were unset
-                    auth_url=cast(str, self.auth_url),
-                    backend_url=cast(str, self.backend_url),
-                ),
-                tls_config=self._tls_config,
-            )
-            self.nginx_exporter.reconcile()
-
         self._receive_backend_http_api.publish_endpoint(
             f"{self._most_external_frontend_url}:{http_server_port}"
         )
@@ -164,6 +171,21 @@ class LitmusChaoscenterCharm(CharmBase):
                 ),
                 static=static_ingress_config(),
             )
+
+        if self.failed_consistency_checks:
+            # don't do any litmus backend operations because they require a consistent deployment
+            return None
+
+        # logic that requires a consistent deployment
+        self.nginx.reconcile(
+            nginx_config=self._nginx_config(
+                # consistency checks would fail if these were unset
+                auth_url=cast(str, self.auth_url),
+                backend_url=cast(str, self.backend_url),
+            ),
+            tls_config=self._tls_config,
+        )
+        self.nginx_exporter.reconcile()
 
     ##################
     # CONFIG METHODS #
@@ -265,6 +287,11 @@ class LitmusChaoscenterCharm(CharmBase):
     ###################
 
     @property
+    def failed_consistency_checks(self) -> list[str]:
+        checks = self.consistency_checks
+        return [name for name, value in checks.items() if value is None]
+
+    @property
     def consistency_checks(self) -> Dict[str, Optional[Any]]:
         """Verify the control plane deployment is consistent.
 
@@ -298,9 +325,80 @@ class LitmusChaoscenterCharm(CharmBase):
 
         return False
 
+    def _apply_manifest(self, manifest: str):
+        """Apply a k8s manifest to the cluster."""
+        for obj in load_all_yaml(manifest):
+            self._k8s_client.apply(
+                obj, force=True, field_manager="litmus-chaoscenter-charm"
+            )
+
     ###################
     # EVENT OBSERVERS #
     ###################
+
+    def _on_litmus_infrastructure_changed(self, event: RelationChangedEvent):
+        infra_data = self._litmus_infra.get_data(event.relation.id)
+        if not infra_data:
+            return
+
+        project_id = self._litmus_client.default_project_id
+        if not project_id:
+            logger.warning(
+                "Project ID is not available; cannot register infrastructure"
+            )
+            return
+        name = infra_data.infrastructure_name
+        model_name = infra_data.model_name
+
+        existing_infra = self._litmus_client.get_infrastructure(
+            name, model_name, project_id
+        )
+        if existing_infra and existing_infra.active:
+            logger.info(
+                f"Infrastructure {name} already exists and is active; skipping creation"
+            )
+            return
+
+        if not existing_infra:
+            infra_manifest = self._litmus_client.register_infrastructure(
+                name, model_name, project_id
+            )
+        else:
+            infra_manifest = self._litmus_client.get_infrastructure_manifest(
+                existing_infra.id,
+                project_id,
+            )
+
+        if infra_manifest:
+            if not LITMUS_CRD_MANIFEST_PATH.exists():
+                logger.warning(
+                    f"Litmus CRD manifest not found at {LITMUS_CRD_MANIFEST_PATH}; skipping applying CRDs"
+                )
+            else:
+                self._apply_manifest(LITMUS_CRD_MANIFEST_PATH.read_text())
+            self._apply_manifest(infra_manifest)
+
+    def _on_litmus_infrastructure_departed(self, event: RelationDepartedEvent):
+        infra_data = self._litmus_infra.get_data(event.relation.id)
+        if not infra_data:
+            return
+
+        project_id = self._litmus_client.default_project_id
+        if not project_id:
+            logger.warning("Project ID is not available; cannot delete infrastructure")
+            return
+        name = infra_data.infrastructure_name
+        model_name = infra_data.model_name
+
+        existing_infra = self._litmus_client.get_infrastructure(
+            name, model_name, project_id
+        )
+        if not existing_infra:
+            logger.info(f"Infrastructure {name} doesn't exist; skipping deletion")
+            return
+
+        # TODO: investigate if we need to delete existing experiments in the infra before deleting the infra itself
+        self._litmus_client.delete_infrastructure(existing_infra.id, project_id)
 
     def _on_collect_unit_status(self, e: CollectStatusEvent):
         required_relations = [
