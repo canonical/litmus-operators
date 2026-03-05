@@ -75,33 +75,6 @@ def test_provider_fails_if_not_leader(ctx, mock_metadata):
             mgr.charm.provider.publish_data(mock_metadata)
 
 
-def test_requirer_get_all_data(ctx):
-    # GIVEN two providers with valid data
-    databag1 = {
-        "infrastructure_name": json.dumps("cluster-a"),
-        "model_name": json.dumps("model-a"),
-    }
-    databag2 = {
-        "infrastructure_name": json.dumps("cluster-b"),
-        "model_name": json.dumps("model-b"),
-    }
-    state = State(
-        relations={
-            Relation(endpoint="infra-requirer", id=1, remote_app_data=databag1),
-            Relation(endpoint="infra-requirer", id=2, remote_app_data=databag2),
-        }
-    )
-
-    # WHEN we query all data
-    with ctx(ctx.on.update_status(), state=state) as mgr:
-        received = mgr.charm.requirer.get_all_data()
-
-    # THEN both are correctly parsed
-    assert len(received) == 2
-    assert {r.infrastructure_name for r in received} == {"cluster-a", "cluster-b"}
-    assert {r.model_name for r in received} == {"model-a", "model-b"}
-
-
 def test_requirer_get_data_by_relation(ctx):
     # GIVEN a specific relation ID
     target_id = 42
@@ -137,12 +110,10 @@ def test_requirer_skips_uninitialized_provider(ctx):
         relations={Relation(endpoint="infra-requirer", id=1, remote_app_data={})},
     )
 
-    # WHEN the requirer tries to get all data
+    # WHEN the requirer tries to get relation data
     with ctx(ctx.on.update_status(), state=state) as mgr:
-        received = mgr.charm.requirer.get_all_data()
-
-    # THEN the requirer returns an empty list
-    assert len(received) == 0
+        # THEN the data is empty
+        assert mgr.charm.requirer.get_data(1) is None
 
 
 def test_requirer_handles_malformed_data(ctx):
@@ -156,8 +127,7 @@ def test_requirer_handles_malformed_data(ctx):
     )
 
     with ctx(ctx.on.update_status(), state=state) as mgr:
-        # THEN both APIs handle the error gracefully by returning empty/None
-        assert len(mgr.charm.requirer.get_all_data()) == 0
+        # THEN the API handle the error gracefully by returning None
         assert mgr.charm.requirer.get_data(1) is None
 
 

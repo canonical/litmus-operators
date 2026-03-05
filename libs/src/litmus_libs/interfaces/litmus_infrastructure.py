@@ -102,7 +102,7 @@ class LitmusInfrastructureRequirer:
         ```python
         # In your requirer's charm code
         from typing import Optional
-        from litmus_libs.interfaces.litmus_infrastructure import LitmusInfrastructureRequirer, InfrastructureDatabagModel
+        from litmus_libs.interfaces.litmus_infrastructure import LitmusInfrastructureRequirer
 
         class LitmusInfraRequirerCharm(CharmBase):
             def __init__(self, *args):
@@ -111,11 +111,13 @@ class LitmusInfrastructureRequirer:
                     self.model.relations["litmus-infrastructure"],
                     self.app,
                 )
+                self.framework.observe(
+                    self.on.litmus_infrastructure_relation_changed,
+                    self._on_litmus_infrastructure_changed,
+                )
 
-            @property
-            def _infrastructure_data(self) -> list[InfrastructureDatabagModel]:
-                # Get the infrastructure data from all the infrastructure providers
-                return self._litmus_infra.get_all_data()
+            def _on_litmus_infrastructure_changed(self, event):
+                data = self._litmus_infra.get_data(event.relation.id)
 
         ```
     """
@@ -161,16 +163,3 @@ class LitmusInfrastructureRequirer:
             return None
 
         return InfrastructureDatabagModel(**remote_data.model_dump())
-
-    def get_all_data(self) -> list[InfrastructureDatabagModel]:
-        """Get the infrastructure data from all the relations.
-
-        Returns:
-            A list of InfrastructureDatabagModel objects for each relation.
-        """
-        infras: list[InfrastructureDatabagModel] = []
-        for relation in sorted(self._relations, key=lambda r: r.id):
-            relation_data = self.get_data(relation.id)
-            if relation_data:
-                infras.append(relation_data)
-        return infras
