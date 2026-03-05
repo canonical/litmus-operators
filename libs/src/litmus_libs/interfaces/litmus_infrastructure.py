@@ -4,6 +4,7 @@
 """litmus_infrastructure integration endpoint wrapper."""
 
 import logging
+from dataclasses import asdict, dataclass
 
 import ops
 import pydantic
@@ -11,19 +12,19 @@ import pydantic
 logger = logging.getLogger()
 
 
-class InfrastructureDatabagModel(pydantic.BaseModel):
+@dataclass
+class InfrastructureDatabagModel:
     """User-facing data model representing the infrastructure data published by litmus_infrastructure providers."""
 
-    # Note: we set extra=ignore in the model config to allow for forward compatibility in case we want to add new fields in the future without breaking existing requirers.
-    model_config = pydantic.ConfigDict(extra="ignore")
+    infrastructure_name: str
+    model_name: str
+
+
+class _LitmusInfraProviderAppDatabagModel(pydantic.BaseModel):
+    """Provider application databag model for the litmus_infrastructure interface."""
 
     infrastructure_name: str | None = None
     model_name: str | None = None
-
-
-# internal alias for clarity in the library, though they are identical
-_LitmusInfraProviderAppDatabagModel = InfrastructureDatabagModel
-"""Provider application databag model for the litmus_infrastructure interface."""
 
 
 class LitmusInfrastructureProvider:
@@ -76,7 +77,7 @@ class LitmusInfrastructureProvider:
             pydantic.ValidationError: If the provided data does not conform to the expected schema.
         """
         try:
-            infra_data = _LitmusInfraProviderAppDatabagModel(**data.model_dump())
+            infra_data = _LitmusInfraProviderAppDatabagModel(**asdict(data))
         except pydantic.ValidationError:
             logger.error("Attempting to publish invalid data: %s", data)
             raise
@@ -149,6 +150,14 @@ class LitmusInfrastructureRequirer:
             remote_data = relation.load(_LitmusInfraProviderAppDatabagModel, relation.app)
         except pydantic.ValidationError:
             logger.error("Validation failed for %s; invalid schema?", relation)
+            return None
+
+        # Can happen during upgrades if the provider writes a newer databag schema
+        # that this requirer version does not yet understand.
+        if not remote_data.infrastructure_name or not remote_data.model_name:
+            logger.warning(
+                "Incompatible or incomplete databag schema (possibly due to an ongoing upgrade)."
+            )
             return None
 
         return InfrastructureDatabagModel(**remote_data.model_dump())
