@@ -13,11 +13,12 @@ from charms.tls_certificates_interface.v4.tls_certificates import (
     TLSCertificatesRequiresV4,
     CertificateRequestAttributes,
 )
-from ops.charm import CharmBase, RelationChangedEvent
+from ops.charm import CharmBase
 from ops import (
     CollectStatusEvent,
     ActiveStatus,
     RelationDepartedEvent,
+    RelationChangedEvent,
 )
 from coordinated_workers.models import TLSConfig
 from coordinated_workers.nginx import (
@@ -131,13 +132,13 @@ class LitmusChaoscenterCharm(CharmBase):
         )
 
         # observe the litmus_infrastructure events instead of reconciling the state
-        # reonciling the infrastructure state is expensive
+        # reonciling the infrastructure state is expensive due to the unnecessary API calls
         self.framework.observe(
-            self._litmus_infra.on.litmus_infrastructure_relation_changed,
+            self.on.litmus_infrastructure_relation_changed,
             self._on_litmus_infrastructure_changed,
         )
         self.framework.observe(
-            self._litmus_infra.on.litmus_infrastructure_relation_departed,
+            self.on.litmus_infrastructure_relation_departed,
             self._on_litmus_infrastructure_departed,
         )
         cosl.reconciler.observe_events(
@@ -326,61 +327,70 @@ class LitmusChaoscenterCharm(CharmBase):
 
     def _apply_manifest(self, manifest: str):
         """Apply a k8s manifest to the cluster."""
-        try:
-            for obj in load_all_yaml(manifest):
-                self._k8s_client.apply(obj)
-        except Exception:
-            logger.exception("Failed to apply manifest")
+        for obj in load_all_yaml(manifest):
+            self._k8s_client.apply(
+                obj, force=True, field_manager="litmus-chaoscenter-charm"
+            )
 
     ###################
     # EVENT OBSERVERS #
     ###################
 
     def _on_litmus_infrastructure_changed(self, event: RelationChangedEvent):
-        """Reconcile the infrastructure state in the LitmusClient whenever the relation changes."""
         infra_data = self._litmus_infra.get_data(event.relation.id)
         if not infra_data:
             return
 
+        project_id = self._litmus_client.default_project_id
         name = infra_data.infrastructure_name
         model_name = infra_data.model_name
 
-        # TODO: perhaps we should move this to the lib?
-        # Can happen during upgrades if the provider writes a newer databag schema
-        # that this requirer version does not yet understand. Skip until the
-        # requirer is upgraded.
-        if not name or not model_name:
-            logger.warning(
-                "Skipping litmus infrastructure provisioning: incompatible or incomplete "
-                "databag schema (possibly due to an ongoing upgrade)."
-            )
-            return
-
-        existing_infra = self._litmus_client.get_infrastructure(name, model_name)
+        existing_infra = self._litmus_client.get_infrastructure(
+            name, model_name, project_id
+        )
         if existing_infra and existing_infra.active:
             logger.info(
-                f"Infrastructure {infra_data.infrastructure_name} already exists and is active; skipping creation"
+                f"Infrastructure {name} already exists and is active; skipping creation"
             )
             return
 
         if not existing_infra:
-            manifest = self._litmus_client.register_infrastructure(name, model_name)
+            infra_manifest = self._litmus_client.register_infrastructure(
+                name, model_name, project_id
+            )
         else:
-            manifest = self._litmus_client.get_infrastructure_manifest(
-                existing_infra.id
+            infra_manifest = self._litmus_client.get_infrastructure_manifest(
+                existing_infra.id,
+                project_id,
             )
 
-        if manifest:
-            # create crds in the cluster for this infrastructure
-            if LITMUS_CRD_MANIFEST_PATH.exists():
+        if infra_manifest:
+            if not LITMUS_CRD_MANIFEST_PATH.exists():
+                logger.warning(
+                    f"Litmus CRD manifest not found at {LITMUS_CRD_MANIFEST_PATH}; skipping applying CRDs"
+                )
+            else:
                 self._apply_manifest(LITMUS_CRD_MANIFEST_PATH.read_text())
-            # apply the infrastructure manifest
-            self._apply_manifest(manifest)
+            self._apply_manifest(infra_manifest)
 
     def _on_litmus_infrastructure_departed(self, event: RelationDepartedEvent):
+        infra_data = self._litmus_infra.get_data(event.relation.id)
+        if not infra_data:
+            return
 
-        infra_data = self._litmus_infra.get_data_by_relation(event.relation)
-        self._litmus_client.delete_infrastructure(infra_data.infrastructure_name)
+        project_id = self._litmus_client.default_project_id
+        name = infra_data.infrastructure_name
+        model_name = infra_data.model_name
+
+        existing_infra = self._litmus_client.get_infrastructure(
+            name, model_name, project_id
+        )
+        if not existing_infra:
+            logger.info(f"Infrastructure {name} doesn't exist; skipping deletion")
+            return
+
+        # TODO: investigate if we need to delete existing experiments in the infra before deleting the infra itself
+        self._litmus_client.delete_infrastructure(existing_infra.id, project_id)
 
     def _on_collect_unit_status(self, e: CollectStatusEvent):
         required_relations = [

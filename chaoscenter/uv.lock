@@ -548,7 +548,7 @@ requires-dist = [
     { name = "cryptography", specifier = ">=45.0.7" },
     { name = "jubilant", marker = "extra == 'dev'" },
     { name = "lightkube" },
-    { name = "litmus-libs" },
+    { name = "litmus-libs", git = "https://github.com/canonical/litmus-operators.git?subdirectory=libs&rev=update-infra-api" },
     { name = "ops" },
     { name = "ops", extras = ["testing"], marker = "extra == 'dev'" },
     { name = "pyright", marker = "extra == 'dev'" },
@@ -564,16 +564,12 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "litmus-libs"
-version = "0.0.11"
-source = { registry = "https://pypi.org/simple" }
+version = "0.0+dev"
+source = { git = "https://github.com/canonical/litmus-operators.git?subdirectory=libs&rev=update-infra-api#aa8d6e25f6769217fffbfdb406179173cddf2397" }
 dependencies = [
     { name = "cosl" },
     { name = "ops", extra = ["tracing"] },
     { name = "pydantic" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/44/8f/fb00811da031e561bce12cc63d4028ea03d912be4e2e5a586719af46b2dd/litmus_libs-0.0.11.tar.gz", hash = "sha256:b8f28dea67badc91bde318a759ccb16022d22644ff9a8e7c4c77f534b3053f88", size = 82062, upload-time = "2026-03-04T08:05:32.211Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/2f/bc/38c65ce5b6191e305dc4855cda8c743b4703aef677f9c2578b9a3dbb31d5/litmus_libs-0.0.11-py3-none-any.whl", hash = "sha256:2d4270d2bb81e8d5c0c29e07bd038b511d09c6ec80e4238ea4c226e8ceec0d56", size = 20777, upload-time = "2026-03-04T08:05:30.926Z" },
 ]
 
 [[package]]
