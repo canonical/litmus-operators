@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 LITMUSCTL_BIN = "litmusctl"
 DEFAULT_ADMIN_USERNAME = "admin"
-DEFAULT_ADMIN_PASSWORD = "Litmus123!"
+DEFAULT_ADMIN_PASSWORD = "litmus"
 
 
 @dataclass
