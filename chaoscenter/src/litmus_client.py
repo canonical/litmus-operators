@@ -23,6 +23,14 @@ class ChaosProject:
     name: str
 
 
+@dataclass
+class ChaosInfrastructure:
+    id: str
+    name: str
+    environment_id: str
+    active: bool
+
+
 class LitmusClient:
     """High-level Litmus client using Litmus auth/graphql APIs."""
 
@@ -36,12 +44,21 @@ class LitmusClient:
         self._username = username
         self._password = password
         self._token: str | None = None
+        # alot of Litmus API calls require a project ID, so we fetch it during login and cache it for future use
+        # We assume a single-project environment where all litmus operations from the charm will occur in this default project.
+        self._default_project_id: str | None = None
+        # TODO: don't hardcode the env ID
+        self._default_env_id: str = "test"
 
     def _get_auth_header(self) -> dict[str, str]:
         """Provides the Bearer token header."""
         if not self._token:
             self._login()
-        return {"Authorization": f"Bearer {self._token}"}
+        return {
+            "Authorization": f"Bearer {self._token}",
+            # Litmus backend middleware fails without a Referer header for some requests
+            "Referer": f"{self._endpoint}/",
+        }
 
     def _login(self) -> None:
         """Internal login to fetch the JWT."""
@@ -51,9 +68,11 @@ class LitmusClient:
             resp = requests.post(url, json=payload, timeout=10)
             resp.raise_for_status()
             self._token = resp.json().get("accessToken")
+            self._default_project_id = resp.json().get("projectID")
         except Exception as e:
             logger.error("Litmus login failed: %s", e)
             self._token = None
+            self._default_project_id = None
 
     def _execute_rest(self, method: str, path: str) -> dict[str, Any] | None:
         """Executes a RESTful request."""
@@ -101,7 +120,94 @@ class LitmusClient:
             logger.error("GraphQL request failed: %s", e)
             return None
 
-    def get_projects(self) -> List[ChaosProject]:
+    def register_infrastructure(self, infra_name: str, namespace: str) -> str | None:
+        """Registers a new infrastructure in the ChaosCenter and returns its manifest."""
+        query = """
+        mutation registerInfra($projectID: ID!, $request: RegisterInfraRequest!) {
+            registerInfra(projectID: $projectID, request: $request) {
+                manifest
+            }
+        }
+        """
+
+        variables = {
+            "projectID": self._default_project_id,
+            "request": {
+                "name": infra_name,
+                # not providing a description makes a nil pointer exception in the litmus backend
+                "description": "",
+                "environmentID": self._default_env_id,
+                "infrastructureType": "kubernetes",
+                "platformName": "Kubernetes",
+                # TODO: link ADR
+                "infrascope": "namespace",
+                "infraNamespace": namespace,
+                "infraNsExists": True,
+                "infraSaExists": False,
+            },
+        }
+
+        data = self._execute_gql(query, variables)
+        if not data:
+            return None
+
+        return data.get("registerInfra", {}).get("manifest")
+
+    def get_infrastructure(
+        self, infrastructure_name: str, namespace: str
+    ) -> ChaosInfrastructure | None:
+        """Gets infrastructure details by name and namespace. Returns None if not found."""
+        query = """
+        query listInfras($projectID: ID!, $request: ListInfraRequest!) {
+            listInfras(projectID: $projectID, request: $request) {
+                infras { infraID name environmentID isActive infraNamespace}
+            }
+        }
+        """
+
+        variables = {
+            "projectID": self._default_project_id,
+            "request": {
+                "environmentIDs": [self._default_env_id],
+                "filter": {"name": infrastructure_name},
+            },
+        }
+
+        data = self._execute_gql(query, variables)
+        if not data:
+            return None
+
+        infras = data.get("listInfras", {}).get("infras", [])
+        for infra in infras:
+            if infra["infraNamespace"] == namespace:
+                return ChaosInfrastructure(
+                    id=infra["infraID"],
+                    name=infra["name"],
+                    environment_id=infra["environmentID"],
+                    active=infra["isActive"],
+                )
+        return None
+
+    def get_infrastructure_manifest(self, infra_id: str) -> str | None:
+        """Gets the infrastructure manifest for an existing infrastructure."""
+        query = """
+        query getInfraManifest($projectID: ID!, $infraID: ID!, $upgrade: Boolean!) {
+            getInfraManifest(projectID: $projectID, infraID: $infraID, upgrade: $upgrade)
+            }
+        }
+        """
+        variables = {
+            "projectID": self._default_project_id,
+            "infraID": infra_id,
+            "upgrade": True,
+        }
+
+        data = self._execute_gql(query, variables)
+        if not data:
+            return None
+        return data.get("getInfraManifest")
+
+    def list_projects(self) -> List[ChaosProject]:
         """List all projects accessible to the current account."""
         if data := self._execute_rest("GET", "/auth/list_projects"):
             return [
@@ -110,7 +216,7 @@ class LitmusClient:
             ]
         return []
 
-    def create_chaos_environment(self, project_id: str, name: str):
+    def create_environment(self, project_id: str, name: str):
         """Create a Chaos Environment."""
         query = """
         mutation createEnvironment($projectID: ID!, $request: CreateEnvironmentRequest!) {
