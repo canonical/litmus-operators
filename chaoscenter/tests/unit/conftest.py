@@ -138,3 +138,14 @@ def workload_tracing_relation():
             )
         },
     )
+
+
+@pytest.fixture
+def litmus_infrastructure_relation():
+    return Relation(
+        "litmus-infrastructure",
+        remote_app_data={
+            "infrastructure_name": json.dumps("name"),
+            "model_name": json.dumps("model"),
+        },
+    )

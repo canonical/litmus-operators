@@ -31,7 +31,7 @@ class ChaosInfrastructure:
     active: bool
 
 
-class LitmusClientException(Exception):
+class LitmusAPIException(Exception):
     """Custom exception for LitmusClient errors."""
 
 
@@ -86,7 +86,7 @@ class LitmusClient:
         except Exception as e:
             self._token = None
             self._default_project_id = None
-            raise LitmusClientException(
+            raise LitmusAPIException(
                 f"Failed to login to Litmus API at {self._endpoint}: {e}"
             )
 
@@ -97,23 +97,17 @@ class LitmusClient:
             resp = requests.request(
                 method=method, url=url, headers=self._get_auth_header(), timeout=10
             )
-
-            if resp.status_code != 200:
-                logger.error(
-                    "REST request failed (Status %s): %s", resp.status_code, resp.text
-                )
-                return None
+            resp.raise_for_status()
 
             data = resp.json()
             if data.get("errors"):
-                logger.error(
-                    "REST request returned errors: %s", data["errors"][0].get("message")
+                raise LitmusAPIException(
+                    f"REST request returned errors: {data['errors'][0].get('message')}"
                 )
-                return None
 
             return data.get("data", {})
         except requests.RequestException as e:
-            raise LitmusClientException(f"REST request to {url} failed: {e}")
+            raise LitmusAPIException(f"REST request to {url} failed: {e}")
 
     def _execute_gql(self, query: str, variables: dict | None = None) -> dict | None:
         """Executes a GraphQL request."""
@@ -127,12 +121,13 @@ class LitmusClient:
             data = resp.json()
 
             if data.get("errors"):
-                logger.error("GraphQL error: %s", data["errors"][0]["message"])
-                return None
+                raise LitmusAPIException(
+                    f"GraphQL request returned errors: {data['errors'][0].get('message')}"
+                )
 
             return data.get("data", {})
         except requests.RequestException as e:
-            raise LitmusClientException(
+            raise LitmusAPIException(
                 f"GraphQL request for query {query} with vars {variables} failed: {e}"
             )
 
@@ -216,7 +211,7 @@ class LitmusClient:
         variables = {
             "projectID": project_id,
             "infraID": infra_id,
-            "upgrade": False,
+            "upgrade": True,
         }
 
         data = self._execute_gql(query, variables)
