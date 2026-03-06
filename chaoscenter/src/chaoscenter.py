@@ -1,7 +1,7 @@
 # Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-from typing import Callable
+from typing import Callable, Optional
 
 from ops import Secret
 
@@ -12,7 +12,9 @@ from user_manager import UserManager
 class Chaoscenter:
     """Represents the Chaoscenter workload state and encapsulates all logic to operate it."""
 
-    def __init__(self, user_secret_id: str, get_secret: Callable[[str], Secret]):
+    def __init__(
+        self, user_secret_id: Optional[str], get_secret: Callable[[str], Secret]
+    ):
         self._user_manager = UserManager(
             secret_id=user_secret_id,
             get_secret=get_secret,

@@ -76,7 +76,7 @@ class UserManager:
 
     def __init__(
         self,
-        secret_id: str,
+        secret_id: Optional[str],
         get_secret: Callable[[str], Optional[Secret]],
         make_client: Callable[[str, str], LitmusClient],
     ):
@@ -87,7 +87,7 @@ class UserManager:
     @property
     def user_secrets_valid(self) -> bool:
         """Returns True if the UserManager is ready to manage credentials, False otherwise."""
-        if not self._secret:
+        if not self._secret_id or not self._secret:
             return False
         if not self._validate_secret_content(self._secret.get_content()):
             return False
@@ -98,6 +98,9 @@ class UserManager:
         """The secret containing user credentials for the admin and the 'charm' bot account."""
         secret_id = self._secret_id
         if not secret_id:
+            logger.warning(
+                "no user secret configure; run `juju config <app-name> user-secret=<secret ID>`"
+            )
             return None
         if not secret_id.startswith("secret:"):
             logger.warning(

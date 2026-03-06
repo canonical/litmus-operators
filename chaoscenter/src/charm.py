@@ -5,6 +5,7 @@
 
 import logging
 import socket
+import typing
 from typing import Optional, Dict, cast, Any
 
 import cosl
@@ -105,7 +106,7 @@ class LitmusChaoscenterCharm(CharmBase):
 
         self._self_monitoring = SelfMonitoring(self)
         self._chaoscenter = Chaoscenter(
-            user_secret_id=self.config.get("user_secrets"),
+            user_secret_id=self._user_credentials_secret,
             get_secret=lambda secret_id: self.model.get_secret(id=secret_id),
         )
 
@@ -309,7 +310,7 @@ class LitmusChaoscenterCharm(CharmBase):
     @property
     def _user_credentials_secret(self) -> Optional[str]:
         """The secret ID configured for user credentials, or None if not set."""
-        return self.config.get("user_secrets")
+        return typing.cast(Optional[str], self.config.get("user_secrets"))
 
     ###################
     # EVENT OBSERVERS #
