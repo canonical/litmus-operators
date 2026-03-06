@@ -1,7 +1,7 @@
 # Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-"""Unit tests for litmusctl.Litmusctl."""
+"""Unit tests for Litmus API wrapper."""
 
 import requests
 import requests_mock
