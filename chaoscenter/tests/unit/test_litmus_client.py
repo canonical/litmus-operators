@@ -1,8 +1,9 @@
 # Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-"""Unit tests for litmusctl.Litmusctl."""
+"""Unit tests for Litmus API wrapper."""
 
+import requests
 import requests_mock
 import pytest
 
@@ -88,6 +89,44 @@ class TestRESTMethods:
         # THEN: The method should return an empty list
         assert projects == []
 
+    def test_execute_rest_errors_in_response(self, client, mock_api, caplog):
+        # GIVEN: The REST endpoint returns 200 but with an "errors" field
+        client._token = "valid-token"
+        mock_api.get(REST_URL, json={"errors": [{"message": "something went wrong"}]})
+
+        # WHEN: Requesting projects
+        projects = client.get_projects()
+
+        # THEN: The method returns empty and the error is logged
+        assert projects == []
+        assert "REST request returned errors: something went wrong" in caplog.text
+
+    def test_execute_rest_request_exception(self, client, mock_api, caplog):
+        # GIVEN: The REST endpoint raises a network error
+        client._token = "valid-token"
+        mock_api.get(
+            REST_URL, exc=requests.exceptions.ConnectionError("connection refused")
+        )
+
+        # WHEN: Requesting projects
+        projects = client.get_projects()
+
+        # THEN: The method returns empty and the error is logged
+        assert projects == []
+        assert "REST request failed" in caplog.text
+
+    def test_user_exists_non_list_response(self, client, mock_api, caplog):
+        # GIVEN: The /auth/users endpoint returns a non-list (unexpected format)
+        client._token = "valid-token"
+        mock_api.get(f"{BASE_URL}/auth/users", json={"unexpected": "dict"})
+
+        # WHEN: Checking if a user exists
+        result = client.user_exists("someuser")
+
+        # THEN: The method returns False and a warning is logged
+        assert result is False
+        assert "Unexpected response format" in caplog.text
+
 
 class TestGraphQLMethods:
     def test_create_environment(self, client, mock_api):
@@ -119,3 +158,15 @@ class TestGraphQLMethods:
         # THEN: The result should be None and the error should be logged
         assert result is None
         assert "GraphQL error: Environment name already taken" in caplog.text
+
+    def test_gql_request_exception(self, client, mock_api, caplog):
+        # GIVEN: The GQL endpoint raises a network error
+        client._token = "valid-token"
+        mock_api.post(GQL_URL, exc=requests.exceptions.ConnectionError("timeout"))
+
+        # WHEN: Executing the GQL call
+        result = client._execute_gql("mutation { ... }")
+
+        # THEN: The result is None and the error is logged
+        assert result is None
+        assert "GraphQL request failed" in caplog.text
