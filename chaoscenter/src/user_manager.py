@@ -18,14 +18,16 @@ which means the data in the database will still be accessible.
 """
 
 import logging
+import secrets
 from typing import Optional, Dict, Callable
 import pydantic
 
 from ops import Secret
 
-from litmusctl import Litmusctl, LitmusctlError
+from litmus_client import LitmusClient, DEFAULT_ADMIN_PASSWORD
 
 logger = logging.getLogger(__name__)
+
 
 class _UserSecretModel(pydantic.BaseModel):
     """Pydantic model representing the expected structure of the secret containing user credentials."""
@@ -35,10 +37,19 @@ class _UserSecretModel(pydantic.BaseModel):
 
 class UserManager:
     """Manages user operations for all charm-owned and default accounts."""
-    def __init__(self, secret_id: Optional[str], get_secret: Callable[str, Optional[Secret]], litmusctl: Litmusctl):
+
+    # Name of the bot account the charm uses for internal operations.
+    CHARM_USERNAME = "charm"
+
+    def __init__(
+        self,
+        secret_id: Optional[str],
+        get_secret: Callable[[str], Optional[Secret]],
+        make_client: Callable[[str, str], LitmusClient],
+    ):
         self._secret_id = secret_id
         self._get_secret = get_secret
-        self._litmusctl = litmusctl
+        self._make_client = make_client
 
     @property
     def _secret(self) -> Optional[Secret]:
@@ -105,8 +116,8 @@ class UserManager:
 
         # else: either credentials haven't changed, or this is the first time we're reconciling.
         # if the latter, we need to apply the credentials, else it's a no-op.
-        # since we can't quite tell, we attempt to apply them and hope that litmusctl is idempotent in the case of
-        # already-set credentials; if it isn't, we'll need to store the fact that we've applied them in some way.
+        # since we can't quite tell, we attempt to apply them: the API calls are idempotent
+        # (login succeeds if credentials are already correct; user creation is skipped if user exists).
         else:
             logger.info("secret contents have not changed since last revision; ensuring credentials are applied")
             if self._validate_secret_content(current_creds):
@@ -120,11 +131,56 @@ class UserManager:
 
     def _apply_credentials(self, creds: _UserSecretModel) -> bool:
         """Apply the given credentials to the system. Returns True if successful, False otherwise."""
-        logger.debug("applying credentials via litmusctl")
+        logger.debug("applying user credentials via Litmus API")
         try:
-            self._litmusctl.set_account("admin", creds.admin_password)
-            self._litmusctl.set_account("charm", creds.charm_password)
-        except LitmusctlError:
-            logger.exception("failed to apply credentials via litmusctl")
+            self._ensure_admin_password(creds.admin_password)
+            self._ensure_charm_user(creds.admin_password, creds.charm_password)
+        except Exception:
+            logger.exception("failed to apply user credentials")
             return False
         return True
+
+    def _ensure_admin_password(self, target_password: str) -> None:
+        """Ensure the admin account uses target_password.
+
+        Litmus ships with a default admin password ("litmus"). On first deployment the charm
+        resets it from the Litmus default to the value in the secret. On subsequent reconciles
+        a successful login with target_password is a no-op.
+        """
+        client = self._make_client("admin", target_password)
+        if client.can_login():
+            logger.debug("admin credentials already correct")
+            return
+
+        # Not logged in with target password – try the Litmus factory default.
+        logger.info("admin login with target password failed; attempting reset from default password")
+        default_client = self._make_client("admin", DEFAULT_ADMIN_PASSWORD)
+        default_client.set_password(DEFAULT_ADMIN_PASSWORD, target_password)
+        logger.info("admin password updated successfully")
+
+    def _ensure_charm_user(self, admin_password: str, charm_password: str) -> None:
+        """Ensure the charm bot account exists with charm_password.
+
+        If the user does not yet exist it is created with a random temporary password and
+        immediately reset to charm_password (bypassing the forced-reset-on-first-login
+        restriction in Litmus).
+        """
+        admin = self._make_client("admin", admin_password)
+
+        if not admin.user_exists(self.CHARM_USERNAME):
+            logger.info("charm user does not exist; creating with temporary password")
+            temp_password = secrets.token_urlsafe(16)
+            admin.create_user(self.CHARM_USERNAME, temp_password)
+            charm = self._make_client(self.CHARM_USERNAME, temp_password)
+            charm.set_password(temp_password, charm_password)
+            logger.info("charm user created and password set")
+            return
+
+        charm = self._make_client(self.CHARM_USERNAME, charm_password)
+        if charm.can_login():
+            logger.debug("charm credentials already correct")
+        else:
+            raise Exception(
+                "charm user exists but login with the configured password failed; "
+                "ensure the secret contains the correct current charm password"
+            )

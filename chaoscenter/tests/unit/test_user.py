@@ -33,8 +33,8 @@ def _make_secret(current: dict, next_: dict | None = None) -> MagicMock:
 
 def _make_user_manager(secret_id: str | None, secret: Secret | None = None) -> UserManager:
     get_secret = MagicMock(return_value=secret)
-    litmusctl = MagicMock()
-    return UserManager(secret_id=secret_id, get_secret=get_secret, litmusctl=litmusctl), get_secret
+    make_client = MagicMock()
+    return UserManager(secret_id=secret_id, get_secret=get_secret, make_client=make_client), get_secret
 
 
 class TestSecretResolution:

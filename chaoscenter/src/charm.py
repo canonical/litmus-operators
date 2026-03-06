@@ -108,7 +108,6 @@ class LitmusChaoscenterCharm(CharmBase):
         self._chaoscenter = Chaoscenter(
             user_secret_id=self.config.get("user_secrets"),
             get_secret=lambda secret_id: self.model.get_secret(id=secret_id),
-            container=self.unit.get_container(container_name),
         )
 
         self.nginx_exporter = NginxPrometheusExporter(

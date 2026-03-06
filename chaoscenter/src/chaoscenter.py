@@ -6,7 +6,7 @@ from typing import Callable
 import ops
 from ops import Secret
 
-from litmusctl import Litmusctl
+from litmus_client import LitmusClient, LITMUS_ENDPOINT
 from user_manager import UserManager
 
 
@@ -15,10 +15,14 @@ class Chaoscenter:
 
     def __init__(self,
                  user_secret_id: str,
-                 get_secret: Callable[[str], Secret],
-                 container: ops.Container):
-        self._cli = cli = Litmusctl(container)
-        self._user_manager = UserManager(user_secret_id, get_secret, cli)
+                 get_secret: Callable[[str], Secret]):
+        self._user_manager = UserManager(
+            secret_id=user_secret_id,
+            get_secret=get_secret,
+            make_client=lambda username, password: LitmusClient(
+                endpoint=LITMUS_ENDPOINT, username=username, password=password
+            ),
+        )
 
     def reconcile(self):
         """Reconcile the state of the application, ensuring that all components are in their desired state."""

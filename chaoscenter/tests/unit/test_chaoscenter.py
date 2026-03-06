@@ -3,13 +3,18 @@
 
 """Scenario (state-transition) tests for Chaoscenter user-credential management."""
 
-from dataclasses import replace
-
 import ops
 import pytest
-from ops.testing import CharmEvents, Exec, State
+import requests_mock as requests_mock_module
+from ops.testing import CharmEvents, State
 
-from litmusctl import LITMUSCTL_ENDPOINT
+from litmus_client import LITMUS_ENDPOINT
+
+
+AUTH_URL = f"{LITMUS_ENDPOINT}/auth/login"
+USERS_URL = f"{LITMUS_ENDPOINT}/auth/users"
+CREATE_URL = f"{LITMUS_ENDPOINT}/auth/create"
+UPDATE_PASSWORD_URL = f"{LITMUS_ENDPOINT}/auth/update/password"
 
 
 # ---------------------------------------------------------------------------
@@ -45,11 +50,11 @@ def test_missing_user_secrets_sets_blocked_status(
 
 
 # ---------------------------------------------------------------------------
-# Test 2 – valid credentials → litmusctl set-account calls are made
+# Test 2 – valid credentials → Litmus API calls are made correctly
 # ---------------------------------------------------------------------------
 
 
-def test_valid_credentials_calls_litmusctl_set_account(
+def test_valid_credentials_calls_litmus_api(
     ctx,
     nginx_container,
     nginx_prometheus_exporter_container,
@@ -58,39 +63,29 @@ def test_valid_credentials_calls_litmusctl_set_account(
     user_secret,
     user_secrets_config,
 ):
-    # GIVEN a container with Exec mocks for the expected litmusctl calls
-    container = replace(
-        nginx_container,
-        execs={
-            Exec(["update-ca-certificates", "--fresh"], return_code=0),
-            Exec(["litmusctl", "config", "set-account"], return_code=0),
-        },
-    )
-    state = State(
-        containers={container, nginx_prometheus_exporter_container},
-        relations={auth_http_api_relation, backend_http_api_relation},
-        config=user_secrets_config,
-        secrets=[user_secret],
-    )
+    # GIVEN mocked Litmus API endpoints
+    with requests_mock_module.Mocker() as m:
+        # admin login with target password fails (first deployment)
+        m.post(AUTH_URL, [
+            {"status_code": 401},           # admin / target password – not yet set
+            {"json": {"accessToken": "tok"}, "status_code": 200},  # admin / default password
+            {"json": {"accessToken": "tok"}, "status_code": 200},  # admin login for user_exists
+        ])
+        m.post(UPDATE_PASSWORD_URL, status_code=200, json={})
+        m.get(USERS_URL, json=[])  # charm user does not exist yet
+        m.post(CREATE_URL, status_code=200, json={})
 
-    # WHEN any event fires
-    ctx.run(ctx.on.config_changed(), state=state)
+        state = State(
+            containers={nginx_container, nginx_prometheus_exporter_container},
+            relations={auth_http_api_relation, backend_http_api_relation},
+            config=user_secrets_config,
+            secrets=[user_secret],
+        )
 
-    # THEN litmusctl config set-account is called for the admin account
-    exec_commands = [args.command for args in ctx.exec_history.get("chaoscenter", [])]
-    assert [
-        "litmusctl", "config", "set-account",
-        "--endpoint", LITMUSCTL_ENDPOINT,
-        "--username", "admin",
-        "--password", "admin123",
-        "--non-interactive",
-    ] in exec_commands
+        # WHEN any event fires
+        ctx.run(ctx.on.config_changed(), state=state)
 
-    # AND for the charm bot account
-    assert [
-        "litmusctl", "config", "set-account",
-        "--endpoint", LITMUSCTL_ENDPOINT,
-        "--username", "charm",
-        "--password", "charm123",
-        "--non-interactive",
-    ] in exec_commands
+    # THEN the reset-password endpoint was called for admin
+    assert any(r.url == UPDATE_PASSWORD_URL for r in m.request_history)
+    # AND the create endpoint was called for the charm user
+    assert any(r.url == CREATE_URL for r in m.request_history)

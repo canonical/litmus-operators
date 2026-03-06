@@ -8,12 +8,14 @@ import logging
 from typing import Any, List
 
 import requests
+from requests import HTTPError
 
 logger = logging.getLogger(__name__)
 
 LITMUSCTL_BIN = "litmusctl"
 DEFAULT_ADMIN_USERNAME = "admin"
 DEFAULT_ADMIN_PASSWORD = "litmus"
+LITMUS_ENDPOINT = "http://localhost:8185"
 
 
 @dataclass
@@ -131,3 +133,56 @@ class LitmusClient:
             },
         }
         self._execute_gql(query, variables)
+
+    def can_login(self) -> bool:
+        """Try to authenticate and return True if credentials are valid."""
+        self._login()
+        return self._token is not None
+
+    def set_password(self, old_password: str, new_password: str) -> None:
+        """Change the current user's password.
+
+        Raises HTTPError on failure.
+        """
+        url = f"{self._endpoint}/auth/update/password"
+        payload = {
+            "username": self._username,
+            "OldPassword": old_password,
+            "NewPassword": new_password,
+        }
+        resp = requests.post(url, json=payload, headers=self._get_auth_header(), timeout=10)
+        resp.raise_for_status()
+        # Invalidate cached token - must re-login with new password
+        self._password = new_password
+        self._token = None
+
+    def create_user(self, username: str, password: str, name: str = "", email: str = "") -> None:
+        """Create a new user account (requires admin privileges).
+
+        Raises HTTPError on failure.
+        """
+        url = f"{self._endpoint}/auth/create"
+        payload = {
+            "username": username,
+            "password": password,
+            "name": name or username,
+            "email": email,
+            "role": "user",
+        }
+        resp = requests.post(url, json=payload, headers=self._get_auth_header(), timeout=10)
+        resp.raise_for_status()
+
+    def user_exists(self, username: str) -> bool:
+        """Return True if a user with the given username exists (requires admin privileges)."""
+        url = f"{self._endpoint}/auth/users"
+        try:
+            resp = requests.get(url, headers=self._get_auth_header(), timeout=10)
+            resp.raise_for_status()
+            users = resp.json()
+            if isinstance(users, list):
+                return any(u.get("username") == username for u in users)
+            logger.warning("Unexpected response format from /auth/users")
+            return False
+        except requests.RequestException as e:
+            logger.error("user_exists request failed: %s", e)
+            return False
