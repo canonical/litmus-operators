@@ -39,6 +39,19 @@ parts:
     #   craftctl default
     #   git describe --always > $CRAFT_PART_INSTALL/version
 
+requires: 
+  charm-tracing:
+    optional: true
+    interface: tracing
+    description: |
+      Request a tracing endpoint through which this application will send its charm traces to a 
+      tracing backend.
+    limit: 1
+  receive-ca-certs:
+    interface: certificate_transfer
+    optional: true
+    description: |
+      Receive CA certificates from a certificates provider charm.
 provides: 
   litmus-infrastructure:
     interface: litmus-infrastructure

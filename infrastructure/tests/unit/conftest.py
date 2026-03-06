@@ -19,3 +19,8 @@ def infra_charm():
 @pytest.fixture
 def ctx(infra_charm):
     yield Context(charm_type=infra_charm)
+
+
+@pytest.fixture
+def mock_cert_path(tmp_path):
+    return tmp_path / "certs" / "ca-certificates.crt"

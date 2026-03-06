@@ -22,6 +22,7 @@ dev = [
 
 # INTEGRATION TESTS
     "pytest-jubilant",
+    "requests",
     
 #   LINTING
     "pyright",
