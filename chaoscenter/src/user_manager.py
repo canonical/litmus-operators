@@ -18,6 +18,7 @@ which means the data in the database will still be accessible.
 """
 
 import logging
+import re
 import secrets
 from typing import Optional, Dict, Callable
 import pydantic
@@ -31,8 +32,40 @@ logger = logging.getLogger(__name__)
 
 class _UserSecretModel(pydantic.BaseModel):
     """Pydantic model representing the expected structure of the secret containing user credentials."""
-    admin_password: str
-    charm_password: str
+
+    # config to use alias by default since juju secrets don't support underscores in keys
+    model_config = pydantic.ConfigDict(validate_by_alias=True, extra="ignore")
+
+    admin_password: str = pydantic.Field(alias="admin-password")
+    charm_password: str = pydantic.Field(alias="charm-password")
+
+    @pydantic.field_validator("admin_password", "charm_password", mode="after")
+    @classmethod
+    def _validate_litmus_password_policy(
+        cls, v: str, info: pydantic.ValidationInfo
+    ) -> str:
+        """Validate password against Litmus's strict password policy.
+
+        Litmus requires: 8–16 characters, at least one digit, one lowercase letter,
+        one uppercase letter, and one special character from [@$!%*?_&#].
+        See: chaoscenter/authentication/pkg/utils/sanitizers.go ValidateStrictPassword.
+        """
+        errors = []
+        if len(v) < 8:
+            errors.append("must be at least 8 characters long")
+        if len(v) > 16:
+            errors.append("must be at most 16 characters long")
+        if not re.search(r"[0-9]", v):
+            errors.append("must contain at least one digit")
+        if not re.search(r"[a-z]", v):
+            errors.append("must contain at least one lowercase letter")
+        if not re.search(r"[A-Z]", v):
+            errors.append("must contain at least one uppercase letter")
+        if not re.search(r"[@$!%*?_&#]", v):
+            errors.append("must contain at least one special character (@$!%*?_&#)")
+        if errors:
+            raise ValueError(f"{info.field_name}: " + "; ".join(errors))
+        return v
 
 
 class UserManager:
@@ -43,13 +76,22 @@ class UserManager:
 
     def __init__(
         self,
-        secret_id: Optional[str],
+        secret_id: str,
         get_secret: Callable[[str], Optional[Secret]],
         make_client: Callable[[str, str], LitmusClient],
     ):
         self._secret_id = secret_id
         self._get_secret = get_secret
         self._make_client = make_client
+
+    @property
+    def user_secrets_valid(self) -> bool:
+        """Returns True if the UserManager is ready to manage credentials, False otherwise."""
+        if not self._secret:
+            return False
+        if not self._validate_secret_content(self._secret.get_content()):
+            return False
+        return True
 
     @property
     def _secret(self) -> Optional[Secret]:
@@ -82,10 +124,7 @@ class UserManager:
         return True
 
     def reconcile(self):
-        """Verify that the secret is valid and the currently set credentials are up to date.
-
-
-        """
+        """Verify that the secret is valid and the currently set credentials are up to date."""
 
         secret = self._secret
         if not secret:
@@ -98,7 +137,9 @@ class UserManager:
 
         # if the credentials have changed since the last time we applied them, validate and apply the new credentials
         if current_creds != next_creds:
-            logger.info("secret contents have changed from earlier revision; validating new credentials")
+            logger.info(
+                "secret contents have changed from earlier revision; validating new credentials"
+            )
             if not self._validate_secret_content(next_creds):
                 logger.warning("invalid secret contents; ignoring changes")
                 return
@@ -112,31 +153,44 @@ class UserManager:
                 secret.get_content(refresh=True)
 
             else:
-                logger.warning("failed to apply new credentials; will retry on next reconcile")
+                logger.warning(
+                    "failed to apply new credentials; will retry on next reconcile"
+                )
 
         # else: either credentials haven't changed, or this is the first time we're reconciling.
         # if the latter, we need to apply the credentials, else it's a no-op.
         # since we can't quite tell, we attempt to apply them: the API calls are idempotent
         # (login succeeds if credentials are already correct; user creation is skipped if user exists).
         else:
-            logger.info("secret contents have not changed since last revision; ensuring credentials are applied")
+            logger.info(
+                "secret contents have not changed since last revision; ensuring credentials are applied"
+            )
             if self._validate_secret_content(current_creds):
                 creds = _UserSecretModel.model_validate(current_creds)
                 if self._apply_credentials(creds):
                     logger.debug("successfully applied user credentials")
                 else:
-                    logger.warning("failed to apply user credentials; will retry on next reconcile")
+                    logger.warning(
+                        "failed to apply user credentials; will retry on next reconcile"
+                    )
             else:
                 logger.warning("invalid secret contents; cannot apply credentials")
 
     def _apply_credentials(self, creds: _UserSecretModel) -> bool:
         """Apply the given credentials to the system. Returns True if successful, False otherwise."""
         logger.debug("applying user credentials via Litmus API")
+        errors = False
         try:
             self._ensure_admin_password(creds.admin_password)
+        except Exception:
+            logger.exception("failed to apply admin user credentials")
+            errors = True
+        try:
             self._ensure_charm_user(creds.admin_password, creds.charm_password)
         except Exception:
-            logger.exception("failed to apply user credentials")
+            logger.exception("failed to apply charm user credentials")
+            errors = True
+        if errors:
             return False
         return True
 
@@ -153,7 +207,9 @@ class UserManager:
             return
 
         # Not logged in with target password – try the Litmus factory default.
-        logger.info("admin login with target password failed; attempting reset from default password")
+        logger.info(
+            "admin login with target password failed; attempting reset from default password"
+        )
         default_client = self._make_client("admin", DEFAULT_ADMIN_PASSWORD)
         default_client.set_password(DEFAULT_ADMIN_PASSWORD, target_password)
         logger.info("admin password updated successfully")

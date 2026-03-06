@@ -377,3 +377,15 @@ def test_config_contains_tracing_config(
         "juju_charm_name",
     }:
         assert f"otel_resource_attr {key}" in config
+
+
+def test_get_scheme_from_url_returns_http_when_scheme_empty():
+    # GIVEN a URL parsed without a scheme (scheme is empty string)
+    url = urlparse("//foo.bar:80")
+    assert url.scheme == ""
+
+    # WHEN calling _get_scheme_from_url
+    scheme = nginx_config._get_scheme_from_url(url)
+
+    # THEN the fallback "http" is returned
+    assert scheme == "http"

@@ -144,7 +144,10 @@ def workload_tracing_relation():
 def user_secret():
     """A Juju secret carrying valid admin and charm passwords."""
     return Secret(
-        tracked_content={"admin_password": "admin123", "charm_password": "charm123"},
+        tracked_content={
+            "admin-password": "Admin1!pass",
+            "charm-password": "Charm1!pass",
+        },
     )
 
 

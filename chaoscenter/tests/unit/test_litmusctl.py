@@ -12,7 +12,9 @@ import pytest
 from litmusctl import Litmusctl, LitmusctlError, LITMUSCTL_ENDPOINT
 
 
-def _make_litmusctl(stdout: str = "", exit_code: int = 0) -> tuple[Litmusctl, MagicMock]:
+def _make_litmusctl(
+    stdout: str = "", exit_code: int = 0
+) -> tuple[Litmusctl, MagicMock]:
     """Return a Litmusctl wired to a mock container.
 
     The mock container's exec() returns a process whose wait_output() either
@@ -62,24 +64,40 @@ class TestConfig:
     def test_set_account_uses_hardcoded_endpoint(self):
         lctl, container = _make_litmusctl()
         lctl.set_account(username="admin", password="s3cr3t")
-        container.exec.assert_called_once_with([
-            "litmusctl", "config", "set-account",
-            "--endpoint", LITMUSCTL_ENDPOINT,
-            "--username", "admin",
-            "--password", "s3cr3t",
-            "--non-interactive",
-        ])
+        container.exec.assert_called_once_with(
+            [
+                "litmusctl",
+                "config",
+                "set-account",
+                "--endpoint",
+                LITMUSCTL_ENDPOINT,
+                "--username",
+                "admin",
+                "--password",
+                "s3cr3t",
+                "--non-interactive",
+            ]
+        )
 
     def test_config_set_account(self):
         lctl, container = _make_litmusctl()
-        lctl.config_set_account(endpoint="http://chaos:9091", username="admin", password="s3cr3t")
-        container.exec.assert_called_once_with([
-            "litmusctl", "config", "set-account",
-            "--endpoint", "http://chaos:9091",
-            "--username", "admin",
-            "--password", "s3cr3t",
-            "--non-interactive",
-        ])
+        lctl.config_set_account(
+            endpoint="http://chaos:9091", username="admin", password="s3cr3t"
+        )
+        container.exec.assert_called_once_with(
+            [
+                "litmusctl",
+                "config",
+                "set-account",
+                "--endpoint",
+                "http://chaos:9091",
+                "--username",
+                "admin",
+                "--password",
+                "s3cr3t",
+                "--non-interactive",
+            ]
+        )
 
     def test_config_get_accounts_returns_output(self):
         lctl, _ = _make_litmusctl(stdout="CURRENT   ENDPOINT\n* http://chaos:9091")
@@ -122,11 +140,17 @@ class TestGet:
     def test_get_chaos_environments_with_environment_id(self):
         lctl, container = _make_litmusctl()
         lctl.get_chaos_environments(project_id="proj-1", environment_id="env-42")
-        container.exec.assert_called_once_with([
-            "litmusctl", "get", "chaos-environments",
-            "--project-id", "proj-1",
-            "--environment-id", "env-42",
-        ])
+        container.exec.assert_called_once_with(
+            [
+                "litmusctl",
+                "get",
+                "chaos-environments",
+                "--project-id",
+                "proj-1",
+                "--environment-id",
+                "env-42",
+            ]
+        )
 
     def test_get_returns_stdout(self):
         lctl, _ = _make_litmusctl(stdout="project-output")
@@ -146,11 +170,17 @@ class TestCreate:
     def test_create_chaos_environment(self):
         lctl, container = _make_litmusctl()
         lctl.create_chaos_environment(project_id="proj-1", name="my-env")
-        container.exec.assert_called_once_with([
-            "litmusctl", "create", "chaos-environment",
-            "--project-id", "proj-1",
-            "--name", "my-env",
-        ])
+        container.exec.assert_called_once_with(
+            [
+                "litmusctl",
+                "create",
+                "chaos-environment",
+                "--project-id",
+                "proj-1",
+                "--name",
+                "my-env",
+            ]
+        )
 
     def test_create_returns_stdout(self):
         lctl, _ = _make_litmusctl(stdout="created project-id: proj-1")
@@ -164,11 +194,17 @@ class TestDelete:
     def test_delete_chaos_environment(self):
         lctl, container = _make_litmusctl()
         lctl.delete_chaos_environment(project_id="proj-1", environment_id="env-42")
-        container.exec.assert_called_once_with([
-            "litmusctl", "delete", "chaos-environment",
-            "--project-id", "proj-1",
-            "--environment-id", "env-42",
-        ])
+        container.exec.assert_called_once_with(
+            [
+                "litmusctl",
+                "delete",
+                "chaos-environment",
+                "--project-id",
+                "proj-1",
+                "--environment-id",
+                "env-42",
+            ]
+        )
 
     def test_delete_raises_on_failure(self):
         lctl, _ = _make_litmusctl(exit_code=1)

@@ -4,7 +4,7 @@ from unittest.mock import PropertyMock, patch
 
 from ops.testing import State
 import pytest
-from conftest import  patch_cert_and_key_ctx
+from conftest import patch_cert_and_key_ctx
 
 
 def test_pebble_empty_plan(ctx, nginx_container, nginx_prometheus_exporter_container):
@@ -114,7 +114,9 @@ def test_nginx_exporter_pebble_ready_plan(
         new_callable=PropertyMock(return_value=tls),
     ):
         # WHEN a workload pebble ready event is fired
-        state_out = ctx.run(ctx.on.pebble_ready(nginx_prometheus_exporter_container), state=state)
+        state_out = ctx.run(
+            ctx.on.pebble_ready(nginx_prometheus_exporter_container), state=state
+        )
 
     # THEN nginx prometheus exporter pebble plan is generated
     nginx_prometheus_exporter_container_out = state_out.get_container(

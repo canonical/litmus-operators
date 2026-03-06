@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 LITMUSCTL_BIN = "litmusctl"
 # The ChaosCenter frontend (nginx) is always reachable at this address from within the container.
-LITMUSCTL_ENDPOINT = f"http://localhost:8185"
+LITMUSCTL_ENDPOINT = "http://localhost:8185"
 
 
 class LitmusctlError(Exception):
@@ -58,13 +58,19 @@ class Litmusctl:
 
     def config_set_account(self, endpoint: str, username: str, password: str) -> None:
         """Register a ChaosCenter account (litmusctl config set-account)."""
-        self._run([
-            "config", "set-account",
-            "--endpoint", endpoint,
-            "--username", username,
-            "--password", password,
-            "--non-interactive",
-        ])
+        self._run(
+            [
+                "config",
+                "set-account",
+                "--endpoint",
+                endpoint,
+                "--username",
+                username,
+                "--password",
+                password,
+                "--non-interactive",
+            ]
+        )
 
     def config_get_accounts(self) -> str:
         """Return accounts defined in the litmusconfig (litmusctl config get-accounts)."""
@@ -82,7 +88,9 @@ class Litmusctl:
         """List Chaos Infrastructures within a project (litmusctl get chaos-infra)."""
         return self._run(["get", "chaos-infra", "--project-id", project_id])
 
-    def get_chaos_environments(self, project_id: str, environment_id: Optional[str] = None) -> str:
+    def get_chaos_environments(
+        self, project_id: str, environment_id: Optional[str] = None
+    ) -> str:
         """List Chaos Environments within a project (litmusctl get chaos-environments).
 
         Pass environment_id to narrow the result to a single environment.
@@ -98,16 +106,26 @@ class Litmusctl:
 
     def create_chaos_environment(self, project_id: str, name: str) -> str:
         """Create a Chaos Environment (litmusctl create chaos-environment)."""
-        return self._run([
-            "create", "chaos-environment",
-            "--project-id", project_id,
-            "--name", name,
-        ])
+        return self._run(
+            [
+                "create",
+                "chaos-environment",
+                "--project-id",
+                project_id,
+                "--name",
+                name,
+            ]
+        )
 
     def delete_chaos_environment(self, project_id: str, environment_id: str) -> None:
         """Delete a Chaos Environment (litmusctl delete chaos-environment)."""
-        self._run([
-            "delete", "chaos-environment",
-            "--project-id", project_id,
-            "--environment-id", environment_id,
-        ])
+        self._run(
+            [
+                "delete",
+                "chaos-environment",
+                "--project-id",
+                project_id,
+                "--environment-id",
+                environment_id,
+            ]
+        )

@@ -8,7 +8,6 @@ import logging
 from typing import Any, List
 
 import requests
-from requests import HTTPError
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +19,8 @@ LITMUS_ENDPOINT = "http://localhost:8185"
 
 @dataclass
 class ChaosProject:
+    """Litmus project data structure."""
+
     id: str
     name: str
 
@@ -150,18 +151,22 @@ class LitmusClient:
             "OldPassword": old_password,
             "NewPassword": new_password,
         }
-        resp = requests.post(url, json=payload, headers=self._get_auth_header(), timeout=10)
+        resp = requests.post(
+            url, json=payload, headers=self._get_auth_header(), timeout=10
+        )
         resp.raise_for_status()
         # Invalidate cached token - must re-login with new password
         self._password = new_password
         self._token = None
 
-    def create_user(self, username: str, password: str, name: str = "", email: str = "") -> None:
+    def create_user(
+        self, username: str, password: str, name: str = "", email: str = ""
+    ) -> None:
         """Create a new user account (requires admin privileges).
 
         Raises HTTPError on failure.
         """
-        url = f"{self._endpoint}/auth/create"
+        url = f"{self._endpoint}/auth/create_user"
         payload = {
             "username": username,
             "password": password,
@@ -169,7 +174,9 @@ class LitmusClient:
             "email": email,
             "role": "user",
         }
-        resp = requests.post(url, json=payload, headers=self._get_auth_header(), timeout=10)
+        resp = requests.post(
+            url, json=payload, headers=self._get_auth_header(), timeout=10
+        )
         resp.raise_for_status()
 
     def user_exists(self, username: str) -> bool:

@@ -13,7 +13,7 @@ from litmus_client import LITMUS_ENDPOINT
 
 AUTH_URL = f"{LITMUS_ENDPOINT}/auth/login"
 USERS_URL = f"{LITMUS_ENDPOINT}/auth/users"
-CREATE_URL = f"{LITMUS_ENDPOINT}/auth/create"
+CREATE_URL = f"{LITMUS_ENDPOINT}/auth/create_user"
 UPDATE_PASSWORD_URL = f"{LITMUS_ENDPOINT}/auth/update/password"
 
 
@@ -44,9 +44,46 @@ def test_missing_user_secrets_sets_blocked_status(
     # WHEN any event fires
     state_out = ctx.run(event, state=state)
 
-    # THEN the unit is blocked
+    # THEN the unit is blocked with a message referencing user_secrets
     assert isinstance(state_out.unit_status, ops.BlockedStatus)
     assert "user_secrets" in state_out.unit_status.message
+
+
+# ---------------------------------------------------------------------------
+# Test 1b – user_secrets config set but secret contains invalid data → BlockedStatus
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "event",
+    [
+        CharmEvents.config_changed(),
+        CharmEvents.install(),
+        CharmEvents.update_status(),
+    ],
+)
+def test_invalid_user_secrets_sets_blocked_status(
+    ctx,
+    nginx_container,
+    nginx_prometheus_exporter_container,
+    event,
+):
+    # GIVEN the charm has 'user_secrets' config pointing to a secret with invalid passwords
+    invalid_secret = ops.testing.Secret(
+        tracked_content={"admin-password": "tooshort", "charm-password": "Charm1!pass"}
+    )
+    state = State(
+        containers=[nginx_container, nginx_prometheus_exporter_container],
+        config={"user_secrets": invalid_secret.id},
+        secrets=[invalid_secret],
+    )
+
+    # WHEN any event fires
+    state_out = ctx.run(event, state=state)
+
+    # THEN the unit is blocked with a message indicating the secret is not valid
+    assert isinstance(state_out.unit_status, ops.BlockedStatus)
+    assert "not valid" in state_out.unit_status.message
 
 
 # ---------------------------------------------------------------------------
@@ -66,11 +103,20 @@ def test_valid_credentials_calls_litmus_api(
     # GIVEN mocked Litmus API endpoints
     with requests_mock_module.Mocker() as m:
         # admin login with target password fails (first deployment)
-        m.post(AUTH_URL, [
-            {"status_code": 401},           # admin / target password – not yet set
-            {"json": {"accessToken": "tok"}, "status_code": 200},  # admin / default password
-            {"json": {"accessToken": "tok"}, "status_code": 200},  # admin login for user_exists
-        ])
+        m.post(
+            AUTH_URL,
+            [
+                {"status_code": 401},  # admin / target password – not yet set
+                {
+                    "json": {"accessToken": "tok"},
+                    "status_code": 200,
+                },  # admin / default password
+                {
+                    "json": {"accessToken": "tok"},
+                    "status_code": 200,
+                },  # admin login for user_exists
+            ],
+        )
         m.post(UPDATE_PASSWORD_URL, status_code=200, json={})
         m.get(USERS_URL, json=[])  # charm user does not exist yet
         m.post(CREATE_URL, status_code=200, json={})

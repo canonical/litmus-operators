@@ -19,7 +19,7 @@ from coordinated_workers.nginx import (
 from ops import (
     BlockedStatus,
     CollectStatusEvent,
-    ActiveStatus, Secret,
+    ActiveStatus,
 )
 from ops.charm import CharmBase
 
@@ -37,7 +37,6 @@ from litmus_libs.interfaces.http_api import (
     LitmusBackendApiRequirer,
 )
 from litmus_libs.interfaces.self_monitoring import SelfMonitoring
-from charms.tempo_coordinator_k8s.v0.tracing import TracingEndpointRequirer
 import cosl
 import cosl.reconciler
 from litmus_client import LitmusClient
@@ -246,9 +245,9 @@ class LitmusChaoscenterCharm(CharmBase):
         Ingressed URL, if related to ingress, otherwise internal url.
         """
         if (
-                self.ingress.is_ready()
-                and self.ingress.scheme
-                and self.ingress.external_host
+            self.ingress.is_ready()
+            and self.ingress.scheme
+            and self.ingress.external_host
         ):
             return f"{self.ingress.scheme}://{self.ingress.external_host}"
         return self._internal_frontend_url
@@ -325,12 +324,21 @@ class LitmusChaoscenterCharm(CharmBase):
             required_relations.append(TLS_CERTIFICATES_ENDPOINT)
 
         if not self._user_credentials_secret:
-            e.add_status(BlockedStatus("Set the 'user_secrets' config option to continue."))
+            e.add_status(
+                BlockedStatus("Set the 'user_secrets' config option to continue.")
+            )
+        elif not self._chaoscenter.user_secrets_valid:
+            e.add_status(
+                BlockedStatus(
+                    "'user_secrets' secret is not valid. See logs for details."
+                )
+            )
 
         StatusManager(
             charm=self,
             block_if_relations_missing=required_relations,
             wait_for_config={
+                "user_secrets config is not set": self._user_credentials_secret,
                 **self.consistency_checks,
             },
             block_if_pebble_checks_failing={

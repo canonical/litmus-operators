@@ -13,13 +13,13 @@ from user_manager import UserManager
 
 
 VALID_SECRET_CONTENT = {
-    "admin_password": "adminpass",
-    "charm_password": "charmpass",
+    "admin-password": "Admin1!pass",
+    "charm-password": "Charm1!pass",
 }
 
 INVALID_SECRET_CONTENT = {
-    "admin_password": "adminpass",
-    # missing charm_password
+    "admin-password": "Admin1!pass",
+    # missing charm-password
 }
 
 
@@ -31,10 +31,14 @@ def _make_secret(current: dict, next_: dict | None = None) -> MagicMock:
     return secret
 
 
-def _make_user_manager(secret_id: str | None, secret: Secret | None = None) -> UserManager:
+def _make_user_manager(
+    secret_id: str | None, secret: Secret | None = None
+) -> UserManager:
     get_secret = MagicMock(return_value=secret)
     make_client = MagicMock()
-    return UserManager(secret_id=secret_id, get_secret=get_secret, make_client=make_client), get_secret
+    return UserManager(
+        secret_id=secret_id, get_secret=get_secret, make_client=make_client
+    ), get_secret
 
 
 class TestSecretResolution:
@@ -129,7 +133,7 @@ class TestReconcileChangedCredentials:
 
     def test_changed_valid_credentials_applies_new_creds(self):
         # GIVEN a secret whose content has changed to valid new credentials
-        new_content = {"admin_password": "newadmin", "charm_password": "newcharm"}
+        new_content = {"admin-password": "NewAdmin1!", "charm-password": "NewCharm1!"}
         secret = _make_secret(current=VALID_SECRET_CONTENT, next_=new_content)
         um, _ = _make_user_manager(secret_id="secret:abc123", secret=secret)
 
@@ -140,12 +144,12 @@ class TestReconcileChangedCredentials:
         # THEN apply is called with the new credentials
         mock_apply.assert_called_once()
         applied_creds = mock_apply.call_args[0][0]
-        assert applied_creds.admin_password == "newadmin"
-        assert applied_creds.charm_password == "newcharm"
+        assert applied_creds.admin_password == "NewAdmin1!"
+        assert applied_creds.charm_password == "NewCharm1!"
 
     def test_changed_valid_credentials_refreshes_secret_on_success(self):
         # GIVEN a secret whose content has changed to valid new credentials
-        new_content = {"admin_password": "newadmin", "charm_password": "newcharm"}
+        new_content = {"admin-password": "NewAdmin1!", "charm-password": "NewCharm1!"}
         secret = _make_secret(current=VALID_SECRET_CONTENT, next_=new_content)
         um, _ = _make_user_manager(secret_id="secret:abc123", secret=secret)
 
@@ -158,7 +162,7 @@ class TestReconcileChangedCredentials:
 
     def test_changed_valid_credentials_does_not_refresh_on_apply_failure(self):
         # GIVEN a secret whose content has changed to valid new credentials
-        new_content = {"admin_password": "newadmin", "charm_password": "newcharm"}
+        new_content = {"admin-password": "NewAdmin1!", "charm-password": "NewCharm1!"}
         secret = _make_secret(current=VALID_SECRET_CONTENT, next_=new_content)
         um, _ = _make_user_manager(secret_id="secret:abc123", secret=secret)
 
@@ -171,7 +175,9 @@ class TestReconcileChangedCredentials:
 
     def test_changed_invalid_credentials_does_not_apply(self, caplog):
         # GIVEN a secret whose new revision contains invalid credentials
-        secret = _make_secret(current=VALID_SECRET_CONTENT, next_=INVALID_SECRET_CONTENT)
+        secret = _make_secret(
+            current=VALID_SECRET_CONTENT, next_=INVALID_SECRET_CONTENT
+        )
         um, _ = _make_user_manager(secret_id="secret:abc123", secret=secret)
 
         # WHEN reconcile is called
@@ -199,3 +205,104 @@ class TestValidateSecretContent:
     def test_extra_fields_are_allowed(self):
         content = {**VALID_SECRET_CONTENT, "extra_field": "ignored"}
         assert UserManager._validate_secret_content(content) is True
+
+
+class TestEnsureCharmUser:
+    """Tests for _ensure_charm_user edge cases."""
+
+    def test_charm_user_exists_but_cannot_login_raises(self):
+        # GIVEN the charm user already exists but the configured password is wrong
+        um, _ = _make_user_manager(secret_id="secret:abc123")
+
+        admin_mock = MagicMock()
+        admin_mock.user_exists.return_value = True
+
+        charm_mock = MagicMock()
+        charm_mock.can_login.return_value = False
+
+        um._make_client = MagicMock(side_effect=[admin_mock, charm_mock])
+
+        # WHEN _ensure_charm_user is called
+        # THEN it raises an exception with a descriptive message
+        with pytest.raises(
+            Exception,
+            match="charm user exists but login with the configured password failed",
+        ):
+            um._ensure_charm_user("Admin1!pass", "Wr0ng!pass")
+
+
+class TestPasswordPolicy:
+    """Tests for the Litmus strict password policy validator on _UserSecretModel."""
+
+    def _make(self, admin: str, charm: str) -> dict:
+        return {"admin-password": admin, "charm-password": charm}
+
+    def test_valid_passwords_accepted(self):
+        assert (
+            UserManager._validate_secret_content(
+                self._make("Admin1!pass", "Charm1!pass")
+            )
+            is True
+        )
+
+    @pytest.mark.parametrize(
+        "password, reason",
+        [
+            ("Sh0rt!", "too short (< 8)"),
+            ("Admin1!TooLooong2", "too long (> 16)"),
+            ("NoDigit!Abcdef", "no digit"),
+            ("NOLOWER1!ABCDE", "no lowercase"),
+            ("noupper1!abcde", "no uppercase"),
+            ("NoSpecial1Abcde", "no special character"),
+        ],
+    )
+    def test_invalid_admin_password_rejected(self, password, reason):
+        assert (
+            UserManager._validate_secret_content(self._make(password, "Charm1!pass"))
+            is False
+        ), reason
+
+    @pytest.mark.parametrize(
+        "password, reason",
+        [
+            ("Sh0rt!", "too short (< 8)"),
+            ("Admin1!TooLooong2", "too long (> 16)"),
+            ("NoDigit!Abcdef", "no digit"),
+            ("NOLOWER1!ABCDE", "no lowercase"),
+            ("noupper1!abcde", "no uppercase"),
+            ("NoSpecial1Abcde", "no special character"),
+        ],
+    )
+    def test_invalid_charm_password_rejected(self, password, reason):
+        assert (
+            UserManager._validate_secret_content(self._make("Admin1!pass", password))
+            is False
+        ), reason
+
+    def test_validation_error_is_logged(self, caplog):
+        with caplog.at_level(logging.WARNING, logger="user_manager"):
+            UserManager._validate_secret_content(self._make("tooshort", "Charm1!pass"))
+        assert "invalid secret contents" in caplog.text
+
+
+class TestIsReady:
+    """Tests for UserManager.user_secrets_valid."""
+
+    def test_not_ready_without_secret(self):
+        # GIVEN no secret configured
+        um, _ = _make_user_manager(secret_id=None)
+        assert um.user_secrets_valid is False
+
+    def test_not_ready_with_invalid_secret_content(self):
+        # GIVEN a secret with invalid content (password fails policy)
+        secret = _make_secret(
+            {"admin-password": "tooshort", "charm-password": "Charm1!pass"}
+        )
+        um, _ = _make_user_manager(secret_id="secret:abc123", secret=secret)
+        assert um.user_secrets_valid is False
+
+    def test_ready_with_valid_secret(self):
+        # GIVEN a secret with valid content
+        secret = _make_secret(VALID_SECRET_CONTENT)
+        um, _ = _make_user_manager(secret_id="secret:abc123", secret=secret)
+        assert um.user_secrets_valid is True
