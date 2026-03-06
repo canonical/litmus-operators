@@ -44,6 +44,6 @@ def deploy_and_integrate_tempo(juju: Juju, tls: bool = False):
 def assert_charm_traces(juju: Juju, tls: bool = False):
     address = _get_unit_ip_address(juju, TEMPO_APP, 0)
     url = f"http{'s' if tls else ''}://{address}:3200/api/search/tag/juju_application/values"
-    response = requests.get(url)
+    response = requests.get(url, verify=False)
     tags = response.json()["tagValues"]
     assert APP in tags
