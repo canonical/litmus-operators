@@ -59,3 +59,15 @@ variable "mongodb_config" {
   type        = map(string)
   default     = {}
 }
+
+variable "admin_password" {
+  description = "The password to set for the Litmus admin user."
+  type        = string
+  sensitive   = true
+}
+
+variable "charm_password" {
+  description = "The password to set for the Litmus charm bot user."
+  type        = string
+  sensitive   = true
+}
