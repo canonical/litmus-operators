@@ -43,7 +43,7 @@ config:
   options:
     user_secrets:
       description: |
-        Secret ID for a user secret containing the usernames and passwords for two users of the ChaosCenter application:
+        Secret ID for a user secret containing the passwords for the two users of the ChaosCenter application:
         - admin: a user with administrator privileges, that the human operator can use to log in to the ChaosCenter 
           application and perform any action, including creating other users and managing resources
         - charm: a 'bot' account that the charm will use to manage resources in the ChaosCenter application
