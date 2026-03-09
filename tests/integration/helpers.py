@@ -131,11 +131,12 @@ def deploy_control_plane(
     juju.integrate(f"{AUTH_APP}:litmus-auth", f"{BACKEND_APP}:litmus-auth")
 
     # user mgmt
-    juju.add_secret(
+    secret_uri = juju.add_secret(
         "cc-users",
         content={"admin-password": "Litmus123!", "charm-password": CHARM_USER_PASSWORD},
     )
     juju.grant_secret("cc-users", app=CHAOSCENTER_APP)
+    juju.config(app=CHAOSCENTER_APP, user_secrets=secret_uri)
 
     if wait_for_idle:
         logger.info("waiting for the control plane to be active/idle...")
