@@ -56,12 +56,18 @@ class LitmusClient:
             logger.error("Litmus login failed: %s", e)
             self._token = None
 
-    def _execute_rest(self, method: str, path: str) -> dict[str, Any] | None:
+    def _execute_rest(
+        self, method: str, path: str, payload: dict | None = None
+    ) -> dict[str, Any] | None:
         """Executes a RESTful request."""
         url = f"{self._endpoint}{path}"
         try:
             resp = requests.request(
-                method=method, url=url, headers=self._get_auth_header(), timeout=10
+                method=method,
+                url=url,
+                headers=self._get_auth_header(),
+                json=payload,
+                timeout=10,
             )
 
             if resp.status_code != 200:
@@ -144,16 +150,13 @@ class LitmusClient:
 
         Raises HTTPError on failure.
         """
-        url = f"{self._endpoint}/auth/update/password"
         payload = {
             "username": self._username,
             "OldPassword": old_password,
             "NewPassword": new_password,
         }
-        resp = requests.post(
-            url, json=payload, headers=self._get_auth_header(), timeout=10
-        )
-        resp.raise_for_status()
+        self._execute_rest("POST", "/auth/update/password", payload=payload)
+
         # Invalidate cached token - must re-login with new password
         self._password = new_password
         self._token = None
@@ -165,7 +168,6 @@ class LitmusClient:
 
         Raises HTTPError on failure.
         """
-        url = f"{self._endpoint}/auth/create_user"
         payload = {
             "username": username,
             "password": password,
@@ -173,10 +175,7 @@ class LitmusClient:
             "email": email,
             "role": "user",
         }
-        resp = requests.post(
-            url, json=payload, headers=self._get_auth_header(), timeout=10
-        )
-        resp.raise_for_status()
+        self._execute_rest("POST", "/auth/create_user", payload=payload)
 
     def user_exists(self, username: str) -> bool:
         """Return True if a user with the given username exists (requires admin privileges)."""

@@ -127,7 +127,11 @@ def test_config_contains_correct_urls(
 
 
 def test_config_contains_auth_rewrite(
-    ctx, nginx_container, nginx_prometheus_exporter_container
+    ctx,
+    nginx_container,
+    nginx_prometheus_exporter_container,
+    user_secret,
+    user_secrets_config,
 ):
     # GIVEN chaoscenter related to backend and auth
     auth_relation = Relation(
@@ -152,6 +156,8 @@ def test_config_contains_auth_rewrite(
             leader=True,
             relations={auth_relation, backend_relation},
             containers={nginx_container, nginx_prometheus_exporter_container},
+            config=user_secrets_config,
+            secrets=[user_secret],
         ),
     )
 
@@ -189,6 +195,8 @@ def test_config_contains_ssl_config_when_tls_relation_created(
     tls_certificates_relation,
     patch_cert_and_key,
     patch_write_to_ca_path,
+    user_secret,
+    user_secrets_config,
 ):
     # GIVEN chaoscenter related to backend and auth
     state_out = ctx.run(
@@ -201,6 +209,8 @@ def test_config_contains_ssl_config_when_tls_relation_created(
                 tls_certificates_relation,
             },
             containers={nginx_container, nginx_prometheus_exporter_container},
+            config=user_secrets_config,
+            secrets=[user_secret],
         ),
     )
 
@@ -252,6 +262,8 @@ def test_config_contains_correct_locations_config_depending_on_endpoints_configu
     auth_endpoint,
     backend_endpoint,
     expected_location_config,
+    user_secret,
+    user_secrets_config,
 ):
     # GIVEN chaoscenter related to backend and auth
     auth_relation = Relation(
@@ -280,6 +292,8 @@ def test_config_contains_correct_locations_config_depending_on_endpoints_configu
                 tls_certificates_relation,
             },
             containers={nginx_container, nginx_prometheus_exporter_container},
+            config=user_secrets_config,
+            secrets=[user_secret],
         ),
     )
 
@@ -301,6 +315,8 @@ def test_generated_ssl_config_matches_expected_config(
     tls_certificates_relation,
     patch_cert_and_key,
     patch_write_to_ca_path,
+    user_secret,
+    user_secrets_config,
 ):
     # GIVEN chaoscenter related to backend and auth
     auth_relation = Relation(
@@ -328,6 +344,8 @@ def test_generated_ssl_config_matches_expected_config(
                 tls_certificates_relation,
             },
             containers={nginx_container, nginx_prometheus_exporter_container},
+            config=user_secrets_config,
+            secrets=[user_secret],
         ),
     )
 
@@ -350,6 +368,8 @@ def test_config_contains_tracing_config(
     auth_http_api_relation,
     backend_http_api_relation,
     workload_tracing_relation,
+    user_secret,
+    user_secrets_config,
 ):
     # GIVEN chaoscenter related to backend, auth, and a tracing backend
     state_out = ctx.run(
@@ -362,6 +382,8 @@ def test_config_contains_tracing_config(
                 workload_tracing_relation,
             },
             containers={nginx_container, nginx_prometheus_exporter_container},
+            config=user_secrets_config,
+            secrets=[user_secret],
         ),
     )
 
