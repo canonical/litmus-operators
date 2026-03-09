@@ -136,7 +136,7 @@ def deploy_control_plane(
         content={"admin-password": "Litmus123!", "charm-password": CHARM_USER_PASSWORD},
     )
     juju.grant_secret("cc-users", app=CHAOSCENTER_APP)
-    juju.config(app=CHAOSCENTER_APP, user_secrets=secret_uri)
+    juju.config(app=CHAOSCENTER_APP, values={"user_secrets": secret_uri})
 
     if wait_for_idle:
         logger.info("waiting for the control plane to be active/idle...")
