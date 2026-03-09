@@ -5,7 +5,7 @@ from typing import Callable, Optional
 
 from ops import Secret
 
-from litmus_client import LitmusClient, LITMUS_ENDPOINT
+from litmus_client import LitmusClient
 from user_manager import UserManager
 
 
@@ -13,13 +13,16 @@ class Chaoscenter:
     """Represents the Chaoscenter workload state and encapsulates all logic to operate it."""
 
     def __init__(
-        self, user_secret_id: Optional[str], get_secret: Callable[[str], Secret]
+        self,
+        endpoint: str,
+        user_secret_id: Optional[str],
+        get_secret: Callable[[str], Secret],
     ):
         self._user_manager = UserManager(
             secret_id=user_secret_id,
             get_secret=get_secret,
             make_client=lambda username, password: LitmusClient(
-                endpoint=LITMUS_ENDPOINT, username=username, password=password
+                endpoint=endpoint, username=username, password=password
             ),
         )
 

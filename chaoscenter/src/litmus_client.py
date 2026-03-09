@@ -14,7 +14,6 @@ logger = logging.getLogger(__name__)
 LITMUSCTL_BIN = "litmusctl"
 DEFAULT_ADMIN_USERNAME = "admin"
 DEFAULT_ADMIN_PASSWORD = "litmus"
-LITMUS_ENDPOINT = "http://localhost:8185"
 
 
 @dataclass

@@ -21,7 +21,8 @@ PROMETHEUS_APP = "prometheus"
 TEMPO_APP = "tempo"
 TEMPO_WORKER_APP = "tempo-worker-all"
 S3_APP = "swfs"
-
+CHARM_USER = "charm"
+CHARM_USER_PASSWORD = "Charm123!"
 
 logger = logging.getLogger(__name__)
 
@@ -129,6 +130,10 @@ def deploy_control_plane(
     juju.integrate(f"{BACKEND_APP}:database", MONGO_APP)
     juju.integrate(f"{AUTH_APP}:litmus-auth", f"{BACKEND_APP}:litmus-auth")
 
+    # user mgmt
+    juju.add_secret("cc-users", content={"admin-password": "Litmus123!", "charm-password": CHARM_USER_PASSWORD})
+    juju.grant_secret("cc-user", app=CHAOSCENTER_APP)
+
     if wait_for_idle:
         logger.info("waiting for the control plane to be active/idle...")
         juju.wait(
@@ -150,7 +155,7 @@ def get_login_response(
     allow_insecure = "-k" if use_ssl else ""
     cmd = (
         f'curl {allow_insecure} -sS -X POST -H "Content-Type: application/json" '
-        '-d \'{"username": "admin", "password": "litmus"}\' '
+        f'-d \'{{"username": {CHARM_USER}, "password": "{CHARM_USER_PASSWORD}"}}\' '
         f"{protocol}://{host}:{port}{subpath}/login"
     )
     return subprocess.getstatusoutput(cmd)

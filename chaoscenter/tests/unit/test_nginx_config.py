@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from unittest.mock import patch
 
 from scenario import State, Relation
 import pytest
@@ -9,6 +10,12 @@ from urllib.parse import urlparse
 from coordinated_workers.nginx import CERT_PATH, KEY_PATH, NGINX_CONFIG
 import nginx_config
 from conftest import patch_cert_and_key_ctx
+
+
+@pytest.fixture(autouse=True)
+def _patch_cc_reconcile():
+    with patch("chaoscenter.Chaoscenter.reconcile"):
+        yield
 
 
 @pytest.mark.parametrize(
@@ -39,6 +46,8 @@ def test_config_contains_correct_urls(
     tls_certificates_relation,
     patch_write_to_ca_path,
     tls_enabled,
+    user_secret,
+    user_secrets_config,
 ):
     # GIVEN chaoscenter related to backend and auth
     auth_relation = Relation(
@@ -71,6 +80,8 @@ def test_config_contains_correct_urls(
                     nginx_container,
                     nginx_prometheus_exporter_container,
                 },
+                config=user_secrets_config,
+                secrets=[user_secret],
             ),
         )
 

@@ -3,18 +3,27 @@
 
 """Scenario (state-transition) tests for Chaoscenter user-credential management."""
 
+from unittest.mock import patch
+
 import ops
 import pytest
 import requests_mock as requests_mock_module
 from ops.testing import CharmEvents, State
 
-from litmus_client import LITMUS_ENDPOINT
+
+BASE_URL = "http://litmus.local:8185"
+AUTH_URL = f"{BASE_URL}/auth/login"
+USERS_URL = f"{BASE_URL}/auth/users"
+CREATE_URL = f"{BASE_URL}/auth/create_user"
+UPDATE_PASSWORD_URL = f"{BASE_URL}/auth/update/password"
 
 
-AUTH_URL = f"{LITMUS_ENDPOINT}/auth/login"
-USERS_URL = f"{LITMUS_ENDPOINT}/auth/users"
-CREATE_URL = f"{LITMUS_ENDPOINT}/auth/create_user"
-UPDATE_PASSWORD_URL = f"{LITMUS_ENDPOINT}/auth/update/password"
+@pytest.fixture(autouse=True)
+def _patch_cc_url():
+    with patch(
+        "charm.LitmusChaoscenterCharm._internal_frontend_url", "http://litmus.local"
+    ):
+        yield
 
 
 # ---------------------------------------------------------------------------

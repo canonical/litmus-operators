@@ -1,6 +1,7 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 import json
+from unittest.mock import patch
 
 import ops
 from ops.testing import State, CheckInfo, CharmEvents
@@ -11,6 +12,12 @@ import pytest
 from ops.testing import Relation, Context
 
 from charm import LitmusChaoscenterCharm
+
+
+@pytest.fixture(autouse=True)
+def _patch_cc_reconcile():
+    with patch("chaoscenter.Chaoscenter.reconcile"):
+        yield
 
 
 @pytest.mark.parametrize(
