@@ -1,6 +1,7 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import json
 import logging
 import os
 import subprocess
@@ -156,10 +157,12 @@ def get_login_response(
     host: str, port: int, subpath: str, use_ssl: bool = False
 ) -> tuple[int, str]:
     protocol = "https" if use_ssl else "http"
-    allow_insecure = "-k" if use_ssl else ""
-    cmd = (
-        f'curl {allow_insecure} -sS -X POST -H "Content-Type: application/json" '
-        f'-d \'{{"username": {CHARM_USER}, "password": "{CHARM_USER_PASSWORD}"}}\' '
-        f"{protocol}://{host}:{port}{subpath}/login"
-    )
-    return subprocess.getstatusoutput(cmd)
+    url = f"{protocol}://{host}:{port}{subpath}/login"
+    data = {"username": CHARM_USER, "password": CHARM_USER_PASSWORD}
+    json_payload = json.dumps(data)
+    cmd = ["curl", "-sS", "-X", "POST", "-H", "Content-Type: application/json"]
+    if use_ssl:
+        cmd.append("-k")
+    cmd.extend(["-d", json_payload, url])
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    return result.returncode, result.stdout
