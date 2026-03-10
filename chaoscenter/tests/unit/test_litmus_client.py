@@ -9,7 +9,6 @@ import pytest
 
 from litmus_client import (
     LitmusClient,
-    ChaosProject,
     LitmusAPIException,
     ChaosInfrastructure,
 )
@@ -17,7 +16,8 @@ from litmus_client import (
 # Configuration for mocks
 BASE_URL = "http://litmus.local"
 AUTH_URL = f"{BASE_URL}/auth/login"
-REST_LIST_PROJECTS_URL = f"{BASE_URL}/auth/list_projects"
+MOCK_REST_PATH = "/mock/endpoint"
+MOCK_REST_URL = f"{BASE_URL}{MOCK_REST_PATH}"
 GQL_URL = f"{BASE_URL}/api/query"
 
 
@@ -83,35 +83,32 @@ class TestAuthentication:
 
 
 class TestRESTMethods:
-    def test_list_projects_success(self, client, mock_api):
-        # GIVEN: A valid token and a mocked project list response
+    def test_rest_calls_success(self, client, mock_api):
+        # GIVEN: A valid token and a mocked response
         client._token = "valid-token"
         payload = {"data": {"projects": [{"projectID": "p1", "name": "Default"}]}}
-        mock_api.get(REST_LIST_PROJECTS_URL, json=payload)
+        mock_api.get(MOCK_REST_URL, json=payload)
 
-        # WHEN: Requesting the list of projects
-        projects = client.list_projects()
+        # WHEN: calling the mock api endpoint
+        data = client._execute_rest("GET", MOCK_REST_PATH)
 
-        # THEN: The response should be a list of ChaosProject objects
-        assert len(projects) == 1
-        assert isinstance(projects[0], ChaosProject)
-        assert projects[0].id == "p1"
-        assert projects[0].name == "Default Project"
+        # THEN: The response should match the mocked payload
+        assert data == {"projects": [{"projectID": "p1", "name": "Default"}]}
 
     def test_rest_calls_failure_raises_exception(self, client, mock_api):
         # GIVEN: The REST endpoint returns a 500 Internal Server Error
         client._token = "valid-token"
-        mock_api.get(REST_LIST_PROJECTS_URL, status_code=500)
+        mock_api.get(MOCK_REST_URL, status_code=500)
 
         # WHEN/THEN: Requesting projects should raise LitmusAPIException
         with pytest.raises(LitmusAPIException):
-            client._execute_rest("GET", "/auth/list_projects")
+            client._execute_rest("GET", MOCK_REST_PATH)
 
     def test_rest_calls_error_handling_raises_exception(self, client, mock_api):
         # GIVEN: The REST endpoint returns 200 but with an "errors" field
         client._token = "valid-token"
         mock_api.get(
-            REST_LIST_PROJECTS_URL,
+            MOCK_REST_URL,
             json={"errors": [{"message": "something went wrong"}]},
         )
 
@@ -119,7 +116,7 @@ class TestRESTMethods:
         with pytest.raises(LitmusAPIException):
             client._execute_rest(
                 "GET",
-                "/auth/list_projects",
+                MOCK_REST_PATH,
             )
 
     def test_user_exists_non_list_response(self, client, mock_api, caplog):

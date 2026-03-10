@@ -84,7 +84,7 @@ def patch_write_to_ca_path():
 
 @pytest.fixture(autouse=True)
 def patch_lightkube_client():
-    with patch("charm.Client", new=MagicMock()):
+    with patch("chaoscenter.Client", new=MagicMock()):
         yield
 
 
@@ -161,6 +161,7 @@ def user_secret():
 def user_secrets_config(user_secret):
     """Config dict that satisfies the 'user_secrets' config option."""
     return {"user_secrets": user_secret.id}
+
 
 @pytest.fixture
 def litmus_infrastructure_relation():

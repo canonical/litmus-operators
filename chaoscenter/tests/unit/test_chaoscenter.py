@@ -3,19 +3,23 @@
 
 """Scenario (state-transition) tests for Chaoscenter user-credential management."""
 
-from unittest.mock import patch
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 import ops
 import pytest
 import requests_mock as requests_mock_module
 from ops.testing import CharmEvents, State
-
+from litmus_client import ChaosInfrastructure
+from chaoscenter import Chaoscenter
 
 BASE_URL = "http://litmus.local:8185"
 AUTH_URL = f"{BASE_URL}/auth/login"
 USERS_URL = f"{BASE_URL}/auth/users"
 CREATE_URL = f"{BASE_URL}/auth/create_user"
 UPDATE_PASSWORD_URL = f"{BASE_URL}/auth/update/password"
+MOCK_PROJECT_ID = "default_project_id"
 
 
 @pytest.fixture(autouse=True)
@@ -24,6 +28,35 @@ def _patch_cc_url():
         "charm.LitmusChaoscenterCharm._internal_frontend_url", "http://litmus.local"
     ):
         yield
+
+
+@pytest.fixture()
+def patch_apply_manifests():
+    with patch("chaoscenter.Chaoscenter._apply_manifest") as mock_apply:
+        yield mock_apply
+
+
+@pytest.fixture
+def patch_crd_mainfests_path(tmp_path):
+    mock_crd_file = Path(tmp_path / "sample_crd.yaml")
+    mock_crd_file.write_text("apiVersion: v1\nkind: SampleCRD")
+    with patch("chaoscenter.LITMUS_CRD_MANIFEST_PATH", mock_crd_file):
+        yield mock_crd_file
+
+
+@pytest.fixture
+def mock_litmus_client():
+    mock = MagicMock()
+    mock.return_value.default_project_id = MOCK_PROJECT_ID
+    return mock
+
+
+@pytest.fixture
+def mock_infra_data():
+    return SimpleNamespace(
+        infrastructure_name="k8s-infra",
+        model_name="prod-model",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -144,3 +177,115 @@ def test_valid_credentials_calls_litmus_api(
     assert any(r.url == UPDATE_PASSWORD_URL for r in m.request_history)
     # AND the create endpoint was called for the charm user
     assert any(r.url == CREATE_URL for r in m.request_history)
+
+
+def test_infrastructure_creation(
+    mock_litmus_client,
+    mock_infra_data,
+    patch_crd_mainfests_path,
+    patch_apply_manifests,
+):
+    """Verifies that the charm registers and applies infrastructure when it doesn't exist."""
+
+    cc = Chaoscenter("http://litmus.local", None, None)
+
+    with patch("user_manager.UserManager.get_charm_client", mock_litmus_client):
+        # GIVEN no existing infrastructure in the backend
+        mock_litmus_client.return_value.get_infrastructure.return_value = None
+        mock_litmus_client.return_value.register_infrastructure.return_value = (
+            "kind: Deployment\nname: agent"
+        )
+
+        # WHEN the charm tries to create the infrastructure
+        cc.create_infrastructure(mock_infra_data)
+
+        # THEN the charm should register the infrastructure
+        mock_litmus_client.return_value.register_infrastructure.assert_called_once_with(
+            "k8s-infra", "prod-model", MOCK_PROJECT_ID
+        )
+
+        # AND the charm should apply both the CRDs and the newly generated manifest
+        assert patch_apply_manifests.call_count == 2
+        patch_apply_manifests.assert_any_call(patch_crd_mainfests_path.read_text())
+        patch_apply_manifests.assert_any_call("kind: Deployment\nname: agent")
+
+
+def test_infrastructure_skipped_if_already_active(
+    mock_litmus_client,
+    patch_apply_manifests,
+    mock_infra_data,
+):
+    """Verifies idempotency: skip registration if infrastructure is already active."""
+
+    cc = Chaoscenter("http://litmus.local", None, None)
+
+    # GIVEN the infrastructure already exists and is active
+    mock_litmus_client.return_value.get_infrastructure.return_value = (
+        ChaosInfrastructure(
+            id="infra-123", name="k8s-infra", environment_id="test", active=True
+        )
+    )
+
+    with patch("user_manager.UserManager.get_charm_client", mock_litmus_client):
+        # WHEN the charm tries to create the infrastructure
+        cc.create_infrastructure(mock_infra_data)
+        # THEN registration is skipped and nothing is applied
+        mock_litmus_client.return_value.register_infrastructure.assert_not_called()
+        patch_apply_manifests.assert_not_called()
+
+
+def test_infrastructure_reapplied_if_inactive(
+    mock_litmus_client,
+    patch_apply_manifests,
+    mock_infra_data,
+):
+    """Verifies that we re-fetch and apply the manifest if the infra is inactive."""
+    cc = Chaoscenter("http://litmus.local", None, None)
+
+    # GIVEN infrastructure exists but is NOT active
+    mock_litmus_client.return_value.get_infrastructure.return_value = (
+        ChaosInfrastructure(
+            id="infra-123", name="k8s-infra", environment_id="test", active=False
+        )
+    )
+    mock_litmus_client.return_value.get_infrastructure_manifest.return_value = (
+        "re-apply-this-yaml"
+    )
+
+    with (
+        patch("user_manager.UserManager.get_charm_client", mock_litmus_client),
+    ):
+        # WHEN the charm tries to create the infrastructure
+        cc.create_infrastructure(mock_infra_data)
+        # THEN we fetch the manifest for the existing ID
+        mock_litmus_client.return_value.get_infrastructure_manifest.assert_called_once_with(
+            "infra-123", MOCK_PROJECT_ID
+        )
+        # AND apply it
+        patch_apply_manifests.assert_any_call("re-apply-this-yaml")
+
+
+def test_infrastructure_deletion(
+    mock_litmus_client,
+    mock_infra_data,
+):
+    """Verifies that infrastructure is deleted from the backend when the relation is departing."""
+    cc = Chaoscenter("http://litmus.local", None, None)
+
+    # GIVEN infrastructure exists
+    mock_litmus_client.return_value.get_infrastructure.return_value = (
+        ChaosInfrastructure(
+            id="infra-uuid", name="k8s-infra", environment_id="test", active=True
+        )
+    )
+
+    with (
+        patch("user_manager.UserManager.get_charm_client", mock_litmus_client),
+    ):
+        # WHEN the charm tries to delete the infrastructure
+        cc.delete_infrastructure(mock_infra_data)
+
+        # THEN the client should be called to delete the specific infrastructure
+        mock_litmus_client.return_value.delete_infrastructure.assert_called_once_with(
+            "infra-uuid", MOCK_PROJECT_ID
+        )

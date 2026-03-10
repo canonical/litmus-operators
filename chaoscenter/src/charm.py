@@ -21,9 +21,11 @@ from ops import (
     BlockedStatus,
     CollectStatusEvent,
     ActiveStatus,
+    RelationDepartedEvent,
+    RelationChangedEvent,
 )
 from ops.charm import CharmBase
-
+from litmus_libs.interfaces.litmus_infrastructure import LitmusInfrastructureRequirer
 from chaoscenter import Chaoscenter
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from charms.tempo_coordinator_k8s.v0.tracing import TracingEndpointRequirer
@@ -54,9 +56,6 @@ NGINX_OVERRIDES: NginxMappingOverrides = {
     "nginx_port": http_server_port,
     "nginx_exporter_port": NGINX_EXPORTER_PORT,
 }
-LITMUS_CRD_MANIFEST_PATH = (
-    Path(__file__).parent / "k8s_manifests" / "litmus_portal_crds.yaml"
-)
 
 
 class LitmusChaoscenterCharm(CharmBase):
@@ -338,64 +337,14 @@ class LitmusChaoscenterCharm(CharmBase):
         if not infra_data:
             return
 
-        project_id = self._litmus_client.default_project_id
-        if not project_id:
-            logger.warning(
-                "Project ID is not available; cannot register infrastructure"
-            )
-            return
-        name = infra_data.infrastructure_name
-        model_name = infra_data.model_name
-
-        existing_infra = self._litmus_client.get_infrastructure(
-            name, model_name, project_id
-        )
-        if existing_infra and existing_infra.active:
-            logger.info(
-                f"Infrastructure {name} already exists and is active; skipping creation"
-            )
-            return
-
-        if not existing_infra:
-            infra_manifest = self._litmus_client.register_infrastructure(
-                name, model_name, project_id
-            )
-        else:
-            infra_manifest = self._litmus_client.get_infrastructure_manifest(
-                existing_infra.id,
-                project_id,
-            )
-
-        if infra_manifest:
-            if not LITMUS_CRD_MANIFEST_PATH.exists():
-                logger.warning(
-                    f"Litmus CRD manifest not found at {LITMUS_CRD_MANIFEST_PATH}; skipping applying CRDs"
-                )
-            else:
-                self._apply_manifest(LITMUS_CRD_MANIFEST_PATH.read_text())
-            self._apply_manifest(infra_manifest)
+        self._chaoscenter.create_infrastructure(infra_data)
 
     def _on_litmus_infrastructure_departed(self, event: RelationDepartedEvent):
         infra_data = self._litmus_infra.get_data(event.relation.id)
         if not infra_data:
             return
 
-        project_id = self._litmus_client.default_project_id
-        if not project_id:
-            logger.warning("Project ID is not available; cannot delete infrastructure")
-            return
-        name = infra_data.infrastructure_name
-        model_name = infra_data.model_name
-
-        existing_infra = self._litmus_client.get_infrastructure(
-            name, model_name, project_id
-        )
-        if not existing_infra:
-            logger.info(f"Infrastructure {name} doesn't exist; skipping deletion")
-            return
-
-        # TODO: investigate if we need to delete existing experiments in the infra before deleting the infra itself
-        self._litmus_client.delete_infrastructure(existing_infra.id, project_id)
+        self._chaoscenter.delete_infrastructure(infra_data)
 
     def _on_collect_unit_status(self, e: CollectStatusEvent):
         required_relations = [

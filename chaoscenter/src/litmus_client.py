@@ -6,7 +6,7 @@
 
 from dataclasses import dataclass
 import logging
-from typing import Any, List
+from typing import Any
 from coordinated_workers.nginx import CA_CERT_PATH
 
 import requests
@@ -23,23 +23,11 @@ class LitmusAPIException(Exception):
 
 
 @dataclass
-class ChaosProject:
-    """Litmus project data structure."""
-
-    id: str
-    name: str
-
-
-@dataclass
 class ChaosInfrastructure:
     id: str
     name: str
     environment_id: str
     active: bool
-
-
-class LitmusAPIException(Exception):
-    """Custom exception for LitmusClient errors."""
 
 
 class LitmusClient:
@@ -251,15 +239,6 @@ class LitmusClient:
         }
 
         self._execute_gql(query, variables)
-
-    def list_projects(self) -> List[ChaosProject]:
-        """List all projects accessible to the current account."""
-        if data := self._execute_rest("GET", "/auth/list_projects"):
-            return [
-                ChaosProject(id=p["projectID"], name=p["name"])
-                for p in data.get("projects", [])
-            ]
-        return []
 
     def create_environment(self, project_id: str, name: str):
         """Create a Chaos Environment."""
