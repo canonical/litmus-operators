@@ -76,7 +76,7 @@ def test_get_auth_grpc_endpoint(
     ),
 )
 def test_publish_endpoint_without_tls(
-    ctx, auth_relation, backend_container, leader, expected
+    ctx, auth_relation, database_relation, backend_container, leader, expected
 ):
     # GIVEN an auth integration
     auth_relation = dataclasses.replace(auth_relation)
@@ -84,7 +84,7 @@ def test_publish_endpoint_without_tls(
     # WHEN a relation_changed event fires
     state_out = ctx.run(
         state=State(
-            relations={auth_relation},
+            relations={auth_relation, database_relation},
             containers={backend_container},
             leader=leader,
             model=Model(name="test"),
@@ -118,6 +118,7 @@ def test_publish_endpoint_with_tls(
     ctx,
     auth_relation,
     tls_certificates_relation,
+    database_relation,
     patch_cert_and_key,
     backend_container,
     leader,
@@ -130,7 +131,7 @@ def test_publish_endpoint_with_tls(
     # WHEN a relation_changed event fires
     state_out = ctx.run(
         state=State(
-            relations={auth_relation, tls_certificates_relation},
+            relations={auth_relation, tls_certificates_relation, database_relation},
             containers={backend_container},
             leader=leader,
             model=Model(name="test"),

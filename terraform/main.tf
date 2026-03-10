@@ -5,6 +5,18 @@ data "juju_model" "charmed-litmus" {
   uuid = var.model_uuid
 }
 
+# user management
+resource "juju_secret" "chaoscenter_users" {
+  model_uuid = data.juju_model.charmed-litmus.uuid
+  name       = "cc-users"
+  value = {
+    "admin-password" = var.admin_password,
+    "charm-password" = var.charm_password,
+  }
+}
+
+
+
 module "auth" {
   source     = "git::https://github.com/canonical/litmus-operators//auth/terraform"
   model_uuid = data.juju_model.charmed-litmus.uuid
@@ -27,7 +39,19 @@ module "chaoscenter" {
   channel    = var.litmus_channel
   revision   = var.chaoscenter_revision
   resources  = var.chaoscenter_resources
+  config = {
+    user_secrets = juju_secret.chaoscenter_users.secret_uri
+  }
 }
+
+resource "juju_access_secret" "chaoscenter_users_access" {
+  model_uuid = data.juju_model.charmed-litmus.uuid
+  applications = [
+    module.chaoscenter.app_name
+  ]
+  secret_id = juju_secret.chaoscenter_users.id
+}
+
 
 module "mongodb" {
   source     = "./external/mongodb-k8s"
