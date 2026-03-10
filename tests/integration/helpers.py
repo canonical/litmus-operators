@@ -1,6 +1,7 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import json
 import logging
 import os
 import subprocess
@@ -22,7 +23,8 @@ PROMETHEUS_APP = "prometheus"
 TEMPO_APP = "tempo"
 TEMPO_WORKER_APP = "tempo-worker-all"
 S3_APP = "swfs"
-
+CHARM_USER = "charm"
+CHARM_USER_PASSWORD = "Charm123!"
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +132,14 @@ def deploy_control_plane(
     juju.integrate(f"{BACKEND_APP}:database", MONGO_APP)
     juju.integrate(f"{AUTH_APP}:litmus-auth", f"{BACKEND_APP}:litmus-auth")
 
+    # user mgmt
+    secret_uri = juju.add_secret(
+        "cc-users",
+        content={"admin-password": "Litmus123!", "charm-password": CHARM_USER_PASSWORD},
+    )
+    juju.grant_secret("cc-users", app=CHAOSCENTER_APP)
+    juju.config(app=CHAOSCENTER_APP, values={"user_secrets": secret_uri})
+
     if wait_for_idle:
         logger.info("waiting for the control plane to be active/idle...")
         juju.wait(
@@ -139,8 +149,8 @@ def deploy_control_plane(
             ),
             error=lambda status: any_error(status, *apps_to_wait_for),
             timeout=1000,
-            delay=10,
-            successes=6,
+            delay=30,
+            successes=4,
         )
 
 
@@ -148,10 +158,12 @@ def get_login_response(
     host: str, port: int, subpath: str, use_ssl: bool = False
 ) -> tuple[int, str]:
     protocol = "https" if use_ssl else "http"
-    allow_insecure = "-k" if use_ssl else ""
-    cmd = (
-        f'curl {allow_insecure} -sS -X POST -H "Content-Type: application/json" '
-        '-d \'{"username": "admin", "password": "litmus"}\' '
-        f"{protocol}://{host}:{port}{subpath}/login"
-    )
-    return subprocess.getstatusoutput(cmd)
+    url = f"{protocol}://{host}:{port}{subpath}/login"
+    data = {"username": CHARM_USER, "password": CHARM_USER_PASSWORD}
+    json_payload = json.dumps(data)
+    cmd = ["curl", "-sS", "-X", "POST", "-H", "Content-Type: application/json"]
+    if use_ssl:
+        cmd.append("-k")
+    cmd.extend(["-d", json_payload, url])
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    return result.returncode, result.stdout

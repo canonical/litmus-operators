@@ -1,8 +1,9 @@
 # Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-"""Unit tests for litmusctl.Litmusctl."""
+"""Unit tests for Litmus API wrapper."""
 
+import requests
 import requests_mock
 import pytest
 
@@ -46,13 +47,16 @@ class TestAuthentication:
         assert mock_api.call_count == 1
 
     def test_failed_login_raises_exception(self, client, mock_api):
-        # GIVEN: The server rejects login with a 401
+        # GIVEN: A client that previously had a token, but the server now rejects login
+        client._token = "expired-token"
         mock_api.post(AUTH_URL, status_code=401)
 
-        # WHEN/THEN: Attempting to login should raise LitmusAPIException
+        # WHEN: A login is attempted
+        # THEN: Attempting to login should raise LitmusAPIException
         with pytest.raises(LitmusAPIException, match="Failed to login"):
             client._login()
 
+        # AND: The token should be wiped (set to None)
         assert client._token is None
         assert client._default_project_id is None
 
@@ -82,9 +86,7 @@ class TestRESTMethods:
     def test_list_projects_success(self, client, mock_api):
         # GIVEN: A valid token and a mocked project list response
         client._token = "valid-token"
-        payload = {
-            "data": {"projects": [{"projectID": "p1", "name": "Default Project"}]}
-        }
+        payload = {"data": {"projects": [{"projectID": "p1", "name": "Default"}]}}
         mock_api.get(REST_LIST_PROJECTS_URL, json=payload)
 
         # WHEN: Requesting the list of projects
@@ -103,7 +105,34 @@ class TestRESTMethods:
 
         # WHEN/THEN: Requesting projects should raise LitmusAPIException
         with pytest.raises(LitmusAPIException):
-            client.list_projects()
+            client._execute_rest("GET", "/auth/list_projects")
+
+    def test_rest_calls_error_handling_raises_exception(self, client, mock_api):
+        # GIVEN: The REST endpoint returns 200 but with an "errors" field
+        client._token = "valid-token"
+        mock_api.get(
+            REST_LIST_PROJECTS_URL,
+            json={"errors": [{"message": "something went wrong"}]},
+        )
+
+        # WHEN/THEN: Requesting projects should raise LitmusAPIException
+        with pytest.raises(LitmusAPIException):
+            client._execute_rest(
+                "GET",
+                "/auth/list_projects",
+            )
+
+    def test_user_exists_non_list_response(self, client, mock_api, caplog):
+        # GIVEN: The /auth/users endpoint returns a non-list (unexpected format)
+        client._token = "valid-token"
+        mock_api.get(f"{BASE_URL}/auth/users", json={"unexpected": "dict"})
+
+        # WHEN: Checking if a user exists
+        result = client.user_exists("someuser")
+
+        # THEN: The method returns False and a warning is logged
+        assert result is False
+        assert "Unexpected response format" in caplog.text
 
 
 class TestGraphQLMethods:
@@ -130,16 +159,16 @@ class TestGraphQLMethods:
 
         # WHEN/THEN: Executing a GQL call should raise LitmusAPIException
         with pytest.raises(LitmusAPIException):
-            client.get_infrastructure_manifest("infra-123", "proj-1")
+            client._execute_gql("mutation {...}")
 
-    def test_gql_failure_raises_exception(self, client, mock_api):
-        # GIVEN: A GQL request that fails with an HTTP 500
+    def test_gql_failure_raises_exception(self, client, mock_api, caplog):
+        # GIVEN: The GQL endpoint raises a network error
         client._token = "valid-token"
-        mock_api.post(GQL_URL, status_code=500)
+        mock_api.post(GQL_URL, exc=requests.exceptions.ConnectionError("timeout"))
 
-        # WHEN/THEN: It should raise LitmusAPIException
+        # WHEN/THEN: Executing a GQL call should raise LitmusAPIException
         with pytest.raises(LitmusAPIException):
-            client.delete_infrastructure("infra-1", "proj-1")
+            client._execute_gql("mutation {...}")
 
     def test_register_infrastructure_success(self, client, mock_api):
         # GIVEN: A project ID and registration details

@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from unittest.mock import patch
 
 from scenario import State, Relation
 import pytest
@@ -9,6 +10,12 @@ from urllib.parse import urlparse
 from coordinated_workers.nginx import CERT_PATH, KEY_PATH, NGINX_CONFIG
 import nginx_config
 from conftest import patch_cert_and_key_ctx
+
+
+@pytest.fixture(autouse=True)
+def _patch_cc_reconcile():
+    with patch("chaoscenter.Chaoscenter.reconcile"):
+        yield
 
 
 @pytest.mark.parametrize(
@@ -39,6 +46,8 @@ def test_config_contains_correct_urls(
     tls_certificates_relation,
     patch_write_to_ca_path,
     tls_enabled,
+    user_secret,
+    user_secrets_config,
 ):
     # GIVEN chaoscenter related to backend and auth
     auth_relation = Relation(
@@ -71,6 +80,8 @@ def test_config_contains_correct_urls(
                     nginx_container,
                     nginx_prometheus_exporter_container,
                 },
+                config=user_secrets_config,
+                secrets=[user_secret],
             ),
         )
 
@@ -116,7 +127,11 @@ def test_config_contains_correct_urls(
 
 
 def test_config_contains_auth_rewrite(
-    ctx, nginx_container, nginx_prometheus_exporter_container
+    ctx,
+    nginx_container,
+    nginx_prometheus_exporter_container,
+    user_secret,
+    user_secrets_config,
 ):
     # GIVEN chaoscenter related to backend and auth
     auth_relation = Relation(
@@ -141,6 +156,8 @@ def test_config_contains_auth_rewrite(
             leader=True,
             relations={auth_relation, backend_relation},
             containers={nginx_container, nginx_prometheus_exporter_container},
+            config=user_secrets_config,
+            secrets=[user_secret],
         ),
     )
 
@@ -178,6 +195,8 @@ def test_config_contains_ssl_config_when_tls_relation_created(
     tls_certificates_relation,
     patch_cert_and_key,
     patch_write_to_ca_path,
+    user_secret,
+    user_secrets_config,
 ):
     # GIVEN chaoscenter related to backend and auth
     state_out = ctx.run(
@@ -190,6 +209,8 @@ def test_config_contains_ssl_config_when_tls_relation_created(
                 tls_certificates_relation,
             },
             containers={nginx_container, nginx_prometheus_exporter_container},
+            config=user_secrets_config,
+            secrets=[user_secret],
         ),
     )
 
@@ -241,6 +262,8 @@ def test_config_contains_correct_locations_config_depending_on_endpoints_configu
     auth_endpoint,
     backend_endpoint,
     expected_location_config,
+    user_secret,
+    user_secrets_config,
 ):
     # GIVEN chaoscenter related to backend and auth
     auth_relation = Relation(
@@ -269,6 +292,8 @@ def test_config_contains_correct_locations_config_depending_on_endpoints_configu
                 tls_certificates_relation,
             },
             containers={nginx_container, nginx_prometheus_exporter_container},
+            config=user_secrets_config,
+            secrets=[user_secret],
         ),
     )
 
@@ -290,6 +315,8 @@ def test_generated_ssl_config_matches_expected_config(
     tls_certificates_relation,
     patch_cert_and_key,
     patch_write_to_ca_path,
+    user_secret,
+    user_secrets_config,
 ):
     # GIVEN chaoscenter related to backend and auth
     auth_relation = Relation(
@@ -317,6 +344,8 @@ def test_generated_ssl_config_matches_expected_config(
                 tls_certificates_relation,
             },
             containers={nginx_container, nginx_prometheus_exporter_container},
+            config=user_secrets_config,
+            secrets=[user_secret],
         ),
     )
 
@@ -339,6 +368,8 @@ def test_config_contains_tracing_config(
     auth_http_api_relation,
     backend_http_api_relation,
     workload_tracing_relation,
+    user_secret,
+    user_secrets_config,
 ):
     # GIVEN chaoscenter related to backend, auth, and a tracing backend
     state_out = ctx.run(
@@ -351,6 +382,8 @@ def test_config_contains_tracing_config(
                 workload_tracing_relation,
             },
             containers={nginx_container, nginx_prometheus_exporter_container},
+            config=user_secrets_config,
+            secrets=[user_secret],
         ),
     )
 
@@ -377,3 +410,15 @@ def test_config_contains_tracing_config(
         "juju_charm_name",
     }:
         assert f"otel_resource_attr {key}" in config
+
+
+def test_get_scheme_from_url_returns_http_when_scheme_empty():
+    # GIVEN a URL parsed without a scheme (scheme is empty string)
+    url = urlparse("//foo.bar:80")
+    assert url.scheme == ""
+
+    # WHEN calling _get_scheme_from_url
+    scheme = nginx_config._get_scheme_from_url(url)
+
+    # THEN the fallback "http" is returned
+    assert scheme == "http"

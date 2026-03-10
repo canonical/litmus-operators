@@ -7,7 +7,7 @@ from litmus_libs.interfaces.http_api import AuthApiProviderAppDatabagModelV0
 def test_auth_endpoints(
     ctx, authserver_container, database_relation, http_api_relation
 ):
-    # GIVEN an http api relation
+    # GIVEN an http api relationz
     # WHEN the charm receives any event
     state_out = ctx.run(
         ctx.on.update_status(),

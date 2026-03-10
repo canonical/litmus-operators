@@ -7,6 +7,7 @@
 from dataclasses import dataclass
 import logging
 from typing import Any, List
+from coordinated_workers.nginx import CA_CERT_PATH
 
 import requests
 
@@ -17,8 +18,14 @@ DEFAULT_ADMIN_USERNAME = "admin"
 DEFAULT_ADMIN_PASSWORD = "litmus"
 
 
+class LitmusAPIException(Exception):
+    """Custom exception for LitmusClient errors."""
+
+
 @dataclass
 class ChaosProject:
+    """Litmus project data structure."""
+
     id: str
     name: str
 
@@ -48,6 +55,7 @@ class LitmusClient:
         self._username = username
         self._password = password
         self._token: str | None = None
+        self._ca_bundle = CA_CERT_PATH if endpoint.startswith("https://") else None
         self._default_project_id: str | None = None
 
     # We assume a single-project environment where all litmus operations from the charm will occur in this default project.
@@ -79,7 +87,7 @@ class LitmusClient:
         url = f"{self._endpoint}/auth/login"
         payload = {"username": self._username, "password": self._password}
         try:
-            resp = requests.post(url, json=payload, timeout=10)
+            resp = requests.post(url, json=payload, timeout=10, verify=self._ca_bundle)
             resp.raise_for_status()
             self._token = resp.json().get("accessToken")
             self._default_project_id = resp.json().get("projectID")
@@ -90,12 +98,19 @@ class LitmusClient:
                 f"Failed to login to Litmus API at {self._endpoint}: {e}"
             )
 
-    def _execute_rest(self, method: str, path: str) -> dict[str, Any] | None:
+    def _execute_rest(
+        self, method: str, path: str, payload: dict | None = None
+    ) -> dict[str, Any] | None:
         """Executes a RESTful request."""
         url = f"{self._endpoint}{path}"
         try:
             resp = requests.request(
-                method=method, url=url, headers=self._get_auth_header(), timeout=10
+                method=method,
+                url=url,
+                headers=self._get_auth_header(),
+                json=payload,
+                timeout=10,
+                verify=self._ca_bundle,
             )
             resp.raise_for_status()
 
@@ -115,7 +130,11 @@ class LitmusClient:
         payload = {"query": query, "variables": variables or {}}
         try:
             resp = requests.post(
-                url=url, json=payload, headers=self._get_auth_header(), timeout=10
+                url=url,
+                json=payload,
+                headers=self._get_auth_header(),
+                timeout=10,
+                verify=self._ca_bundle,
             )
             resp.raise_for_status()
             data = resp.json()
@@ -264,3 +283,60 @@ class LitmusClient:
             },
         }
         self._execute_gql(query, variables)
+
+    def can_login(self) -> bool:
+        """Try to authenticate and return True if credentials are valid."""
+        try:
+            self._login()
+        except LitmusAPIException:
+            return False
+        return self._token is not None
+
+    def set_password(self, old_password: str, new_password: str) -> None:
+        """Change the current user's password.
+
+        Raises LitmusAPIException on failure.
+        """
+        payload = {
+            "username": self._username,
+            "OldPassword": old_password,
+            "NewPassword": new_password,
+        }
+        self._execute_rest("POST", "/auth/update/password", payload=payload)
+
+        # Invalidate cached token - must re-login with new password
+        self._password = new_password
+        self._token = None
+
+    def create_user(
+        self, username: str, password: str, name: str = "", email: str = ""
+    ) -> None:
+        """Create a new user account (requires admin privileges).
+
+        Raises LitmusAPIException on failure.
+        """
+        payload = {
+            "username": username,
+            "password": password,
+            "name": name or username,
+            "email": email,
+            "role": "user",
+        }
+        self._execute_rest("POST", "/auth/create_user", payload=payload)
+
+    def user_exists(self, username: str) -> bool:
+        """Return True if a user with the given username exists (requires admin privileges)."""
+        url = f"{self._endpoint}/auth/users"
+        try:
+            resp = requests.get(
+                url, headers=self._get_auth_header(), timeout=10, verify=self._ca_bundle
+            )
+            resp.raise_for_status()
+            users = resp.json()
+            if isinstance(users, list):
+                return any(u.get("username") == username for u in users)
+            logger.warning("Unexpected response format from /auth/users")
+            return False
+        except requests.RequestException as e:
+            logger.error("user_exists request failed: %s", e)
+            return False

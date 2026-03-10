@@ -212,14 +212,20 @@ class LitmusBackendCharm(CharmBase):
         )
         self.litmus_backend.reconcile()
         if self.unit.is_leader():
-            self._auth.publish_endpoint(
-                Endpoint(
-                    grpc_server_host=get_app_hostname(self.app.name, self.model.name),
-                    grpc_server_port=self._grpc_port,
-                    insecure=False if self._tls_ready else True,
+            # only send the backend data once we have the database config
+            # otherwise we might trigger the auth/chaoscenter to try to connect to us before we're ready,
+            # causing a loop of failed connections and retries on both sides
+            if self.database_config:
+                self._auth.publish_endpoint(
+                    Endpoint(
+                        grpc_server_host=get_app_hostname(
+                            self.app.name, self.model.name
+                        ),
+                        grpc_server_port=self._grpc_port,
+                        insecure=False if self._tls_ready else True,
+                    )
                 )
-            )
-            self._send_http_api.publish_endpoint(self._http_api_endpoint)
+                self._send_http_api.publish_endpoint(self._http_api_endpoint)
 
     @property
     def _tls_ready(self) -> bool:

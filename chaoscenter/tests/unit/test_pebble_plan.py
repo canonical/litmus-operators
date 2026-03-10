@@ -37,12 +37,16 @@ def test_nginx_pebble_ready_plan(
     backend_http_api_relation,
     unit_fqdn,
     patch_write_to_ca_path,
+    user_secret,
+    user_secrets_config,
     tls,
 ):
-    # GIVEN relations with auth and backend endpoints
+    # GIVEN relations with auth and backend endpoints, and valid user credentials configured
     state = State(
         containers=[nginx_container, nginx_prometheus_exporter_container],
         relations=[auth_http_api_relation, backend_http_api_relation],
+        config=user_secrets_config,
+        secrets=[user_secret],
     )
 
     with patch_cert_and_key_ctx(tls):
@@ -84,6 +88,9 @@ def test_nginx_exporter_pebble_ready_plan(
     nginx_prometheus_exporter_container,
     auth_http_api_relation,
     backend_http_api_relation,
+    patch_write_to_ca_path,
+    user_secret,
+    user_secrets_config,
     tls,
 ):
     expected_cmd_args = {
@@ -94,10 +101,12 @@ def test_nginx_exporter_pebble_ready_plan(
         "--web.config.file=/etc/exporter/web-config.yaml",
     }
 
-    # GIVEN relations with auth and backend endpoints
+    # GIVEN relations with auth and backend endpoints, and valid user credentials configured
     state = State(
         containers=[nginx_container, nginx_prometheus_exporter_container],
         relations=[auth_http_api_relation, backend_http_api_relation],
+        config=user_secrets_config,
+        secrets=[user_secret],
     )
 
     with patch(

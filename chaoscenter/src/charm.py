@@ -5,21 +5,11 @@
 
 import logging
 import socket
+import typing
 from typing import Optional, Dict, cast, Any
-from lightkube import Client
-from lightkube.codecs import load_all_yaml
-from pathlib import Path
-from charms.tls_certificates_interface.v4.tls_certificates import (
-    TLSCertificatesRequiresV4,
-    CertificateRequestAttributes,
-)
-from ops.charm import CharmBase
-from ops import (
-    CollectStatusEvent,
-    ActiveStatus,
-    RelationDepartedEvent,
-    RelationChangedEvent,
-)
+
+import cosl
+import cosl.reconciler
 from coordinated_workers.models import TLSConfig
 from coordinated_workers.nginx import (
     Nginx,
@@ -27,26 +17,32 @@ from coordinated_workers.nginx import (
     NginxMappingOverrides,
     NginxTracingConfig,
 )
+from ops import (
+    BlockedStatus,
+    CollectStatusEvent,
+    ActiveStatus,
+)
+from ops.charm import CharmBase
 
-from litmus_libs.status_manager import StatusManager
-from nginx_config import get_config, http_server_port, all_pebble_checks, container_name
-from traefik_config import ingress_config, static_ingress_config
-
+from chaoscenter import Chaoscenter
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
+from charms.tempo_coordinator_k8s.v0.tracing import TracingEndpointRequirer
+from charms.tls_certificates_interface.v4.tls_certificates import (
+    TLSCertificatesRequiresV4,
+    CertificateRequestAttributes,
+)
 from charms.traefik_k8s.v0.traefik_route import TraefikRouteRequirer
-
 from litmus_libs import get_app_hostname, get_litmus_version
 from litmus_libs.interfaces.http_api import (
     LitmusAuthApiRequirer,
     LitmusBackendApiRequirer,
 )
 from litmus_libs.interfaces.self_monitoring import SelfMonitoring
-from litmus_libs.interfaces.litmus_infrastructure import LitmusInfrastructureRequirer
-from charms.tempo_coordinator_k8s.v0.tracing import TracingEndpointRequirer
 import cosl
 import cosl.reconciler
-from litmus_client import LitmusClient
-
+from litmus_libs.status_manager import StatusManager
+from nginx_config import get_config, http_server_port, all_pebble_checks, container_name
+from traefik_config import ingress_config, static_ingress_config
 
 logger = logging.getLogger(__name__)
 AUTH_HTTP_API_ENDPOINT = "auth-http-api"
@@ -115,17 +111,16 @@ class LitmusChaoscenterCharm(CharmBase):
         )
 
         self._self_monitoring = SelfMonitoring(self)
+        self._chaoscenter = Chaoscenter(
+            endpoint=f"{self._internal_frontend_url}:{http_server_port}",
+            user_secret_id=self._user_credentials_secret,
+            get_secret=lambda secret_id: self.model.get_secret(id=secret_id),
+        )
 
         self.nginx_exporter = NginxPrometheusExporter(
             self,
             options=NGINX_OVERRIDES,
         )
-
-        self._litmus_client = LitmusClient(
-            endpoint=f"{self._internal_frontend_url}:{http_server_port}"
-        )
-
-        self._k8s_client = Client()
 
         self.framework.observe(
             self.on.collect_unit_status, self._on_collect_unit_status
@@ -187,6 +182,8 @@ class LitmusChaoscenterCharm(CharmBase):
         )
         self.nginx_exporter.reconcile()
 
+        self._chaoscenter.reconcile()
+
     ##################
     # CONFIG METHODS #
     ##################
@@ -199,7 +196,8 @@ class LitmusChaoscenterCharm(CharmBase):
         return (
             NginxTracingConfig(
                 endpoint=endpoint,
-                service_name=f"{self.app.name}-nginx",  # append "-nginx" suffix to distinguish workload traces from charm traces
+                service_name=f"{self.app.name}-nginx",
+                # append "-nginx" suffix to distinguish workload traces from charm traces
                 # insert juju topology into the trace resource attributes
                 resource_attributes={
                     "juju_{}".format(key): value
@@ -307,6 +305,7 @@ class LitmusChaoscenterCharm(CharmBase):
             # if either auth or backend are on tls, we should have a tls relation too
             # StatusManager API demands 'None' to fail this check
             "tls certificate": None if self._is_missing_tls_certificate else "ok",
+            "user_secrets config is not set": self._user_credentials_secret,
         }
         return inconsistencies
 
@@ -325,12 +324,10 @@ class LitmusChaoscenterCharm(CharmBase):
 
         return False
 
-    def _apply_manifest(self, manifest: str):
-        """Apply a k8s manifest to the cluster."""
-        for obj in load_all_yaml(manifest):
-            self._k8s_client.apply(
-                obj, force=True, field_manager="litmus-chaoscenter-charm"
-            )
+    @property
+    def _user_credentials_secret(self) -> Optional[str]:
+        """The secret ID configured for user credentials, or None if not set."""
+        return typing.cast(Optional[str], self.config.get("user_secrets"))
 
     ###################
     # EVENT OBSERVERS #
@@ -408,10 +405,23 @@ class LitmusChaoscenterCharm(CharmBase):
         if self._is_missing_tls_certificate:
             required_relations.append(TLS_CERTIFICATES_ENDPOINT)
 
+        if not self._user_credentials_secret:
+            e.add_status(
+                BlockedStatus("Set the 'user_secrets' config option to continue.")
+            )
+        elif not self._chaoscenter.user_secrets_valid:
+            e.add_status(
+                BlockedStatus(
+                    "'user_secrets' secret is not valid. See logs for details."
+                )
+            )
+
         StatusManager(
             charm=self,
             block_if_relations_missing=required_relations,
-            wait_for_config=self.consistency_checks,
+            wait_for_config={
+                **self.consistency_checks,
+            },
             block_if_pebble_checks_failing={
                 container_name: all_pebble_checks,
             },
