@@ -6,6 +6,7 @@
 from dataclasses import dataclass
 import logging
 from typing import Any, List
+from coordinated_workers.nginx import CA_CERT_PATH
 
 import requests
 
@@ -14,6 +15,10 @@ logger = logging.getLogger(__name__)
 LITMUSCTL_BIN = "litmusctl"
 DEFAULT_ADMIN_USERNAME = "admin"
 DEFAULT_ADMIN_PASSWORD = "litmus"
+
+
+class LitmusAPIException(Exception):
+    """Custom exception for LitmusClient errors."""
 
 
 @dataclass
@@ -37,6 +42,7 @@ class LitmusClient:
         self._username = username
         self._password = password
         self._token: str | None = None
+        self._ca_bundle = CA_CERT_PATH if endpoint.startswith("https://") else None
 
     def _get_auth_header(self) -> dict[str, str]:
         """Provides the Bearer token header."""
@@ -49,12 +55,14 @@ class LitmusClient:
         url = f"{self._endpoint}/auth/login"
         payload = {"username": self._username, "password": self._password}
         try:
-            resp = requests.post(url, json=payload, timeout=10)
+            resp = requests.post(url, json=payload, timeout=10, verify=self._ca_bundle)
             resp.raise_for_status()
             self._token = resp.json().get("accessToken")
         except Exception as e:
-            logger.error("Litmus login failed: %s", e)
             self._token = None
+            raise LitmusAPIException(
+                f"Failed to login to Litmus API at {self._endpoint}: {e}"
+            )
 
     def _execute_rest(
         self, method: str, path: str, payload: dict | None = None
@@ -68,25 +76,20 @@ class LitmusClient:
                 headers=self._get_auth_header(),
                 json=payload,
                 timeout=10,
+                verify=self._ca_bundle,
             )
 
-            if resp.status_code != 200:
-                logger.error(
-                    "REST request failed (Status %s): %s", resp.status_code, resp.text
-                )
-                return None
+            resp.raise_for_status()
 
             data = resp.json()
             if data.get("errors"):
-                logger.error(
-                    "REST request returned errors: %s", data["errors"][0].get("message")
+                raise LitmusAPIException(
+                    f"REST request returned errors: {data['errors'][0].get('message')}"
                 )
-                return None
 
             return data.get("data", {})
         except requests.RequestException as e:
-            logger.error("REST request failed: %s", e)
-            return None
+            raise LitmusAPIException(f"REST request to {url} failed: {e}")
 
     def _execute_gql(self, query: str, variables: dict | None = None) -> dict | None:
         """Executes a GraphQL request."""
@@ -94,19 +97,25 @@ class LitmusClient:
         payload = {"query": query, "variables": variables or {}}
         try:
             resp = requests.post(
-                url=url, json=payload, headers=self._get_auth_header(), timeout=10
+                url=url,
+                json=payload,
+                headers=self._get_auth_header(),
+                timeout=10,
+                verify=self._ca_bundle,
             )
             resp.raise_for_status()
             data = resp.json()
 
             if data.get("errors"):
-                logger.error("GraphQL error: %s", data["errors"][0]["message"])
-                return None
+                raise LitmusAPIException(
+                    f"GraphQL request returned errors: {data['errors'][0].get('message')}"
+                )
 
             return data.get("data", {})
         except requests.RequestException as e:
-            logger.error("GraphQL request failed: %s", e)
-            return None
+            raise LitmusAPIException(
+                f"GraphQL request for query {query} with vars {variables} failed: {e}"
+            )
 
     def get_projects(self) -> List[ChaosProject]:
         """List all projects accessible to the current account."""
@@ -142,13 +151,16 @@ class LitmusClient:
 
     def can_login(self) -> bool:
         """Try to authenticate and return True if credentials are valid."""
-        self._login()
+        try:
+            self._login()
+        except LitmusAPIException:
+            return False
         return self._token is not None
 
     def set_password(self, old_password: str, new_password: str) -> None:
         """Change the current user's password.
 
-        Raises HTTPError on failure.
+        Raises LitmusAPIException on failure.
         """
         payload = {
             "username": self._username,
@@ -166,7 +178,7 @@ class LitmusClient:
     ) -> None:
         """Create a new user account (requires admin privileges).
 
-        Raises HTTPError on failure.
+        Raises LitmusAPIException on failure.
         """
         payload = {
             "username": username,
@@ -181,7 +193,9 @@ class LitmusClient:
         """Return True if a user with the given username exists (requires admin privileges)."""
         url = f"{self._endpoint}/auth/users"
         try:
-            resp = requests.get(url, headers=self._get_auth_header(), timeout=10)
+            resp = requests.get(
+                url, headers=self._get_auth_header(), timeout=10, verify=self._ca_bundle
+            )
             resp.raise_for_status()
             users = resp.json()
             if isinstance(users, list):

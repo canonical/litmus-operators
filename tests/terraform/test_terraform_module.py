@@ -11,7 +11,7 @@ from pytest_bdd import given, when, then
 
 
 THIS_DIRECTORY = pathlib.Path(__file__).parent.resolve()
-CHARM_CHANNEL = "2/edge"
+CHARM_CHANNEL = "dev/edge"
 ADMIN_PASSWORD = "Litmus123!"
 CHARM_PASSWORD = "Charm123!"
 
