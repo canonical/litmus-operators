@@ -10,3 +10,15 @@ variable "channel" {
   description = "Charm channel to deploy"
   type        = string
 }
+
+variable "admin_password" {
+  description = "The password to set for the Litmus admin user."
+  type        = string
+  sensitive   = true
+}
+
+variable "charm_password" {
+  description = "The password to set for the Litmus charm bot user."
+  type        = string
+  sensitive   = true
+}

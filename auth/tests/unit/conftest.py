@@ -64,7 +64,7 @@ def ctx(auth_charm):
 
 @pytest.fixture
 def database_relation():
-    return Relation("database")
+    return Relation("database", remote_app_data=db_remote_databag())
 
 
 @pytest.fixture
