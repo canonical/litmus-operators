@@ -10,6 +10,8 @@ def test_ingressed_url_present_in_status(
     auth_http_api_relation,
     backend_http_api_relation,
     ingress_relation,
+    user_secret,
+    user_secrets_config,
 ):
     # GIVEN http api relations with auth and backend and ingress
     # WHEN any event happens
@@ -23,6 +25,8 @@ def test_ingressed_url_present_in_status(
                 ingress_relation,
             },
             containers={nginx_container, nginx_prometheus_exporter_container},
+            config=user_secrets_config,
+            secrets=[user_secret],
         ),
     )
 
@@ -40,6 +44,8 @@ def test_ingressed_https_url_present_in_status(
     tls_certificates_relation,
     patch_cert_and_key,
     patch_write_to_ca_path,
+    user_secret,
+    user_secrets_config,
 ):
     # GIVEN http api relations with auth and backend and ingress
     # WHEN any event happens
@@ -54,6 +60,8 @@ def test_ingressed_https_url_present_in_status(
                 tls_certificates_relation,
             },
             containers={nginx_container, nginx_prometheus_exporter_container},
+            config=user_secrets_config,
+            secrets=[user_secret],
         ),
     )
 

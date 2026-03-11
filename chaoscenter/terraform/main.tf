@@ -16,4 +16,5 @@ resource "juju_application" "chaoscenter" {
   units       = var.units
   resources   = var.resources
   trust       = true
+  config      = var.config
 }

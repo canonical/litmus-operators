@@ -30,7 +30,7 @@ from ops.testing import State, Model, CharmEvents
     ),
 )
 def test_publish_endpoint_without_tls(
-    ctx, auth_relation, authserver_container, leader, expected
+    ctx, auth_relation, database_relation, authserver_container, leader, expected
 ):
     # GIVEN a litmus-auth integration
     auth_relation = dataclasses.replace(auth_relation)
@@ -38,7 +38,7 @@ def test_publish_endpoint_without_tls(
     # WHEN a relation_changed event fires
     state_out = ctx.run(
         state=State(
-            relations={auth_relation},
+            relations={auth_relation, database_relation},
             containers={authserver_container},
             leader=leader,
             model=Model(name="test"),
@@ -71,6 +71,7 @@ def test_publish_endpoint_without_tls(
 def test_publish_endpoint_with_tls(
     ctx,
     auth_relation,
+    database_relation,
     tls_certificates_relation,
     patch_cert_and_key,
     authserver_container,
@@ -84,7 +85,7 @@ def test_publish_endpoint_with_tls(
     # WHEN a relation_changed event fires
     state_out = ctx.run(
         state=State(
-            relations={auth_relation, tls_certificates_relation},
+            relations={auth_relation, tls_certificates_relation, database_relation},
             containers={authserver_container},
             leader=leader,
             model=Model(name="test"),

@@ -47,3 +47,9 @@ variable "units" {
   type        = number
   default     = 1
 }
+
+variable "config" {
+  description = "Map of the charm configuration options"
+  type        = map(string)
+  default     = {}
+}
