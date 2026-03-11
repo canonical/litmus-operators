@@ -88,7 +88,7 @@ wheels = [
 
 [[package]]
 name = "cosl"
-version = "1.5.0"
+version = "1.6.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ops" },
@@ -97,9 +97,9 @@ dependencies = [
     { name = "tenacity" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d3/af/692908f79b4be658d4ac7d83a87d58feeb2951c9fd23096c8fe259bd8a6e/cosl-1.5.0.tar.gz", hash = "sha256:cf650495e355081b44401ca7fad0d6f307f9cb2251370fc0c8ad1c7cc8ac12c3", size = 48770, upload-time = "2026-03-03T13:49:14.308Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e5/98/1a1f8aa7965ede9abfeb649b83375baf4e2f523778f90b841281cbe3603a/cosl-1.6.1.tar.gz", hash = "sha256:f96a6a978dfdee4a3b460cc48fa18514663bbc1c3a4f323315e3dbe3e6a2a596", size = 149512, upload-time = "2026-03-09T21:44:46.744Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e9/e0/a5ec5bab38a0b4b5107c6d9af304c8eb1662e40e31298a03edf49a8d73f5/cosl-1.5.0-py3-none-any.whl", hash = "sha256:b281eb343553bc25dae6401d54e4d0bd7894bdff6ad240ca889d313f9f044e52", size = 37912, upload-time = "2026-03-03T13:49:13.137Z" },
+    { url = "https://files.pythonhosted.org/packages/f0/8f/3ca0f470fbc7b26ed33b5fe5815e38b6a628b8bb4df961924cae38755c46/cosl-1.6.1-py3-none-any.whl", hash = "sha256:12db85a81317c5b056171642098be91c09e78e04875ed1262b99681dea43b533", size = 37800, upload-time = "2026-03-09T21:44:45.373Z" },
 ]
 
 [[package]]
@@ -268,16 +268,16 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "litmus-libs"
-version = "0.0.11"
+version = "0.0.12"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cosl" },
     { name = "ops", extra = ["tracing"] },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/44/8f/fb00811da031e561bce12cc63d4028ea03d912be4e2e5a586719af46b2dd/litmus_libs-0.0.11.tar.gz", hash = "sha256:b8f28dea67badc91bde318a759ccb16022d22644ff9a8e7c4c77f534b3053f88", size = 82062, upload-time = "2026-03-04T08:05:32.211Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/86/a9/1493e180a30139216f51b8aa5cf4e9d097acb327b3f2f69ebbd9258017a8/litmus_libs-0.0.12.tar.gz", hash = "sha256:36535fa093f1cc0c0fd8b0a958b9d73c3d7d1c79d9faee9699191780abdf7418", size = 82054, upload-time = "2026-03-11T10:07:49.056Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2f/bc/38c65ce5b6191e305dc4855cda8c743b4703aef677f9c2578b9a3dbb31d5/litmus_libs-0.0.11-py3-none-any.whl", hash = "sha256:2d4270d2bb81e8d5c0c29e07bd038b511d09c6ec80e4238ea4c226e8ceec0d56", size = 20777, upload-time = "2026-03-04T08:05:30.926Z" },
+    { url = "https://files.pythonhosted.org/packages/b8/b9/1753c344c895ff7c2d38c9414637d666678d4f0763f1647a3610460e5140/litmus_libs-0.0.12-py3-none-any.whl", hash = "sha256:8bd5c06f36e39e376677c9f01e29e1b4d5ca6b7db7ddc20d6eb9ff899c59a2da", size = 20840, upload-time = "2026-03-11T10:07:47.275Z" },
 ]
 
 [[package]]
@@ -538,15 +538,15 @@ wheels = [
 
 [[package]]
 name = "pytest-jubilant"
-version = "1.1"
+version = "1.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jubilant" },
     { name = "pytest" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/73/01/a089e0b323d87519e19425809062090a615cc10fdf8879ecf0ec5c5dfc36/pytest_jubilant-1.1.tar.gz", hash = "sha256:755dd5a1b4c295773a01ed3005cec1bd106a46bf51ec041ae56004dd558e8f9c", size = 12368, upload-time = "2025-07-28T06:42:44.808Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/de/bd/36767aac16f831fd4a415903b9b00832f68b372b1eb00a008d0754e8cd7e/pytest_jubilant-1.2.0.tar.gz", hash = "sha256:5f7dcbe2c73a3add79042897f48dcf025d52b6724dd3b7530e2366f3bc1ad3a4", size = 12204, upload-time = "2026-03-11T02:02:29.627Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/10/e2/0d9124119c994aba4fbb48457a3dde01d5af5db1cd095be7b03bc6b21215/pytest_jubilant-1.1-py3-none-any.whl", hash = "sha256:1c643b0e64173e405988074e551dd2101805412d807c3c0e51983b52f8b198d4", size = 12040, upload-time = "2025-07-28T06:42:43.518Z" },
+    { url = "https://files.pythonhosted.org/packages/99/30/327b1996df3e652a99badb593ae18ebb1a0bba511ef900f4f4a35d96307c/pytest_jubilant-1.2.0-py3-none-any.whl", hash = "sha256:5809b5c2498b67fede742827d0df2fe71ee447a9894e2ce9ed60af9f201d738b", size = 11893, upload-time = "2026-03-11T02:02:28.141Z" },
 ]
 
 [[package]]

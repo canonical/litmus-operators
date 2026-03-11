@@ -6,6 +6,7 @@
 import subprocess
 import logging
 from pathlib import Path
+from opentelemetry import trace
 
 from ops.charm import CharmBase
 
@@ -23,6 +24,8 @@ from charms.certificate_transfer_interface.v1.certificate_transfer import (
 )
 
 logger = logging.getLogger(__name__)
+
+_tracer = trace.get_tracer("litmus_infrastructure.tracer")
 
 TRUSTED_CA_CERT_PATH = Path("/usr/local/share/ca-certificates/trusted-ca-cert.crt")
 
@@ -95,12 +98,14 @@ class LitmusInfrastructureCharm(CharmBase):
                 else ""
             )
             if curr != certificates:
-                TRUSTED_CA_CERT_PATH.parent.mkdir(parents=True, exist_ok=True)
-                TRUSTED_CA_CERT_PATH.write_text(certificates)
-                subprocess.run(["update-ca-certificates", "--fresh"])
+                with _tracer.start_as_current_span("update trusted certs"):
+                    TRUSTED_CA_CERT_PATH.parent.mkdir(parents=True, exist_ok=True)
+                    TRUSTED_CA_CERT_PATH.write_text(certificates)
+                    subprocess.run(["update-ca-certificates", "--fresh"])
         else:
             if TRUSTED_CA_CERT_PATH.exists():
-                TRUSTED_CA_CERT_PATH.unlink(missing_ok=True)
+                with _tracer.start_as_current_span("remove trusted certs"):
+                    TRUSTED_CA_CERT_PATH.unlink(missing_ok=True)
 
     def _reconcile_charm_tracing(self):
         if self._charm_tracing.is_ready():
