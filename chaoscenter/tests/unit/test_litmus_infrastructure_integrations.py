@@ -21,6 +21,7 @@ def test_get_relation_data(
     with ctx(ctx.on.update_status(), state_in) as mgr:
         charm = mgr.charm
         # THEN the charm should be able to acquire the data from the relation and parse it correctly
-        data = charm._litmus_infra.get_data(litmus_infrastructure_relation.id)
-        assert data.infrastructure_name == "name"
-        assert data.model_name == "model"
+        data = charm._litmus_infra.get_all_data()
+        assert len(data) == 1
+        assert data[0].infrastructure_name == "name"
+        assert data[0].model_name == "model"

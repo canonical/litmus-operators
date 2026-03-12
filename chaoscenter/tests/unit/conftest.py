@@ -84,7 +84,7 @@ def patch_write_to_ca_path():
 
 @pytest.fixture(autouse=True)
 def patch_lightkube_client():
-    with patch("chaoscenter.Client", new=MagicMock()):
+    with patch("infra_manager.Client", new=MagicMock()):
         yield
 
 

@@ -251,10 +251,9 @@ class UserManager:
             )
 
     def get_charm_client(self) -> LitmusClient | None:
-        """Get a LitmusClient authenticated as the charm user, or None if credentials are not valid."""
+        """Get a LitmusClient authenticated as the charm user."""
         secret = self._secret
         if not secret:
             return None
         creds = _UserSecretModel.model_validate(secret.get_content())
-        charm_client = self._make_client(self.CHARM_USERNAME, creds.charm_password)
-        return charm_client if charm_client.can_login() else None
+        return self._make_client(self.CHARM_USERNAME, creds.charm_password)

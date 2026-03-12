@@ -58,7 +58,6 @@ class TestAuthentication:
 
         # AND: The token should be wiped (set to None)
         assert client._token is None
-        assert client._default_project_id is None
 
     def test_token_persistence(self, client, mock_api):
         # GIVEN: A client that already possesses a valid token
@@ -69,17 +68,6 @@ class TestAuthentication:
 
         # THEN: No new login request should be triggered
         assert mock_api.call_count == 0
-
-    def test_default_project_id_triggers_login(self, client, mock_api):
-        # GIVEN: A client that hasn't logged in yet
-        mock_api.post(AUTH_URL, json={"accessToken": "t-1", "projectID": "p-expected"})
-
-        # WHEN: Accessing the default_project_id property
-        pid = client.default_project_id
-
-        # THEN: It should trigger a login and return the correct ID
-        assert pid == "p-expected"
-        assert mock_api.called
 
 
 class TestRESTMethods:
@@ -172,14 +160,14 @@ class TestGraphQLMethods:
         client._token = "valid-token"
         mock_api.post(
             GQL_URL,
-            json={"data": {"registerInfra": {"manifest": "kind: Deployment..."}}},
+            json={"data": {"registerInfra": {"infraID": "47"}}},
         )
 
         # WHEN: Registering infrastructure
-        manifest = client.register_infrastructure("my-infra", "litmus", "proj-1")
+        infra_id = client.register_infrastructure("my-infra", "litmus", "proj-1")
 
-        # THEN: The manifest should be returned and variables verified
-        assert "kind: Deployment" in manifest
+        # THEN: The infraID should be returned and variables verified
+        assert infra_id == "47"
         sent_vars = mock_api.request_history[-1].json()["variables"]
         assert sent_vars["projectID"] == "proj-1"
         assert sent_vars["request"]["name"] == "my-infra"

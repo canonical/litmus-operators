@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import logging
 from typing import Any
 from coordinated_workers.nginx import CA_CERT_PATH
-
+from pathlib import Path
 import requests
 
 logger = logging.getLogger(__name__)
@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 LITMUSCTL_BIN = "litmusctl"
 DEFAULT_ADMIN_USERNAME = "admin"
 DEFAULT_ADMIN_PASSWORD = "litmus"
+GRAPHQL_QUERIES_PATH = Path(__file__).parent / "graphql"
 
 
 class LitmusAPIException(Exception):
@@ -26,7 +27,7 @@ class LitmusAPIException(Exception):
 class ChaosInfrastructure:
     id: str
     name: str
-    environment_id: str
+    namespace: str
     active: bool
 
 
@@ -42,17 +43,12 @@ class LitmusClient:
         self._endpoint = endpoint.rstrip("/")
         self._username = username
         self._password = password
-        self._token: str | None = None
-        self._ca_bundle = CA_CERT_PATH if endpoint.startswith("https://") else None
-        self._default_project_id: str | None = None
+        self._default_project = f"{username}-project"
 
-    # We assume a single-project environment where all litmus operations from the charm will occur in this default project.
-    @property
-    def default_project_id(self) -> str | None:
-        """Returns the default project ID."""
-        if not self._default_project_id:
-            self._login()
-        return self._default_project_id
+        self._token: str | None = None
+
+        self._ca_bundle = CA_CERT_PATH if endpoint.startswith("https://") else None
+        self._session = requests.Session()
 
     @property
     def default_env_id(self) -> str:
@@ -60,10 +56,17 @@ class LitmusClient:
         # TODO: don't hardcode the env ID
         return "test"
 
+    def _load_query(self, query_name: str) -> str:
+        return (GRAPHQL_QUERIES_PATH / f"{query_name}.graphql").read_text()
+
+    def _ensure_token(self) -> None:
+        if self._token is None:
+            self._login()
+
     def _get_auth_header(self) -> dict[str, str]:
         """Provides the Bearer token header."""
-        if not self._token:
-            self._login()
+        self._ensure_token()
+
         return {
             "Authorization": f"Bearer {self._token}",
             # Litmus backend middleware fails without a Referer header for some requests
@@ -75,24 +78,24 @@ class LitmusClient:
         url = f"{self._endpoint}/auth/login"
         payload = {"username": self._username, "password": self._password}
         try:
-            resp = requests.post(url, json=payload, timeout=10, verify=self._ca_bundle)
+            resp = self._session.post(
+                url, json=payload, timeout=10, verify=self._ca_bundle
+            )
             resp.raise_for_status()
             self._token = resp.json().get("accessToken")
-            self._default_project_id = resp.json().get("projectID")
         except Exception as e:
             self._token = None
-            self._default_project_id = None
             raise LitmusAPIException(
                 f"Failed to login to Litmus API at {self._endpoint}: {e}"
             )
 
     def _execute_rest(
         self, method: str, path: str, payload: dict | None = None
-    ) -> dict[str, Any] | None:
+    ) -> dict[str, Any]:
         """Executes a RESTful request."""
         url = f"{self._endpoint}{path}"
         try:
-            resp = requests.request(
+            resp = self._session.request(
                 method=method,
                 url=url,
                 headers=self._get_auth_header(),
@@ -112,12 +115,12 @@ class LitmusClient:
         except requests.RequestException as e:
             raise LitmusAPIException(f"REST request to {url} failed: {e}")
 
-    def _execute_gql(self, query: str, variables: dict | None = None) -> dict | None:
+    def _execute_gql(self, query: str, variables: dict | None = None) -> dict:
         """Executes a GraphQL request."""
         url = f"{self._endpoint}/api/query"
         payload = {"query": query, "variables": variables or {}}
         try:
-            resp = requests.post(
+            resp = self._session.post(
                 url=url,
                 json=payload,
                 headers=self._get_auth_header(),
@@ -140,15 +143,9 @@ class LitmusClient:
 
     def register_infrastructure(
         self, infra_name: str, namespace: str, project_id: str
-    ) -> str | None:
-        """Registers a new infrastructure in the ChaosCenter and returns its manifest."""
-        query = """
-        mutation registerInfra($projectID: ID!, $request: RegisterInfraRequest!) {
-            registerInfra(projectID: $projectID, request: $request) {
-                manifest
-            }
-        }
-        """
+    ) -> str:
+        """Registers a new infrastructure in the ChaosCenter and returns its newly created ID."""
+        query = self._load_query("register_infrastructure")
 
         variables = {
             "projectID": project_id,
@@ -168,22 +165,39 @@ class LitmusClient:
         }
 
         data = self._execute_gql(query, variables)
-        if not data:
-            return None
+        return data.get("registerInfra", {})["infraID"]
 
-        return data.get("registerInfra", {}).get("manifest")
+    def list_infrastructures(self, project_id: str) -> list[ChaosInfrastructure]:
+        """Lists infrastructures in the ChaosCenter."""
+        query = self._load_query("list_infrastructures")
+
+        variables = {
+            "projectID": project_id,
+            "request": {
+                "environmentIDs": [self.default_env_id],
+            },
+        }
+
+        data = self._execute_gql(query, variables)
+        if not data:
+            return []
+
+        infras = data.get("listInfras", {}).get("infras", [])
+        return [
+            ChaosInfrastructure(
+                id=infra["infraID"],
+                name=infra["name"],
+                namespace=infra["infraNamespace"],
+                active=infra["isActive"],
+            )
+            for infra in infras
+        ]
 
     def get_infrastructure(
         self, infrastructure_name: str, namespace: str, project_id: str
     ) -> ChaosInfrastructure | None:
         """Gets infrastructure details by name and namespace. Returns None if not found."""
-        query = """
-        query listInfras($projectID: ID!, $request: ListInfraRequest!) {
-            listInfras(projectID: $projectID, request: $request) {
-                infras { infraID name environmentID isActive infraNamespace}
-            }
-        }
-        """
+        query = self._load_query("get_infrastructure")
 
         variables = {
             "projectID": project_id,
@@ -203,18 +217,15 @@ class LitmusClient:
                 return ChaosInfrastructure(
                     id=infra["infraID"],
                     name=infra["name"],
-                    environment_id=infra["environmentID"],
+                    namespace=infra["infraNamespace"],
                     active=infra["isActive"],
                 )
         return None
 
     def get_infrastructure_manifest(self, infra_id: str, project_id: str) -> str | None:
         """Gets the infrastructure manifest for an existing infrastructure."""
-        query = """
-        query getInfraManifest($projectID: ID!, $infraID: ID!, $upgrade: Boolean!) {
-            getInfraManifest(projectID: $projectID, infraID: $infraID, upgrade: $upgrade)
-        }
-        """
+        query = self._load_query("get_infrastructure_manifest")
+
         variables = {
             "projectID": project_id,
             "infraID": infra_id,
@@ -228,11 +239,7 @@ class LitmusClient:
 
     def delete_infrastructure(self, infra_id: str, project_id: str):
         """Deletes an infrastructure by ID."""
-        query = """
-        mutation deleteInfra($projectID: ID!, $infraID: String!) {
-            deleteInfra(projectID: $projectID, infraID: $infraID)
-        }
-        """
+        query = self._load_query("delete_infrastructure")
         variables = {
             "projectID": project_id,
             "infraID": infra_id,
@@ -242,14 +249,7 @@ class LitmusClient:
 
     def create_environment(self, project_id: str, name: str):
         """Create a Chaos Environment."""
-        query = """
-        mutation createEnvironment($projectID: ID!, $request: CreateEnvironmentRequest!) {
-            createEnvironment(projectID: $projectID, request: $request) {
-                environmentID
-                name
-            }
-        }
-        """
+        query = self._load_query("create_environment")
         variables = {
             "projectID": project_id,
             "request": {
@@ -257,7 +257,6 @@ class LitmusClient:
                 "name": name,
                 "description": "",
                 "tags": [],
-                # TODO: make the env type configurable
                 "type": "NON_PROD",
             },
         }
@@ -307,7 +306,7 @@ class LitmusClient:
         """Return True if a user with the given username exists (requires admin privileges)."""
         url = f"{self._endpoint}/auth/users"
         try:
-            resp = requests.get(
+            resp = self._session.get(
                 url, headers=self._get_auth_header(), timeout=10, verify=self._ca_bundle
             )
             resp.raise_for_status()
@@ -319,3 +318,15 @@ class LitmusClient:
         except requests.RequestException as e:
             logger.error("user_exists request failed: %s", e)
             return False
+
+    def get_default_project_id(self) -> str | None:
+        """Get the default project ID for the current user, None if not found.
+
+        Raises LitmusAPIException on failure.
+        """
+        data = self._execute_rest("GET", "/auth/list_projects")
+        for project in data.get("projects", []):
+            if project.get("name") == self._default_project:
+                return project.get("projectID")
+
+        return None

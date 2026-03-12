@@ -21,11 +21,11 @@ from ops import (
     BlockedStatus,
     CollectStatusEvent,
     ActiveStatus,
-    RelationDepartedEvent,
-    RelationChangedEvent,
 )
 from ops.charm import CharmBase
-from litmus_libs.interfaces.litmus_infrastructure import LitmusInfrastructureRequirer
+from litmus_libs.interfaces.litmus_infrastructure import (
+    LitmusInfrastructureRequirer,
+)
 from chaoscenter import Chaoscenter
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from charms.tempo_coordinator_k8s.v0.tracing import TracingEndpointRequirer
@@ -114,6 +114,7 @@ class LitmusChaoscenterCharm(CharmBase):
             endpoint=f"{self._internal_frontend_url}:{http_server_port}",
             user_secret_id=self._user_credentials_secret,
             get_secret=lambda secret_id: self.model.get_secret(id=secret_id),
+            infra_data=self._litmus_infra.get_all_data(),
         )
 
         self.nginx_exporter = NginxPrometheusExporter(
@@ -125,16 +126,6 @@ class LitmusChaoscenterCharm(CharmBase):
             self.on.collect_unit_status, self._on_collect_unit_status
         )
 
-        # observe the litmus_infrastructure events instead of reconciling the state
-        # reonciling the infrastructure state is expensive due to the unnecessary API calls
-        self.framework.observe(
-            self.on.litmus_infrastructure_relation_changed,
-            self._on_litmus_infrastructure_changed,
-        )
-        self.framework.observe(
-            self.on.litmus_infrastructure_relation_departed,
-            self._on_litmus_infrastructure_departed,
-        )
         cosl.reconciler.observe_events(
             self, cosl.reconciler.all_events, self._reconcile
         )
@@ -331,20 +322,6 @@ class LitmusChaoscenterCharm(CharmBase):
     ###################
     # EVENT OBSERVERS #
     ###################
-
-    def _on_litmus_infrastructure_changed(self, event: RelationChangedEvent):
-        infra_data = self._litmus_infra.get_data(event.relation.id)
-        if not infra_data:
-            return
-
-        self._chaoscenter.create_infrastructure(infra_data)
-
-    def _on_litmus_infrastructure_departed(self, event: RelationDepartedEvent):
-        infra_data = self._litmus_infra.get_data(event.relation.id)
-        if not infra_data:
-            return
-
-        self._chaoscenter.delete_infrastructure(infra_data)
 
     def _on_collect_unit_status(self, e: CollectStatusEvent):
         required_relations = [
