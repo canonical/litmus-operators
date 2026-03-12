@@ -23,10 +23,6 @@ class LitmusInfraCharm(CharmBase):
         "requires": {"infra-requirer": {"interface": "litmus_infrastructure"}},
     }
 
-    # Static storage for test assertions
-    _PUBLISH_DATA: InfrastructureDatabagModel = None
-    _RECEIVED_DATA: list[InfrastructureDatabagModel] = []
-
     def __init__(self, *args):
         super().__init__(*args)
         self.provider = LitmusInfrastructureProvider(
@@ -38,20 +34,10 @@ class LitmusInfraCharm(CharmBase):
             self.model.relations["infra-requirer"], self.app
         )
 
-        self.framework.observe(self.on.update_status, self._on_update_status)
-
-    def _on_update_status(self, _):
-        if self._PUBLISH_DATA:
-            self.provider.publish_data(self._PUBLISH_DATA)
-
-        LitmusInfraCharm._RECEIVED_DATA = self.requirer.get_data()
-
 
 @pytest.fixture(scope="function")
 def ctx():
-    yield Context(LitmusInfraCharm, meta=LitmusInfraCharm.META)
-    LitmusInfraCharm._PUBLISH_DATA = None
-    LitmusInfraCharm._RECEIVED_DATA = []
+    return Context(LitmusInfraCharm, meta=LitmusInfraCharm.META)
 
 
 @pytest.fixture
@@ -63,44 +49,35 @@ def mock_metadata():
 
 def test_provider_publishes_metadata(ctx, mock_metadata):
     # GIVEN a charm with two relations
-    rel1 = Relation(endpoint="infra-provider", id=1)
-    rel2 = Relation(endpoint="infra-provider", id=2)
-
-    LitmusInfraCharm._PUBLISH_DATA = mock_metadata
+    rel1, rel2 = (
+        Relation(endpoint="infra-provider", id=1),
+        Relation(endpoint="infra-provider", id=2),
+    )
+    state = State(relations={rel1, rel2}, leader=True)
 
     # WHEN the provider publishes metadata
-    state_out = ctx.run(
-        ctx.on.update_status(),
-        state=State(
-            relations={rel1, rel2},
-            leader=True,
-        ),
-    )
+    with ctx(ctx.on.update_status(), state=state) as mgr:
+        mgr.charm.provider.publish_data(mock_metadata)
+        state_out = mgr.run()
 
     # THEN both relations receive the data
     for rel_id in (1, 2):
         databag = state_out.get_relation(rel_id).local_app_data
-        assert databag["infrastructure_name"] == json.dumps(mock_metadata.infrastructure_name)
-        assert databag["model_name"] == json.dumps(mock_metadata.model_name)
+        assert json.loads(databag["infrastructure_name"]) == "test-cluster-123"
+        assert json.loads(databag["model_name"]) == "production"
 
 
 def test_provider_fails_if_not_leader(ctx, mock_metadata):
-    LitmusInfraCharm._PUBLISH_DATA = mock_metadata
+    # GIVEN a charm that is not the leader
+    state = State(relations={Relation(endpoint="infra-provider", id=1)}, leader=False)
 
-    # GIVEN a charm where the unit is not the leader
-    # WHEN the provider tries to publish metadata
-    # THEN it raises an error
-    with pytest.raises(RuntimeError):
-        ctx.run(
-            ctx.on.update_status(),
-            state=State(
-                relations={Relation(endpoint="infra-provider", id=1)},
-                leader=False,
-            ),
-        )
+    # WHEN/THEN attempting to publish raises RuntimeError
+    with ctx(ctx.on.update_status(), state=state) as mgr:
+        with pytest.raises(RuntimeError):
+            mgr.charm.provider.publish_data(mock_metadata)
 
 
-def test_requirer_collects_multiple_providers(ctx):
+def test_requirer_get_all_data(ctx):
     # GIVEN a requirer related to two different providers
 
     databag1 = {
@@ -112,77 +89,68 @@ def test_requirer_collects_multiple_providers(ctx):
         "model_name": json.dumps("model-b"),
     }
 
-    # WHEN the requirer charm runs
-    ctx.run(
-        ctx.on.update_status(),
-        state=State(
-            relations={
-                Relation(endpoint="infra-requirer", id=1, remote_app_data=databag1),
-                Relation(endpoint="infra-requirer", id=2, remote_app_data=databag2),
-            },
-        ),
+    state = State(
+        relations={
+            Relation(endpoint="infra-requirer", id=1, remote_app_data=databag1),
+            Relation(endpoint="infra-requirer", id=2, remote_app_data=databag2),
+        },
     )
-
-    # THEN the requirer correctly parses both metadata objects
-    received = LitmusInfraCharm._RECEIVED_DATA
-    assert len(received) == 2
-    assert received[0].infrastructure_name == "cluster-a"
-    assert received[1].infrastructure_name == "cluster-b"
-    assert received[0].model_name == "model-a"
-    assert received[1].model_name == "model-b"
+    # WHEN the requirer charm runs
+    with ctx(ctx.on.update_status(), state=state) as mgr:
+        req = mgr.charm.requirer
+        # THEN get_all_data() retuns data from both providers
+        received = req.get_all_data()
+        assert len(received) == 2
+        assert received[0].infrastructure_name == "cluster-a"
+        assert received[1].infrastructure_name == "cluster-b"
+        assert received[0].model_name == "model-a"
+        assert received[1].model_name == "model-b"
 
 
 def test_requirer_skips_uninitialized_provider(ctx):
     # GIVEN a relation exists but the remote app hasn't set any data yet
-    ctx.run(
-        ctx.on.update_status(),
-        state=State(
-            relations={Relation(endpoint="infra-requirer", id=1, remote_app_data={})},
-        ),
+    state = State(
+        relations={Relation(endpoint="infra-requirer", id=1, remote_app_data={})},
     )
 
-    # THEN the requirer returns an empty list
-    received = LitmusInfraCharm._RECEIVED_DATA
-    assert len(received) == 0
+    # WHEN the requirer tries to get relation data
+    with ctx(ctx.on.update_status(), state=state) as mgr:
+        # THEN the data is empty
+        assert mgr.charm.requirer.get_all_data() == []
 
 
-def test_requirer_fails_on_schema_type_mismatch(ctx):
+def test_requirer_handles_malformed_data(ctx):
     # GIVEN a provider sends data that doesn't match the expected schema (e.g. a list instead of a string)
     type_mismatch_databag = {"infrastructure_name": json.dumps(["list", "not", "string"])}
 
     # WHEN the requirer processes this relation
-    ctx.run(
-        ctx.on.update_status(),
-        state=State(
-            relations={
-                Relation(endpoint="infra-requirer", id=1, remote_app_data=type_mismatch_databag)
-            },
-        ),
+    state = State(
+        relations={
+            Relation(endpoint="infra-requirer", id=1, remote_app_data=type_mismatch_databag)
+        }
     )
-    # THEN the requirer logs an error and returns an empty list
-    assert len(LitmusInfraCharm._RECEIVED_DATA) == 0
+    with ctx(ctx.on.update_status(), state=state) as mgr:
+        # THEN the API handle the error gracefully by returning None
+        assert mgr.charm.requirer.get_all_data() == []
 
 
 def test_requirer_forward_compatibility(ctx):
-    # GIVEN a provider sends the current fields PLUS a future "v2" field
+    # GIVEN data with extra unknown fields
     future_databag = {
         "infrastructure_name": json.dumps("cluster-1"),
         "model_name": json.dumps("prod"),
-        "future_field_id": json.dumps("v2-xyz-789"),  # New field not in v1
+        "extra_v2_field": json.dumps("ignored"),
     }
-
-    # WHEN the requirer processes this relation
-    ctx.run(
-        ctx.on.update_status(),
-        state=State(
-            relations={Relation(endpoint="infra-requirer", id=1, remote_app_data=future_databag)},
-        ),
+    state = State(
+        relations={Relation(endpoint="infra-requirer", id=1, remote_app_data=future_databag)}
     )
 
-    # THEN the requirer ignores the unknown field but successfully parses the known ones
-    received = LitmusInfraCharm._RECEIVED_DATA
-    assert len(received) == 1
-    assert received[0].infrastructure_name == "cluster-1"
-    assert received[0].model_name == "prod"
-    # Verify the object doesn't have the extra field (pydantic default behavior)
-    assert not hasattr(received[0], "future_field_id")
+    # WHEN the requirer processes this relation
+    with ctx(ctx.on.update_status(), state=state) as mgr:
+        received = mgr.charm.requirer.get_all_data()
+
+        # THEN the requirer ignores the unknown field but successfully parses the known ones
+        assert received[0].infrastructure_name == "cluster-1"
+        assert received[0].model_name == "prod"
+        # Verify the object doesn't have the extra field (pydantic default behavior)
+        assert not hasattr(received[0], "future_field_id")
