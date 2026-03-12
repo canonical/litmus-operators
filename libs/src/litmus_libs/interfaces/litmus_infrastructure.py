@@ -4,7 +4,6 @@
 """litmus_infrastructure integration endpoint wrapper."""
 
 import logging
-from dataclasses import asdict, dataclass
 
 import ops
 import pydantic
@@ -12,19 +11,19 @@ import pydantic
 logger = logging.getLogger()
 
 
-@dataclass
-class InfrastructureDatabagModel:
+class InfrastructureDatabagModel(pydantic.BaseModel):
     """User-facing data model representing the infrastructure data published by litmus_infrastructure providers."""
 
-    infrastructure_name: str
-    model_name: str
-
-
-class _LitmusInfraProviderAppDatabagModel(pydantic.BaseModel):
-    """Provider application databag model for the litmus_infrastructure interface."""
+    # Note: we set extra=ignore in the model config to allow for forward compatibility in case we want to add new fields in the future without breaking existing requirers.
+    model_config = pydantic.ConfigDict(extra="ignore")
 
     infrastructure_name: str | None = None
     model_name: str | None = None
+
+
+# internal alias for clarity in the library, though they are identical
+_LitmusInfraProviderAppDatabagModel = InfrastructureDatabagModel
+"""Provider application databag model for the litmus_infrastructure interface."""
 
 
 class LitmusInfrastructureProvider:
@@ -77,7 +76,7 @@ class LitmusInfrastructureProvider:
             pydantic.ValidationError: If the provided data does not conform to the expected schema.
         """
         try:
-            infra_data = _LitmusInfraProviderAppDatabagModel(**asdict(data))
+            infra_data = _LitmusInfraProviderAppDatabagModel(**data.model_dump())
         except pydantic.ValidationError:
             logger.error("Attempting to publish invalid data: %s", data)
             raise
@@ -102,7 +101,7 @@ class LitmusInfrastructureRequirer:
         ```python
         # In your requirer's charm code
         from typing import Optional
-        from litmus_libs.interfaces.litmus_infrastructure import LitmusInfrastructureRequirer
+        from litmus_libs.interfaces.litmus_infrastructure import LitmusInfrastructureRequirer, InfrastructureDatabagModel
 
         class LitmusInfraRequirerCharm(CharmBase):
             def __init__(self, *args):
@@ -111,13 +110,11 @@ class LitmusInfrastructureRequirer:
                     self.model.relations["litmus-infrastructure"],
                     self.app,
                 )
-                self.framework.observe(
-                    self.on.litmus_infrastructure_relation_changed,
-                    self._on_litmus_infrastructure_changed,
-                )
 
-            def _on_litmus_infrastructure_changed(self, event):
-                data = self._litmus_infra.get_data(event.relation.id)
+            @property
+            def _infrastructure_data(self) -> list[InfrastructureDatabagModel]:
+                # Get the infrastructure data from the infrastructure providers
+                return self._litmus_infra.get_data()
 
         ```
     """
@@ -130,36 +127,25 @@ class LitmusInfrastructureRequirer:
         self._relations = relations
         self._app = app
 
-    def get_data(self, relation_id: int) -> InfrastructureDatabagModel | None:
-        """Get the infrastructure data from a specific relation.
-
-        Args:
-            relation_id: The relation ID to get the data from.
+    def get_data(self) -> list[InfrastructureDatabagModel]:
+        """Get the infrastructure data from the infrastructure providers.
 
         Returns:
-            An InfrastructureDatabagModel object for the specified relation, or None if not found.
-
+            A list of InfrastructureDatabagModel objects for each provider.
         """
-        relation = next((r for r in self._relations if r.id == relation_id), None)
-        if not relation:
-            logger.error("Relation with ID %s not found", relation_id)
-            return None
+        infras: list[InfrastructureDatabagModel] = []
+        for relation in sorted(self._relations, key=lambda r: r.id):
+            if not relation.app or not relation.data:
+                continue
 
-        if not (relation.app and relation.data and relation.data.get(relation.app)):
-            return None
+            if not relation.data.get(relation.app):
+                continue
 
-        try:
-            remote_data = relation.load(_LitmusInfraProviderAppDatabagModel, relation.app)
-        except pydantic.ValidationError:
-            logger.error("Validation failed for %s; invalid schema?", relation)
-            return None
+            try:
+                remote_data = relation.load(_LitmusInfraProviderAppDatabagModel, relation.app)
+            except pydantic.ValidationError:
+                logger.error("Validation failed for %s; invalid schema?", relation)
+                continue
 
-        # Can happen during upgrades if the provider writes a newer databag schema
-        # that this requirer version does not yet understand.
-        if not remote_data.infrastructure_name or not remote_data.model_name:
-            logger.warning(
-                "Incompatible or incomplete databag schema (possibly due to an ongoing upgrade)."
-            )
-            return None
-
-        return InfrastructureDatabagModel(**remote_data.model_dump())
+            infras.append(InfrastructureDatabagModel(**remote_data.model_dump()))
+        return infras
