@@ -139,3 +139,10 @@ class LitmusAuth:
         if not self._tls_config_getter():
             return self.http_port, self.grpc_port
         return self.https_port, self.grpc_tls_port
+
+    @property
+    def is_running(self) -> bool:
+        """Return True if the auth server is running, False otherwise."""
+        if self._container.can_connect():
+            return self._container.get_service(self.service_name).is_running()
+        return False
