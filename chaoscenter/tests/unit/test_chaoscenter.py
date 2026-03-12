@@ -142,8 +142,8 @@ def test_valid_credentials_calls_litmus_api(
             secrets=[user_secret],
         )
 
-    # WHEN any event fires
-    ctx.run(ctx.on.config_changed(), state=state)
+        # WHEN any event fires
+        ctx.run(ctx.on.config_changed(), state=state)
 
     # THEN the reset-password endpoint was called for admin
     assert any(r.url == UPDATE_PASSWORD_URL for r in m.request_history)
