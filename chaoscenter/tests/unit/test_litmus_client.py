@@ -173,7 +173,7 @@ class TestGraphQLMethods:
         assert sent_vars["request"]["name"] == "my-infra"
         assert sent_vars["request"]["infraNamespace"] == "litmus"
 
-    def test_get_infrastructure(self, client, mock_api):
+    def test_list_infrastructures(self, client, mock_api):
         # GIVEN: A mock listInfras response containing the target
         client._token = "valid-token"
         payload = {
@@ -194,9 +194,11 @@ class TestGraphQLMethods:
         mock_api.post(GQL_URL, json=payload)
 
         # WHEN: Searching for the infrastructure
-        infra = client.get_infrastructure("my-infra", "litmus", "proj-1")
+        infras = client.list_infrastructures("proj-1")
 
-        # THEN: A ChaosInfrastructure object should be returned
+        # THEN: A list of ChaosInfrastructure objects should be returned
+        assert len(infras) == 1
+        infra = infras[0]
         assert isinstance(infra, ChaosInfrastructure)
         assert infra.id == "i-1"
         assert infra.active is True

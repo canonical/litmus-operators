@@ -144,7 +144,10 @@ class LitmusClient:
     def register_infrastructure(
         self, infra_name: str, namespace: str, project_id: str
     ) -> str:
-        """Registers a new infrastructure in the ChaosCenter and returns its newly created ID."""
+        """Registers a new infrastructure in the ChaosCenter and returns its newly created ID.
+
+        Raises LitmusAPIException on failure.
+        """
         query = self._load_query("register_infrastructure")
 
         variables = {
@@ -168,7 +171,10 @@ class LitmusClient:
         return data.get("registerInfra", {})["infraID"]
 
     def list_infrastructures(self, project_id: str) -> list[ChaosInfrastructure]:
-        """Lists infrastructures in the ChaosCenter."""
+        """Lists infrastructures in the ChaosCenter.
+
+        Raises LitmusAPIException on failure.
+        """
         query = self._load_query("list_infrastructures")
 
         variables = {
@@ -193,37 +199,11 @@ class LitmusClient:
             for infra in infras
         ]
 
-    def get_infrastructure(
-        self, infrastructure_name: str, namespace: str, project_id: str
-    ) -> ChaosInfrastructure | None:
-        """Gets infrastructure details by name and namespace. Returns None if not found."""
-        query = self._load_query("get_infrastructure")
-
-        variables = {
-            "projectID": project_id,
-            "request": {
-                "environmentIDs": [self.default_env_id],
-                "filter": {"name": infrastructure_name},
-            },
-        }
-
-        data = self._execute_gql(query, variables)
-        if not data:
-            return None
-
-        infras = data.get("listInfras", {}).get("infras", [])
-        for infra in infras:
-            if infra["infraNamespace"] == namespace:
-                return ChaosInfrastructure(
-                    id=infra["infraID"],
-                    name=infra["name"],
-                    namespace=infra["infraNamespace"],
-                    active=infra["isActive"],
-                )
-        return None
-
     def get_infrastructure_manifest(self, infra_id: str, project_id: str) -> str | None:
-        """Gets the infrastructure manifest for an existing infrastructure."""
+        """Gets the infrastructure manifest for an existing infrastructure.
+
+        Raises LitmusAPIException on failure.
+        """
         query = self._load_query("get_infrastructure_manifest")
 
         variables = {
@@ -238,7 +218,10 @@ class LitmusClient:
         return data.get("getInfraManifest")
 
     def delete_infrastructure(self, infra_id: str, project_id: str):
-        """Deletes an infrastructure by ID."""
+        """Deletes an infrastructure by ID.
+
+        Raises LitmusAPIException on failure.
+        """
         query = self._load_query("delete_infrastructure")
         variables = {
             "projectID": project_id,
@@ -248,7 +231,10 @@ class LitmusClient:
         self._execute_gql(query, variables)
 
     def create_environment(self, project_id: str, name: str):
-        """Create a Chaos Environment."""
+        """Create a Chaos Environment.
+
+        Raises LitmusAPIException on failure.
+        """
         query = self._load_query("create_environment")
         variables = {
             "projectID": project_id,
