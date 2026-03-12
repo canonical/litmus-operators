@@ -153,4 +153,4 @@ def test_requirer_forward_compatibility(ctx):
         assert received[0].infrastructure_name == "cluster-1"
         assert received[0].model_name == "prod"
         # Verify the object doesn't have the extra field (pydantic default behavior)
-        assert not hasattr(received[0], "future_field_id")
+        assert not hasattr(received[0], "extra_v2_field")
