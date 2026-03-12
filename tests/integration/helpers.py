@@ -147,7 +147,6 @@ def deploy_control_plane(
                 status,
                 *apps_to_wait_for,
             ),
-            error=lambda status: any_error(status, *apps_to_wait_for),
             timeout=1000,
             delay=30,
             successes=4,
