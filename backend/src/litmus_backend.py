@@ -8,7 +8,7 @@ import json
 import logging
 
 from ops import Container
-from ops.pebble import Layer, CheckDict
+from ops.pebble import Layer, CheckDict, ConnectionError
 from typing import Optional, Callable
 from litmus_libs import DatabaseConfig, TLSConfigData, get_litmus_version
 from litmus_libs.interfaces.litmus_auth import Endpoint
@@ -86,6 +86,14 @@ class LitmusBackend:
                 },
             }
         )
+
+    @property
+    def is_running(self) -> bool:
+        """Return True if the backend server is running, False otherwise."""
+        try:
+            return self._container.get_service(self.service_name).is_running()
+        except ConnectionError:
+            return False
 
     def _pebble_check_layer(self, tls_enabled: bool) -> CheckDict:
         return {

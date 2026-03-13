@@ -6,7 +6,7 @@ version = "0.1"  # this is in fact irrelevant
 requires-python = ">=3.12, <4"
 
 dependencies = [
-    "litmus-libs",
+    "litmus-libs@git+https://github.com/canonical/litmus-operators.git@revert-136-update-infra-api#subdirectory=libs",
     "ops",
     "cryptography>=45.0.7",
     "coordinated-workers",
@@ -14,6 +14,8 @@ dependencies = [
     "cosl",
     # for litmus client
     "requests",
+    # for applying k8s manifests
+    "lightkube",
     # for users passwords validation
     "pydantic>2",
 ]

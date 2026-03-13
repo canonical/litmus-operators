@@ -1,0 +1,6 @@
+mutation createEnvironment($projectID: ID!, $request: CreateEnvironmentRequest!) {
+    createEnvironment(projectID: $projectID, request: $request) {
+        environmentID
+        name
+    }
+}

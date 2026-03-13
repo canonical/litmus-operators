@@ -1,0 +1,3 @@
+mutation deleteInfra($projectID: ID!, $infraID: String!) {
+    deleteInfra(projectID: $projectID, infraID: $infraID)
+}
