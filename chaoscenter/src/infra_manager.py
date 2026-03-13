@@ -25,16 +25,11 @@ class InfraManager:
         """Initialize InfraManager."""
 
         self._infra_data = infra_data
-        self._k8s_manager = K8sManager()
+        self._k8s_client = Client()
 
     def reconcile(self, litmus_client: LitmusClient) -> None:
         """Reconcile the state of the infrastructure, ensuring that it is in the desired state."""
         project_id = litmus_client.get_default_project_id()
-        if not project_id:
-            logger.warning(
-                "No default project ID found; skipping infrastructure reconciliation."
-            )
-            return
 
         actual_infra = {
             (infra.name, infra.namespace): infra
@@ -80,8 +75,8 @@ class InfraManager:
                 f"Litmus CRD manifest not found at {LITMUS_CRD_MANIFEST_PATH}; skipping applying CRDs"
             )
         else:
-            self._k8s_manager.apply_manifest(LITMUS_CRD_MANIFEST_PATH.read_text())
-        self._k8s_manager.apply_manifest(manifest)
+            self._apply_manifest(LITMUS_CRD_MANIFEST_PATH.read_text())
+        self._apply_manifest(manifest)
 
     def _delete_infra(
         self,
@@ -92,14 +87,7 @@ class InfraManager:
         # TODO: investigate if we need to delete existing experiments in the infra before deleting the infra itself
         client.delete_infrastructure(infra_id, project_id)
 
-
-class K8sManager:
-    """Manages interactions with the K8s cluster, such as applying manifests."""
-
-    def __init__(self):
-        self._k8s_client = Client()
-
-    def apply_manifest(self, manifest: str) -> None:
+    def _apply_manifest(self, manifest: str) -> None:
         """Apply a k8s manifest to the cluster."""
         for obj in load_all_yaml(manifest):
             self._k8s_client.apply(

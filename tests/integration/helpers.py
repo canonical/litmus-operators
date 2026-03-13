@@ -6,7 +6,7 @@ import logging
 import os
 import subprocess
 from typing import Literal
-from jubilant import Juju, all_active, any_error
+from jubilant import Juju, all_active
 from pytest_jubilant import pack, get_resources
 from pathlib import Path
 

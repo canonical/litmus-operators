@@ -305,8 +305,8 @@ class LitmusClient:
             logger.error("user_exists request failed: %s", e)
             return False
 
-    def get_default_project_id(self) -> str | None:
-        """Get the default project ID for the current user, None if not found.
+    def get_default_project_id(self) -> str:
+        """Get the default project ID for the current user.
 
         Raises LitmusAPIException on failure.
         """
@@ -315,4 +315,6 @@ class LitmusClient:
             if project.get("name") == self._default_project:
                 return project.get("projectID")
 
-        return None
+        raise LitmusAPIException(
+            f"Default project '{self._default_project}' not found for user '{self._username}'"
+        )

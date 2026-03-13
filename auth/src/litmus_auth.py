@@ -7,7 +7,7 @@
 import logging
 
 from ops import Container
-from ops.pebble import Layer, CheckDict
+from ops.pebble import Layer, CheckDict, ConnectionError
 from typing import Optional, Callable
 from litmus_libs import DatabaseConfig, TLSConfigData
 from litmus_libs.interfaces.litmus_auth import Endpoint
@@ -143,6 +143,7 @@ class LitmusAuth:
     @property
     def is_running(self) -> bool:
         """Return True if the auth server is running, False otherwise."""
-        if self._container.can_connect():
+        try:
             return self._container.get_service(self.service_name).is_running()
-        return False
+        except ConnectionError:
+            return False
