@@ -157,10 +157,7 @@ graph TB
 
 **Rationale for namespace-scoped infrastructure:**
 
-- **Security**: Limits blast radius of chaos experiments to a single namespace.
-- **Multi-tenancy**: Different teams can have isolated chaos infrastructures.
 - **Juju alignment**: One infrastructure charm per model mirrors the Juju model = namespace paradigm.
-- **Simplicity**: Avoids RBAC complexity of cluster-wide permissions.
 
 ### Future Architecture: Configurator Charms
 
@@ -231,7 +228,6 @@ Generate and store credentials automatically without requiring a user-provided s
 **Rejected because:**
 - Credentials would be lost on charm removal, breaking database access on re-deploy
 - Less transparent to operators who need to know/manage credentials
-- Harder to integrate with existing organizational credential policies
 
 ### Infrastructure Charm Drives Environment Creation
 
