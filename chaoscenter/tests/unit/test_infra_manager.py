@@ -19,12 +19,14 @@ def mock_litmus_client():
 
 
 @pytest.fixture
-def mock_k8s_manager():
-    with patch("infra_manager.K8sManager") as mock:
-        yield mock.return_value
+def mock_apply_k8s_manifest():
+    with patch("infra_manager.InfraManager._apply_manifest") as mock:
+        yield mock
 
 
-def test_reconcile_creates_new_infrastructure(mock_litmus_client, mock_k8s_manager):
+def test_reconcile_creates_new_infrastructure(
+    mock_litmus_client, mock_apply_k8s_manifest
+):
     """GIVEN a desired infra that doesn't exist, WHEN reconciling, THEN it is registered and applied."""
     # GIVEN: Databag has one infra, but the backend is empty
     infra_data = [MagicMock(infrastructure_name="new-infra", model_name="test-ns")]
@@ -42,10 +44,12 @@ def test_reconcile_creates_new_infrastructure(mock_litmus_client, mock_k8s_manag
         "new-infra", "test-ns", MOCK_PROJECT_ID
     )
     # Check that it tried to apply the manifest after registration
-    mock_k8s_manager.apply_manifest.assert_any_call("yaml-content")
+    mock_apply_k8s_manifest.assert_any_call("yaml-content")
 
 
-def test_reconcile_skips_active_infrastructure(mock_litmus_client, mock_k8s_manager):
+def test_reconcile_skips_active_infrastructure(
+    mock_litmus_client, mock_apply_k8s_manifest
+):
     """GIVEN an infra that is already active, WHEN reconciling, THEN no actions are taken."""
     # GIVEN: Databag and backend match, and it's already active
     infra_data = [
@@ -62,11 +66,11 @@ def test_reconcile_skips_active_infrastructure(mock_litmus_client, mock_k8s_mana
 
     # THEN
     mock_litmus_client.register_infrastructure.assert_not_called()
-    mock_k8s_manager.apply_manifest.assert_not_called()
+    mock_apply_k8s_manifest.assert_not_called()
 
 
 def test_reconcile_reactivates_inactive_infrastructure(
-    mock_litmus_client, mock_k8s_manager
+    mock_litmus_client, mock_apply_k8s_manifest
 ):
     """GIVEN an existing infra that is inactive, WHEN reconciling, THEN it is re-applied."""
     # GIVEN: Infra exists in backend but is NOT active
@@ -88,10 +92,10 @@ def test_reconcile_reactivates_inactive_infrastructure(
     mock_litmus_client.get_infrastructure_manifest.assert_called_with(
         "id-1", MOCK_PROJECT_ID
     )
-    mock_k8s_manager.apply_manifest.assert_any_call("re-apply-this")
+    mock_apply_k8s_manifest.assert_any_call("re-apply-this")
 
 
-def test_reconcile_deletes_removed_infrastructure(mock_litmus_client, mock_k8s_manager):
+def test_reconcile_deletes_removed_infrastructure(mock_litmus_client):
     """GIVEN an infra in the backend not in desired state, WHEN reconciling, THEN it is deleted."""
     # GIVEN: Databag is empty, but backend has an infra
     infra_data = []

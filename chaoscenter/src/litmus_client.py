@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 LITMUSCTL_BIN = "litmusctl"
 DEFAULT_ADMIN_USERNAME = "admin"
 DEFAULT_ADMIN_PASSWORD = "litmus"
+ENVIRONMENT_ID = "test"
 GRAPHQL_QUERIES_PATH = Path(__file__).parent / "graphql"
 
 
@@ -49,12 +50,6 @@ class LitmusClient:
 
         self._ca_bundle = CA_CERT_PATH if endpoint.startswith("https://") else None
         self._session = requests.Session()
-
-    @property
-    def default_env_id(self) -> str:
-        """Returns the default environment ID."""
-        # TODO: don't hardcode the env ID
-        return "test"
 
     def _load_query(self, query_name: str) -> str:
         return (GRAPHQL_QUERIES_PATH / f"{query_name}.graphql").read_text()
@@ -142,7 +137,11 @@ class LitmusClient:
             )
 
     def register_infrastructure(
-        self, infra_name: str, namespace: str, project_id: str
+        self,
+        infra_name: str,
+        namespace: str,
+        project_id: str,
+        environment_id: str = ENVIRONMENT_ID,
     ) -> str:
         """Registers a new infrastructure in the ChaosCenter and returns its newly created ID.
 
@@ -156,7 +155,7 @@ class LitmusClient:
                 "name": infra_name,
                 # not providing a description makes a nil pointer exception in the litmus backend
                 "description": "",
-                "environmentID": self.default_env_id,
+                "environmentID": environment_id,
                 "infrastructureType": "Kubernetes",
                 "platformName": "Kubernetes",
                 # TODO: link ADR
@@ -170,7 +169,9 @@ class LitmusClient:
         data = self._execute_gql(query, variables)
         return data.get("registerInfra", {})["infraID"]
 
-    def list_infrastructures(self, project_id: str) -> list[ChaosInfrastructure]:
+    def list_infrastructures(
+        self, project_id: str, environment_id: str = ENVIRONMENT_ID
+    ) -> list[ChaosInfrastructure]:
         """Lists infrastructures in the ChaosCenter.
 
         Raises LitmusAPIException on failure.
@@ -180,7 +181,7 @@ class LitmusClient:
         variables = {
             "projectID": project_id,
             "request": {
-                "environmentIDs": [self.default_env_id],
+                "environmentIDs": [environment_id],
             },
         }
 

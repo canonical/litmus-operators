@@ -19,16 +19,16 @@ LITMUS_CRD_MANIFEST_PATH = (
 
 
 class InfraManager:
-    """Manages the infrastructure in Chaoscenter."""
+    """Manages the Chaos Infrastructures in Chaoscenter."""
 
-    def __init__(self, infra_data: list[InfrastructureDatabagModel]):
+    def __init__(self, infrastructures: list[InfrastructureDatabagModel]):
         """Initialize InfraManager."""
 
-        self._infra_data = infra_data
+        self._infrastructures = infrastructures
         self._k8s_client = Client()
 
     def reconcile(self, litmus_client: LitmusClient) -> None:
-        """Reconcile the state of the infrastructure, ensuring that it is in the desired state."""
+        """Reconcile the infrastructure with the desired state (relation data)."""
         project_id = litmus_client.get_default_project_id()
 
         actual_infra = {
@@ -37,7 +37,7 @@ class InfraManager:
         }
         desired_infra = {
             (infra.infrastructure_name, infra.model_name): infra
-            for infra in self._infra_data
+            for infra in self._infrastructures
         }
 
         infras_to_create = set(desired_infra) - set(actual_infra)

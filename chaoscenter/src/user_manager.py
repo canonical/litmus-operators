@@ -254,6 +254,7 @@ class UserManager:
         """Get a LitmusClient authenticated as the charm user."""
         secret = self._secret
         if not secret:
+            logger.warning("cannot get charm client without valid user secret")
             return None
         creds = _UserSecretModel.model_validate(secret.get_content())
         return self._make_client(self.CHARM_USERNAME, creds.charm_password)
