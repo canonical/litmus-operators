@@ -26,6 +26,12 @@ def _patch_cc_url():
 
 
 @pytest.fixture(autouse=True)
+def _patch_env_reconciler():
+    with patch("environment_manager.EnvironmentManager.reconcile"):
+        yield
+
+
+@pytest.fixture(autouse=True)
 def _patch_infra_reconciler():
     with patch("infra_manager.InfraManager.reconcile"):
         yield

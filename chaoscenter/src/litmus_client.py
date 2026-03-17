@@ -13,15 +13,20 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-LITMUSCTL_BIN = "litmusctl"
 DEFAULT_ADMIN_USERNAME = "admin"
 DEFAULT_ADMIN_PASSWORD = "litmus"
-ENVIRONMENT_ID = "test"
+DEFAULT_ENVIRONMENT_ID = "charmed_litmus"
 GRAPHQL_QUERIES_PATH = Path(__file__).parent / "graphql"
 
 
 class LitmusAPIException(Exception):
     """Custom exception for LitmusClient errors."""
+
+
+@dataclass
+class ChaosEnvironment:
+    id: str
+    name: str
 
 
 @dataclass
@@ -141,7 +146,7 @@ class LitmusClient:
         infra_name: str,
         namespace: str,
         project_id: str,
-        environment_id: str = ENVIRONMENT_ID,
+        environment_id: str = DEFAULT_ENVIRONMENT_ID,
     ) -> str:
         """Registers a new infrastructure in the ChaosCenter and returns its newly created ID.
 
@@ -170,7 +175,7 @@ class LitmusClient:
         return data.get("registerInfra", {})["infraID"]
 
     def list_infrastructures(
-        self, project_id: str, environment_id: str = ENVIRONMENT_ID
+        self, project_id: str, environment_id: str = DEFAULT_ENVIRONMENT_ID
     ) -> list[ChaosInfrastructure]:
         """Lists infrastructures in the ChaosCenter.
 
@@ -230,6 +235,22 @@ class LitmusClient:
         }
 
         self._execute_gql(query, variables)
+
+    def list_environments(self, project_id: str) -> list[ChaosEnvironment]:
+        """List all environments available in a given project."""
+        query = self._load_query("list_environments")
+        variables = {
+            "projectID": project_id,
+            "request": {
+                "environmentIDs": [],
+            },
+        }
+
+        envs = self._execute_gql(query, variables)
+        return [
+            ChaosEnvironment(id=env["environmentID"], name=env["name"])
+            for env in envs.get("environments", [])
+        ]
 
     def create_environment(self, project_id: str, name: str):
         """Create a Chaos Environment.

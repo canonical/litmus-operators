@@ -8,14 +8,7 @@ from infra_manager import InfraManager
 
 import pytest
 
-MOCK_PROJECT_ID = "default_project_id"
-
-
-@pytest.fixture
-def mock_litmus_client():
-    client = MagicMock()
-    client.get_default_project_id.return_value = MOCK_PROJECT_ID
-    return client
+from conftest import MOCK_LITMUS_PROJECT_ID
 
 
 @pytest.fixture
@@ -41,7 +34,7 @@ def test_reconcile_creates_new_infrastructure(
 
     # THEN
     mock_litmus_client.register_infrastructure.assert_called_once_with(
-        "new-infra", "test-ns", MOCK_PROJECT_ID
+        "new-infra", "test-ns", MOCK_LITMUS_PROJECT_ID
     )
     # Check that it tried to apply the manifest after registration
     mock_apply_k8s_manifest.assert_any_call("yaml-content")
@@ -90,7 +83,7 @@ def test_reconcile_reactivates_inactive_infrastructure(
     # THEN: No new registration, but manifest is fetched and applied
     mock_litmus_client.register_infrastructure.assert_not_called()
     mock_litmus_client.get_infrastructure_manifest.assert_called_with(
-        "id-1", MOCK_PROJECT_ID
+        "id-1", MOCK_LITMUS_PROJECT_ID
     )
     mock_apply_k8s_manifest.assert_any_call("re-apply-this")
 
@@ -110,5 +103,5 @@ def test_reconcile_deletes_removed_infrastructure(mock_litmus_client):
 
     # THEN
     mock_litmus_client.delete_infrastructure.assert_called_once_with(
-        "old-uuid", MOCK_PROJECT_ID
+        "old-uuid", MOCK_LITMUS_PROJECT_ID
     )
