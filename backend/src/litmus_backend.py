@@ -114,7 +114,7 @@ class LitmusBackend:
             "SUBSCRIBER_IMAGE": f"litmuschaos/litmusportal-subscriber:{workload_version}",
             "EVENT_TRACKER_IMAGE": f"litmuschaos/litmusportal-event-tracker:{workload_version}",
             "ARGO_WORKFLOW_CONTROLLER_IMAGE": "litmuschaos/workflow-controller:v3.3.1",
-            "ARGO_WORKFLOW_EXECUTOR_IMAGE": "litmuschaos/argoexec:v3.3.1",
+            "ARGO_WORKFLOW_EXECUTOR_IMAGE": "charmedkubeflow/argoexec:3.7.3-dffabf8",
             "LITMUS_CHAOS_OPERATOR_IMAGE": f"litmuschaos/chaos-operator:{workload_version}",
             "LITMUS_CHAOS_RUNNER_IMAGE": f"litmuschaos/chaos-runner:{workload_version}",
             "LITMUS_CHAOS_EXPORTER_IMAGE": f"litmuschaos/chaos-exporter:{workload_version}",
