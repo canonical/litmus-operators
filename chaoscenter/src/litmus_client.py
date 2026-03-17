@@ -246,10 +246,16 @@ class LitmusClient:
             },
         }
 
-        envs = self._execute_gql(query, variables)
+        data = self._execute_gql(query, variables)
+        if not data:
+            return []
+
+        envs = data.get("listEnvironments", {}).get("environments", [])
+        if not envs:
+            return []
+
         return [
-            ChaosEnvironment(id=env["environmentID"], name=env["name"])
-            for env in envs.get("environments", [])
+            ChaosEnvironment(id=env["environmentID"], name=env["name"]) for env in envs
         ]
 
     def create_environment(self, project_id: str, name: str):

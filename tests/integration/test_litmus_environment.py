@@ -6,15 +6,13 @@ import logging
 import shlex
 import subprocess
 import pytest
-from jubilant import Juju, all_active, any_error, all_blocked
+from jubilant import Juju
 from tenacity import retry, stop_after_attempt, wait_fixed
 from helpers import (
-    _charm_and_channel_and_resources,
     deploy_control_plane,
     CHAOSCENTER_APP,
     get_unit_ip_address,
     get_login_response,
-    INFRA_APP,
 )
 
 logger = logging.getLogger(__name__)
@@ -48,11 +46,11 @@ def test_setup_control_plane(juju: Juju):
 @retry(stop=stop_after_attempt(30), wait=wait_fixed(10))
 def test_default_environment_created(juju: Juju, token, project_id):
     chaoscenter_ip = get_unit_ip_address(juju, CHAOSCENTER_APP, 0)
+    expected_env_name = "charmed_litmus"
 
     query = (
-            'query { listInfras(projectID: \\"' + project_id + '\\", '
-                                                               'request: {filter: {name: \\"' + expected_infra_name + '\\"}}) '
-                                                                                                                      "{ infras { name isActive } } }"
+        'query { listEnvironments(projectID: \\"' + project_id + '\\", request: {}) '
+        "{ environments { environmentID name } } }"
     )
 
     cmd = (
@@ -65,6 +63,5 @@ def test_default_environment_created(juju: Juju, token, project_id):
     out = subprocess.check_output(shlex.split(cmd), text=True)
     data = json.loads(out)
 
-    infras = data["data"]["listInfras"]["infras"]
-    assert len(infras) > 0, f"Infrastructure {expected_infra_name} not found in backend"
-    assert infras[0]["isActive"] is True, "Infrastructure is registered but not active"
+    envs = data["data"]["listEnvironments"]["environments"]
+    assert envs[0]["environmentID"] == expected_env_name, f"Environment {expected_env_name} not found in backend"
