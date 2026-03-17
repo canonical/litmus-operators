@@ -1,0 +1,5 @@
+mutation registerInfra($projectID: ID!, $request: RegisterInfraRequest!) {
+    registerInfra(projectID: $projectID, request: $request) {
+        infraID
+    }
+}

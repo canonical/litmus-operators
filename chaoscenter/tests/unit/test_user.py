@@ -7,7 +7,7 @@ import logging
 from unittest.mock import MagicMock, patch, call
 
 import pytest
-from ops import Secret
+from ops import SecretNotFoundError, Secret
 
 from user_manager import UserManager
 
@@ -68,6 +68,7 @@ class TestSecretResolution:
     def test_secret_not_found_in_model_logs_warning(self, caplog):
         # GIVEN a valid secret id but the secret does not exist in the model
         um, get_secret = _make_user_manager(secret_id="secret:abc123", secret=None)
+        get_secret.side_effect = SecretNotFoundError("Secret not found")
 
         # WHEN reconcile is called
         with caplog.at_level(logging.WARNING, logger="user_manager"):

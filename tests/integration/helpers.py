@@ -6,13 +6,14 @@ import logging
 import os
 import subprocess
 from typing import Literal
-from jubilant import Juju, all_active, any_error
+from jubilant import Juju, all_active
 from pytest_jubilant import pack, get_resources
 from pathlib import Path
 
 AUTH_APP = "auth"
 CHAOSCENTER_APP = "chaoscenter"
 BACKEND_APP = "backend"
+INFRA_APP = "infrastructure"
 COMPONENTS = (AUTH_APP, CHAOSCENTER_APP, BACKEND_APP)
 MONGO_APP = "mongodb"
 SELF_SIGNED_CERTIFICATES_APP = "self-signed-certificates"
@@ -34,7 +35,7 @@ def get_unit_ip_address(juju: Juju, app_name: str, unit_no: int):
 
 
 def _charm_and_channel_and_resources(
-    role: Literal["auth", "backend", "chaoscenter"],
+    role: Literal["auth", "backend", "chaoscenter", "infrastructure"],
     charm_path_key: str,
     charm_channel_key: str,
 ):
@@ -146,7 +147,6 @@ def deploy_control_plane(
                 status,
                 *apps_to_wait_for,
             ),
-            error=lambda status: any_error(status, *apps_to_wait_for),
             timeout=1000,
             delay=30,
             successes=4,

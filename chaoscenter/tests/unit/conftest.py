@@ -3,7 +3,7 @@
 from contextlib import contextmanager
 import json
 import pathlib
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from ops.testing import Container, Context, Secret
 import pytest
@@ -82,6 +82,12 @@ def patch_write_to_ca_path():
         yield
 
 
+@pytest.fixture(autouse=True)
+def patch_lightkube_client():
+    with patch("infra_manager.Client", new=MagicMock()):
+        yield
+
+
 @pytest.fixture
 def auth_http_api_relation():
     return Relation(
@@ -155,3 +161,14 @@ def user_secret():
 def user_secrets_config(user_secret):
     """Config dict that satisfies the 'user_secrets' config option."""
     return {"user_secrets": user_secret.id}
+
+
+@pytest.fixture
+def litmus_infrastructure_relation():
+    return Relation(
+        "litmus-infrastructure",
+        remote_app_data={
+            "infrastructure_name": json.dumps("name"),
+            "model_name": json.dumps("model"),
+        },
+    )
