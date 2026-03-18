@@ -13,6 +13,8 @@ from coordinated_workers.nginx import CA_CERT_PATH
 from charm import LitmusChaoscenterCharm
 from ops.testing import Exec
 
+MOCK_LITMUS_PROJECT_ID = "default_project_id"
+
 
 @pytest.fixture(scope="session")
 def unit_fqdn():
@@ -172,3 +174,10 @@ def litmus_infrastructure_relation():
             "model_name": json.dumps("model"),
         },
     )
+
+
+@pytest.fixture
+def mock_litmus_client():
+    client = MagicMock()
+    client.get_default_project_id.return_value = MOCK_LITMUS_PROJECT_ID
+    return client

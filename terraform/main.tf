@@ -49,7 +49,7 @@ resource "juju_access_secret" "chaoscenter_users_access" {
   applications = [
     module.chaoscenter.app_name
   ]
-  secret_id = juju_secret.chaoscenter_users.id
+  secret_id = juju_secret.chaoscenter_users.secret_id
 }
 
 
