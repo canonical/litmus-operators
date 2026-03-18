@@ -8,6 +8,7 @@ from pathlib import Path
 from lightkube import Client
 from lightkube.codecs import load_all_yaml
 
+from environment_manager import DEFAULT_ENVIRONMENT
 from litmus_client import LitmusClient
 from litmus_libs.interfaces.litmus_infrastructure import InfrastructureDatabagModel
 
@@ -33,7 +34,9 @@ class InfraManager:
 
         actual_infra = {
             (infra.name, infra.namespace): infra
-            for infra in litmus_client.list_infrastructures(project_id)
+            for infra in litmus_client.list_infrastructures(
+                project_id, DEFAULT_ENVIRONMENT
+            )
         }
         desired_infra = {
             (infra.infrastructure_name, infra.model_name): infra
@@ -58,7 +61,7 @@ class InfraManager:
         self, infra: InfrastructureDatabagModel, project_id: str, client: LitmusClient
     ) -> None:
         infra_id = client.register_infrastructure(
-            infra.infrastructure_name, infra.model_name, project_id
+            infra.infrastructure_name, infra.model_name, project_id, DEFAULT_ENVIRONMENT
         )
         self._activate_infra(infra_id, project_id, client)
 
@@ -78,8 +81,8 @@ class InfraManager:
             self._apply_manifest(LITMUS_CRD_MANIFEST_PATH.read_text())
         self._apply_manifest(manifest)
 
+    @staticmethod
     def _delete_infra(
-        self,
         infra_id: str,
         project_id: str,
         client: LitmusClient,

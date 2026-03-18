@@ -8,6 +8,7 @@ from infra_manager import InfraManager
 
 import pytest
 
+from environment_manager import DEFAULT_ENVIRONMENT
 from conftest import MOCK_LITMUS_PROJECT_ID
 
 
@@ -34,7 +35,7 @@ def test_reconcile_creates_new_infrastructure(
 
     # THEN
     mock_litmus_client.register_infrastructure.assert_called_once_with(
-        "new-infra", "test-ns", MOCK_LITMUS_PROJECT_ID
+        "new-infra", "test-ns", MOCK_LITMUS_PROJECT_ID, DEFAULT_ENVIRONMENT
     )
     # Check that it tried to apply the manifest after registration
     mock_apply_k8s_manifest.assert_any_call("yaml-content")

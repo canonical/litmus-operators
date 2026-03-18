@@ -27,7 +27,7 @@ def _patch_cc_url():
 
 @pytest.fixture(autouse=True)
 def _patch_env_reconciler():
-    with patch("environment_manager.reconcile"):
+    with patch("environment_manager.EnvironmentManager.reconcile"):
         yield
 
 

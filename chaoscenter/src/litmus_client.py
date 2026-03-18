@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_ADMIN_USERNAME = "admin"
 DEFAULT_ADMIN_PASSWORD = "litmus"
-DEFAULT_ENVIRONMENT_ID = "charmed_litmus"
 GRAPHQL_QUERIES_PATH = Path(__file__).parent / "graphql"
 
 
@@ -146,7 +145,7 @@ class LitmusClient:
         infra_name: str,
         namespace: str,
         project_id: str,
-        environment_id: str = DEFAULT_ENVIRONMENT_ID,
+        environment_id: str,
     ) -> str:
         """Registers a new infrastructure in the ChaosCenter and returns its newly created ID.
 
@@ -175,7 +174,7 @@ class LitmusClient:
         return data.get("registerInfra", {})["infraID"]
 
     def list_infrastructures(
-        self, project_id: str, environment_id: str = DEFAULT_ENVIRONMENT_ID
+        self, project_id: str, environment_id: str
     ) -> list[ChaosInfrastructure]:
         """Lists infrastructures in the ChaosCenter.
 
