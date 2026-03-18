@@ -27,15 +27,14 @@ class StatusManager:
 
     def collect_status(self, e: ops.CollectStatusEvent):
         """Check the status."""
-        for status in filter(
-            None,
-            (
-                self._blocked_if_relations_missing(),
-                self._waiting_if_configs_missing(),
-                self._blocked_if_pebble_checks_failing(),
-            ),
+        for check in (
+            self._blocked_if_relations_missing(),
+            self._waiting_if_configs_missing(),
+            self._blocked_if_pebble_checks_failing(),
         ):
-            e.add_status(status)
+            if check is not None:
+                e.add_status(check)
+                return
 
     def _blocked_if_relations_missing(self) -> ops.StatusBase | None:
         """Set blocked status if any required relation is missing."""
