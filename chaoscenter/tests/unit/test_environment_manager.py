@@ -1,8 +1,8 @@
 # Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import environment_manager
 from types import SimpleNamespace
-from environment_manager import EnvironmentManager
 from litmus_client import DEFAULT_ENVIRONMENT_ID
 
 from conftest import MOCK_LITMUS_PROJECT_ID
@@ -12,10 +12,9 @@ def test_reconcile_creates_new_environment(mock_litmus_client):
     """GIVEN no Litmus envs exist, WHEN reconciling, THEN default env is created."""
     # GIVEN
     mock_litmus_client.list_environments.return_value = []
-    manager = EnvironmentManager()
 
     # WHEN
-    manager.reconcile(mock_litmus_client)
+    environment_manager.reconcile(mock_litmus_client)
 
     # THEN
     mock_litmus_client.create_environment.assert_called_once_with(
@@ -30,10 +29,9 @@ def test_reconcile_skips_environment_creation_if_it_already_exists(mock_litmus_c
     mock_litmus_client.list_environments.return_value = [
         SimpleNamespace(id="env-1", name=DEFAULT_ENVIRONMENT_ID)
     ]
-    manager = EnvironmentManager()
 
     # WHEN
-    manager.reconcile(mock_litmus_client)
+    environment_manager.reconcile(mock_litmus_client)
 
     # THEN
     mock_litmus_client.create_environment.assert_not_called()

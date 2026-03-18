@@ -5,7 +5,7 @@
 from typing import Callable, Optional
 from ops import Secret
 
-from environment_manager import EnvironmentManager
+import environment_manager
 from infra_manager import InfraManager
 from litmus_client import LitmusClient
 from user_manager import UserManager
@@ -33,7 +33,6 @@ class Chaoscenter:
             ),
         )
 
-        self._environment_manager = EnvironmentManager()
         self._infra_manager = InfraManager(infra_data)
 
     @property
@@ -50,5 +49,5 @@ class Chaoscenter:
         if client is None or not client.can_login():
             return
 
-        self._environment_manager.reconcile(client)
+        environment_manager.reconcile(client)
         self._infra_manager.reconcile(client)
