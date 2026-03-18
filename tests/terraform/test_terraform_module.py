@@ -1,6 +1,6 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
-import shlex
+import os
 import pathlib
 import subprocess
 import jubilant
@@ -25,17 +25,23 @@ def juju():
 @given("a juju model")
 @when("you run terraform apply using the provided module")
 def test_terraform_apply(juju: jubilant.Juju):
-    subprocess.run(shlex.split(f"terraform -chdir={THIS_DIRECTORY} init"), check=True)
-    subprocess.run(
-        shlex.split(
-            f'terraform -chdir={THIS_DIRECTORY} apply -var="channel={CHARM_CHANNEL}" '
-            f'-var="model_uuid={_get_juju_model_uuid(juju)}" '
-            f'-var="admin_password={ADMIN_PASSWORD}" '
-            f'-var="charm_password={CHARM_PASSWORD}" '
-            f"-auto-approve"
-        ),
-        check=True,
-    )
+    base_cmd = ["terraform", f"-chdir={THIS_DIRECTORY}"]
+
+    # Initialize
+    subprocess.run([*base_cmd, "init"], check=True)
+
+    # Prepare Environment for Secrets (Hides them from the process list)
+    tf_env = os.environ.copy()
+    tf_env["TF_VAR_admin_password"] = ADMIN_PASSWORD
+    tf_env["TF_VAR_charm_password"] = CHARM_PASSWORD
+    apply_cmd = [
+        *base_cmd,
+        "apply",
+        f"-var=channel={CHARM_CHANNEL}",
+        f"-var=model_uuid={_get_juju_model_uuid(juju)}",
+        "-auto-approve",
+    ]
+    subprocess.run(apply_cmd, env=tf_env, check=True)
 
 
 @then("litmus charms are deployed and active")

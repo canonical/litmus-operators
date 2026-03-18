@@ -21,6 +21,7 @@ import logging
 import re
 import secrets
 from typing import Optional, Dict, Callable
+import ops
 import pydantic
 
 from ops import Secret
@@ -77,7 +78,7 @@ class UserManager:
     def __init__(
         self,
         secret_id: Optional[str],
-        get_secret: Callable[[str], Optional[Secret]],
+        get_secret: Callable[[str], Secret],
         make_client: Callable[[str, str], LitmusClient],
     ):
         self._secret_id = secret_id
@@ -107,11 +108,16 @@ class UserManager:
                 f"Invalid secret identifier '{secret_id}' in config; expected format 'secret:<...>'"
             )
             return None
-        secret = self._get_secret(secret_id)
-        if not secret:
+        try:
+            secret = self._get_secret(secret_id)
+        except ops.SecretNotFoundError:
             logger.warning(
-                f"Secret '{secret_id}' not found in model; ensure the secret exists, was granted to this application, "
-                f"and the identifier is correct"
+                f"Secret '{secret_id}' not found in model; ensure the secret exists and the identifier is correct"
+            )
+            return None
+        except ops.ModelError:
+            logger.warning(
+                f"Permission error when accessing secret '{secret_id}'; ensure the secret was granted to this application"
             )
             return None
         return secret
@@ -243,3 +249,12 @@ class UserManager:
                 "charm user exists but login with the configured password failed; "
                 "ensure the secret contains the correct current charm password"
             )
+
+    def get_charm_client(self) -> LitmusClient | None:
+        """Get a LitmusClient authenticated as the charm user."""
+        secret = self._secret
+        if not secret:
+            logger.warning("cannot get charm client without valid user secret")
+            return None
+        creds = _UserSecretModel.model_validate(secret.get_content())
+        return self._make_client(self.CHARM_USERNAME, creds.charm_password)
