@@ -1,6 +1,6 @@
 # Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
-"""This module contains the EnvironmentManager class, which is responsible for creating a default environment in Chaoscenter."""
+"""This module contains methods, responsible for creating a default environment in Chaoscenter."""
 
 import logging
 
