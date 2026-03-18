@@ -1,12 +1,16 @@
 # Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-from typing import Callable, Optional
 
+from typing import Callable, Optional
 from ops import Secret
 
 from litmus_client import LitmusClient
 from user_manager import UserManager
+from infra_manager import InfraManager
+from litmus_libs.interfaces.litmus_infrastructure import (
+    InfrastructureDatabagModel,
+)
 
 
 class Chaoscenter:
@@ -17,7 +21,9 @@ class Chaoscenter:
         endpoint: str,
         user_secret_id: Optional[str],
         get_secret: Callable[[str], Secret],
+        infra_data: list[InfrastructureDatabagModel],
     ):
+
         self._user_manager = UserManager(
             secret_id=user_secret_id,
             get_secret=get_secret,
@@ -25,6 +31,8 @@ class Chaoscenter:
                 endpoint=endpoint, username=username, password=password
             ),
         )
+
+        self._infra_manager = InfraManager(infra_data)
 
     @property
     def user_secrets_valid(self) -> bool:
@@ -34,3 +42,10 @@ class Chaoscenter:
     def reconcile(self):
         """Reconcile the state of the application, ensuring that all components are in their desired state."""
         self._user_manager.reconcile()
+
+        # Only attempt to reconcile env/infra if we have valid credentials
+        client = self._user_manager.get_charm_client()
+        if client is None or not client.can_login():
+            return
+
+        self._infra_manager.reconcile(client)

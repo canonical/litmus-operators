@@ -1,0 +1,5 @@
+query listInfras($projectID: ID!, $request: ListInfraRequest!) {
+    listInfras(projectID: $projectID, request: $request) {
+        infras { infraID name infraNamespace isActive }
+    }
+}

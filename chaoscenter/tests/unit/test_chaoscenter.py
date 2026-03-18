@@ -10,7 +10,6 @@ import pytest
 import requests_mock as requests_mock_module
 from ops.testing import CharmEvents, State
 
-
 BASE_URL = "http://litmus.local:8185"
 AUTH_URL = f"{BASE_URL}/auth/login"
 USERS_URL = f"{BASE_URL}/auth/users"
@@ -23,6 +22,12 @@ def _patch_cc_url():
     with patch(
         "charm.LitmusChaoscenterCharm._internal_frontend_url", "http://litmus.local"
     ):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def _patch_infra_reconciler():
+    with patch("infra_manager.InfraManager.reconcile"):
         yield
 
 
