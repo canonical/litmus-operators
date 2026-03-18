@@ -237,7 +237,10 @@ class LitmusClient:
         self._execute_gql(query, variables)
 
     def list_environments(self, project_id: str) -> list[ChaosEnvironment]:
-        """List all environments available in a given project."""
+        """List all environments available in a given project.
+
+        Raises LitmusAPIException on failure.
+        """
         query = self._load_query("list_environments")
         variables = {
             "projectID": project_id,
