@@ -26,7 +26,9 @@ class LitmusInfraCharm(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
         self.provider = LitmusInfrastructureProvider(
-            self.model.relations["infra-provider"], self.app, self.unit
+            self.model.relations["infra-provider"],
+            self.app,
+            self.unit,
         )
         self.requirer = LitmusInfrastructureRequirer(
             self.model.relations["infra-requirer"], self.app
@@ -75,33 +77,34 @@ def test_provider_fails_if_not_leader(ctx, mock_metadata):
             mgr.charm.provider.publish_data(mock_metadata)
 
 
-def test_requirer_get_data_by_relation(ctx):
-    # GIVEN a specific relation ID
-    target_id = 42
-    target_data = {
-        "infrastructure_name": json.dumps("target-hub"),
-        "model_name": json.dumps("prod"),
+def test_requirer_get_all_data(ctx):
+    # GIVEN a requirer related to two different providers
+
+    databag1 = {
+        "infrastructure_name": json.dumps("cluster-a"),
+        "model_name": json.dumps("model-a"),
     }
+    databag2 = {
+        "infrastructure_name": json.dumps("cluster-b"),
+        "model_name": json.dumps("model-b"),
+    }
+
     state = State(
         relations={
-            Relation(endpoint="infra-requirer", id=target_id, remote_app_data=target_data),
-            Relation(endpoint="infra-requirer", id=10, remote_app_data={}),
-        }
+            Relation(endpoint="infra-requirer", id=1, remote_app_data=databag1),
+            Relation(endpoint="infra-requirer", id=2, remote_app_data=databag2),
+        },
     )
-
+    # WHEN the requirer charm runs
     with ctx(ctx.on.update_status(), state=state) as mgr:
         req = mgr.charm.requirer
-
-        # THEN get_data(target_id) succeeds
-        result = req.get_data(target_id)
-        assert result is not None
-        assert result.infrastructure_name == "target-hub"
-
-        # THEN get_data(empty_id) returns None
-        assert req.get_data(10) is None
-
-        # THEN get_data(missing_id) returns None
-        assert req.get_data(999) is None
+        # THEN get_all_data() retuns data from both providers
+        received = req.get_all_data()
+        assert len(received) == 2
+        assert received[0].infrastructure_name == "cluster-a"
+        assert received[1].infrastructure_name == "cluster-b"
+        assert received[0].model_name == "model-a"
+        assert received[1].model_name == "model-b"
 
 
 def test_requirer_skips_uninitialized_provider(ctx):
@@ -113,22 +116,22 @@ def test_requirer_skips_uninitialized_provider(ctx):
     # WHEN the requirer tries to get relation data
     with ctx(ctx.on.update_status(), state=state) as mgr:
         # THEN the data is empty
-        assert mgr.charm.requirer.get_data(1) is None
+        assert mgr.charm.requirer.get_all_data() == []
 
 
 def test_requirer_handles_malformed_data(ctx):
     # GIVEN a provider sends data that doesn't match the expected schema (e.g. a list instead of a string)
     type_mismatch_databag = {"infrastructure_name": json.dumps(["list", "not", "string"])}
 
+    # WHEN the requirer processes this relation
     state = State(
         relations={
             Relation(endpoint="infra-requirer", id=1, remote_app_data=type_mismatch_databag)
         }
     )
-
     with ctx(ctx.on.update_status(), state=state) as mgr:
         # THEN the API handle the error gracefully by returning None
-        assert mgr.charm.requirer.get_data(1) is None
+        assert mgr.charm.requirer.get_all_data() == []
 
 
 def test_requirer_forward_compatibility(ctx):
@@ -144,11 +147,10 @@ def test_requirer_forward_compatibility(ctx):
 
     # WHEN the requirer processes this relation
     with ctx(ctx.on.update_status(), state=state) as mgr:
-        received = mgr.charm.requirer.get_data(1)
+        received = mgr.charm.requirer.get_all_data()
+
         # THEN the requirer ignores the unknown field but successfully parses the known ones
-
-        assert received.infrastructure_name == "cluster-1"
-        assert received.model_name == "prod"
-
+        assert received[0].infrastructure_name == "cluster-1"
+        assert received[0].model_name == "prod"
         # Verify the object doesn't have the extra field (pydantic default behavior)
-        assert not hasattr(received, "extra_v2_field")
+        assert not hasattr(received[0], "extra_v2_field")

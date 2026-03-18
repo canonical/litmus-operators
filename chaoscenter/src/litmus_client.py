@@ -1,13 +1,14 @@
 # Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+
 """High-level client for interacting with the Litmus API."""
 
 from dataclasses import dataclass
 import logging
-from typing import Any, List
+from typing import Any
 from coordinated_workers.nginx import CA_CERT_PATH
-
+from pathlib import Path
 import requests
 
 logger = logging.getLogger(__name__)
@@ -15,6 +16,8 @@ logger = logging.getLogger(__name__)
 LITMUSCTL_BIN = "litmusctl"
 DEFAULT_ADMIN_USERNAME = "admin"
 DEFAULT_ADMIN_PASSWORD = "litmus"
+ENVIRONMENT_ID = "test"
+GRAPHQL_QUERIES_PATH = Path(__file__).parent / "graphql"
 
 
 class LitmusAPIException(Exception):
@@ -22,11 +25,11 @@ class LitmusAPIException(Exception):
 
 
 @dataclass
-class ChaosProject:
-    """Litmus project data structure."""
-
+class ChaosInfrastructure:
     id: str
     name: str
+    namespace: str
+    active: bool
 
 
 class LitmusClient:
@@ -41,21 +44,38 @@ class LitmusClient:
         self._endpoint = endpoint.rstrip("/")
         self._username = username
         self._password = password
+        self._default_project = f"{username}-project"
+
         self._token: str | None = None
+
         self._ca_bundle = CA_CERT_PATH if endpoint.startswith("https://") else None
+        self._session = requests.Session()
+
+    def _load_query(self, query_name: str) -> str:
+        return (GRAPHQL_QUERIES_PATH / f"{query_name}.graphql").read_text()
+
+    def _ensure_token(self) -> None:
+        if self._token is None:
+            self._login()
 
     def _get_auth_header(self) -> dict[str, str]:
         """Provides the Bearer token header."""
-        if not self._token:
-            self._login()
-        return {"Authorization": f"Bearer {self._token}"}
+        self._ensure_token()
+
+        return {
+            "Authorization": f"Bearer {self._token}",
+            # Litmus backend middleware fails without a Referer header for some requests
+            "Referer": f"{self._endpoint}/",
+        }
 
     def _login(self) -> None:
         """Internal login to fetch the JWT."""
         url = f"{self._endpoint}/auth/login"
         payload = {"username": self._username, "password": self._password}
         try:
-            resp = requests.post(url, json=payload, timeout=10, verify=self._ca_bundle)
+            resp = self._session.post(
+                url, json=payload, timeout=10, verify=self._ca_bundle
+            )
             resp.raise_for_status()
             self._token = resp.json().get("accessToken")
         except Exception as e:
@@ -66,11 +86,11 @@ class LitmusClient:
 
     def _execute_rest(
         self, method: str, path: str, payload: dict | None = None
-    ) -> dict[str, Any] | None:
+    ) -> dict[str, Any]:
         """Executes a RESTful request."""
         url = f"{self._endpoint}{path}"
         try:
-            resp = requests.request(
+            resp = self._session.request(
                 method=method,
                 url=url,
                 headers=self._get_auth_header(),
@@ -78,7 +98,6 @@ class LitmusClient:
                 timeout=10,
                 verify=self._ca_bundle,
             )
-
             resp.raise_for_status()
 
             data = resp.json()
@@ -91,12 +110,12 @@ class LitmusClient:
         except requests.RequestException as e:
             raise LitmusAPIException(f"REST request to {url} failed: {e}")
 
-    def _execute_gql(self, query: str, variables: dict | None = None) -> dict | None:
+    def _execute_gql(self, query: str, variables: dict | None = None) -> dict:
         """Executes a GraphQL request."""
         url = f"{self._endpoint}/api/query"
         payload = {"query": query, "variables": variables or {}}
         try:
-            resp = requests.post(
+            resp = self._session.post(
                 url=url,
                 json=payload,
                 headers=self._get_auth_header(),
@@ -117,25 +136,107 @@ class LitmusClient:
                 f"GraphQL request for query {query} with vars {variables} failed: {e}"
             )
 
-    def get_projects(self) -> List[ChaosProject]:
-        """List all projects accessible to the current account."""
-        if data := self._execute_rest("GET", "/auth/list_projects"):
-            return [
-                ChaosProject(id=p["projectID"], name=p["name"])
-                for p in data.get("projects", [])
-            ]
-        return []
+    def register_infrastructure(
+        self,
+        infra_name: str,
+        namespace: str,
+        project_id: str,
+        environment_id: str = ENVIRONMENT_ID,
+    ) -> str:
+        """Registers a new infrastructure in the ChaosCenter and returns its newly created ID.
 
-    def create_chaos_environment(self, project_id: str, name: str):
-        """Create a Chaos Environment."""
-        query = """
-        mutation createEnvironment($projectID: ID!, $request: CreateEnvironmentRequest!) {
-            createEnvironment(projectID: $projectID, request: $request) {
-                environmentID
-                name
-            }
-        }
+        Raises LitmusAPIException on failure.
         """
+        query = self._load_query("register_infrastructure")
+
+        variables = {
+            "projectID": project_id,
+            "request": {
+                "name": infra_name,
+                # not providing a description makes a nil pointer exception in the litmus backend
+                "description": "",
+                "environmentID": environment_id,
+                "infrastructureType": "Kubernetes",
+                "platformName": "Kubernetes",
+                # TODO: link ADR
+                "infraScope": "namespace",
+                "infraNamespace": namespace,
+                "infraNsExists": True,
+                "infraSaExists": False,
+            },
+        }
+
+        data = self._execute_gql(query, variables)
+        return data.get("registerInfra", {})["infraID"]
+
+    def list_infrastructures(
+        self, project_id: str, environment_id: str = ENVIRONMENT_ID
+    ) -> list[ChaosInfrastructure]:
+        """Lists infrastructures in the ChaosCenter.
+
+        Raises LitmusAPIException on failure.
+        """
+        query = self._load_query("list_infrastructures")
+
+        variables = {
+            "projectID": project_id,
+            "request": {
+                "environmentIDs": [environment_id],
+            },
+        }
+
+        data = self._execute_gql(query, variables)
+        if not data:
+            return []
+
+        infras = data.get("listInfras", {}).get("infras", [])
+        return [
+            ChaosInfrastructure(
+                id=infra["infraID"],
+                name=infra["name"],
+                namespace=infra["infraNamespace"],
+                active=infra["isActive"],
+            )
+            for infra in infras
+        ]
+
+    def get_infrastructure_manifest(self, infra_id: str, project_id: str) -> str | None:
+        """Gets the infrastructure manifest for an existing infrastructure.
+
+        Raises LitmusAPIException on failure.
+        """
+        query = self._load_query("get_infrastructure_manifest")
+
+        variables = {
+            "projectID": project_id,
+            "infraID": infra_id,
+            "upgrade": True,
+        }
+
+        data = self._execute_gql(query, variables)
+        if not data:
+            return None
+        return data.get("getInfraManifest")
+
+    def delete_infrastructure(self, infra_id: str, project_id: str):
+        """Deletes an infrastructure by ID.
+
+        Raises LitmusAPIException on failure.
+        """
+        query = self._load_query("delete_infrastructure")
+        variables = {
+            "projectID": project_id,
+            "infraID": infra_id,
+        }
+
+        self._execute_gql(query, variables)
+
+    def create_environment(self, project_id: str, name: str):
+        """Create a Chaos Environment.
+
+        Raises LitmusAPIException on failure.
+        """
+        query = self._load_query("create_environment")
         variables = {
             "projectID": project_id,
             "request": {
@@ -143,7 +244,6 @@ class LitmusClient:
                 "name": name,
                 "description": "",
                 "tags": [],
-                # TODO: make the env type configurable
                 "type": "NON_PROD",
             },
         }
@@ -193,7 +293,7 @@ class LitmusClient:
         """Return True if a user with the given username exists (requires admin privileges)."""
         url = f"{self._endpoint}/auth/users"
         try:
-            resp = requests.get(
+            resp = self._session.get(
                 url, headers=self._get_auth_header(), timeout=10, verify=self._ca_bundle
             )
             resp.raise_for_status()
@@ -205,3 +305,17 @@ class LitmusClient:
         except requests.RequestException as e:
             logger.error("user_exists request failed: %s", e)
             return False
+
+    def get_default_project_id(self) -> str:
+        """Get the default project ID for the current user.
+
+        Raises LitmusAPIException on failure.
+        """
+        data = self._execute_rest("GET", "/auth/list_projects")
+        for project in data.get("projects", []):
+            if project.get("name") == self._default_project:
+                return project.get("projectID")
+
+        raise LitmusAPIException(
+            f"Default project '{self._default_project}' not found for user '{self._username}'"
+        )
