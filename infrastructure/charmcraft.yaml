@@ -17,7 +17,7 @@ summary: |
 
 
 links:
-  documentation: https://discourse.charmhub.io/t/18789
+  documentation: https://discourse.charmhub.io/t/20007
   website: https://charmhub.io/litmus-infrastructure-k8s
   source: https://github.com/canonical/litmus-operators/tree/main/infrastructure
   issues: https://github.com/canonical/litmus-operators/issues
