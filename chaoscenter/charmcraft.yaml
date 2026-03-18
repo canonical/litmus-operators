@@ -103,6 +103,11 @@ requires:
       Request a tracing endpoint through which this application will send its workload traces to a 
       tracing backend.
     limit: 1
+  litmus-infrastructure:
+    interface: litmus-infrastructure
+    description: |
+      Receives the data required for ChaosCenter to provision Litmus infrastructure in the provider's model.
+    optional: true
 
 provides:
   metrics-endpoint:
