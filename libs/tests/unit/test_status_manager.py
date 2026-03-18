@@ -1,3 +1,4 @@
+from dataclasses import replace
 from unittest.mock import MagicMock
 
 import ops
@@ -173,3 +174,62 @@ def test_pebble_checks_ignored_when_container_cannot_connect(ctx):
     # THEN the status manager ignores the failing pebble checks
     # AND doesn't set the charm to blocked
     assert isinstance(state_out.unit_status, ops.ActiveStatus)
+
+
+def test_status_manager_prioritization(ctx):
+    # GIVEN: Everything is failing
+    state = scenario.State(
+        config={},  # Config missing
+        relations={},  # Relation missing
+        containers={  # Pebble check failing
+            scenario.Container(
+                "container1",
+                can_connect=True,
+                _base_plan={
+                    "checks": {"check1": {"threshold": 3, "startup": "enabled", "level": None}}
+                },
+                check_infos={scenario.CheckInfo("check1", status=ops.pebble.CheckStatus.DOWN)},
+            )
+        },
+    )
+
+    # THEN: charm is blocked due to missing relations
+    out = ctx.run(ctx.on.update_status(), state=state)
+    assert isinstance(out.unit_status, ops.BlockedStatus)
+    assert "rel1" in out.unit_status.message
+
+    # WHEN: Relations are fixed, but Config and Checks still fail
+    state = replace(state, relations={scenario.Relation("rel1")})
+
+    # THEN: charm is waiting due to missing config
+    out = ctx.run(ctx.on.update_status(), state=state)
+    assert isinstance(out.unit_status, ops.WaitingStatus)
+    assert "cfg1" in out.unit_status.message
+
+    # WHEN: Config is fixed, but Pebble Checks still fail
+    state = replace(state, config={"cfg1": True})
+
+    # THEN: charm is blocked due to failing Pebble Checks
+    out = ctx.run(ctx.on.update_status(), state=state)
+    assert isinstance(out.unit_status, ops.BlockedStatus)
+    assert "check1" in out.unit_status.message
+
+    # WHEN: Everything is fixed
+    state = replace(
+        state,
+        containers={
+            scenario.Container(
+                "container1",
+                can_connect=True,
+                _base_plan={
+                    "checks": {"check1": {"threshold": 3, "startup": "enabled", "level": None}}
+                },
+                check_infos={scenario.CheckInfo("check1", status=ops.pebble.CheckStatus.UP)},
+            )
+        },
+    )
+
+    # THEN: the charm is set to active status
+    out = ctx.run(ctx.on.update_status(), state=state)
+    assert isinstance(out.unit_status, ops.ActiveStatus)
+    assert out.unit_status.message == "happy status!"
