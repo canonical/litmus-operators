@@ -1,0 +1,3 @@
+query getInfraManifest($projectID: ID!, $infraID: ID!, $upgrade: Boolean!) {
+    getInfraManifest(projectID: $projectID, infraID: $infraID, upgrade: $upgrade)
+}

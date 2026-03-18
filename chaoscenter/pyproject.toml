@@ -14,6 +14,8 @@ dependencies = [
     "cosl",
     # for litmus client
     "requests",
+    # for applying k8s manifests
+    "lightkube",
     # for users passwords validation
     "pydantic>2",
 ]

@@ -23,7 +23,9 @@ from ops import (
     ActiveStatus,
 )
 from ops.charm import CharmBase
-
+from litmus_libs.interfaces.litmus_infrastructure import (
+    LitmusInfrastructureRequirer,
+)
 from chaoscenter import Chaoscenter
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from charms.tempo_coordinator_k8s.v0.tracing import TracingEndpointRequirer
@@ -96,6 +98,10 @@ class LitmusChaoscenterCharm(CharmBase):
             protocols=["otlp_grpc"],
         )
 
+        self._litmus_infra = LitmusInfrastructureRequirer(
+            self.model.relations["litmus-infrastructure"], self.app
+        )
+
         self.nginx = Nginx(
             self,
             options=None,
@@ -108,6 +114,7 @@ class LitmusChaoscenterCharm(CharmBase):
             endpoint=f"{self._internal_frontend_url}:{http_server_port}",
             user_secret_id=self._user_credentials_secret,
             get_secret=lambda secret_id: self.model.get_secret(id=secret_id),
+            infra_data=self._litmus_infra.get_all_data(),
         )
 
         self.nginx_exporter = NginxPrometheusExporter(
