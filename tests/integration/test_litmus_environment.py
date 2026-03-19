@@ -64,4 +64,6 @@ def test_default_environment_created(juju: Juju, token, project_id):
     data = json.loads(out)
 
     envs = data["data"]["listEnvironments"]["environments"]
-    assert envs[0]["environmentID"] == expected_env_name, f"Environment {expected_env_name} not found in backend"
+    assert envs[0]["environmentID"] == expected_env_name, (
+        f"Environment {expected_env_name} not found in backend"
+    )

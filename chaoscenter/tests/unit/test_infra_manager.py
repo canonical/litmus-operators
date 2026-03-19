@@ -18,6 +18,12 @@ def mock_apply_k8s_manifest():
         yield mock
 
 
+@pytest.fixture
+def mock_delete_k8s_manifest():
+    with patch("infra_manager.InfraManager._delete_manifest") as mock:
+        yield mock
+
+
 def test_reconcile_creates_new_infrastructure(
     mock_litmus_client, mock_apply_k8s_manifest
 ):
@@ -89,13 +95,16 @@ def test_reconcile_reactivates_inactive_infrastructure(
     mock_apply_k8s_manifest.assert_any_call("re-apply-this")
 
 
-def test_reconcile_deletes_removed_infrastructure(mock_litmus_client):
+def test_reconcile_deletes_removed_infrastructure(
+    mock_litmus_client, mock_delete_k8s_manifest
+):
     """GIVEN an infra in the backend not in desired state, WHEN reconciling, THEN it is deleted."""
     # GIVEN: Databag is empty, but backend has an infra
     infra_data = []
     mock_litmus_client.list_infrastructures.return_value = [
         SimpleNamespace(id="old-uuid", name="stale-infra", namespace="old-ns")
     ]
+    mock_litmus_client.get_infrastructure_manifest.return_value = "re-apply-this"
 
     manager = InfraManager(infra_data)
 
@@ -106,3 +115,4 @@ def test_reconcile_deletes_removed_infrastructure(mock_litmus_client):
     mock_litmus_client.delete_infrastructure.assert_called_once_with(
         "old-uuid", MOCK_LITMUS_PROJECT_ID
     )
+    mock_delete_k8s_manifest.assert_any_call("re-apply-this")

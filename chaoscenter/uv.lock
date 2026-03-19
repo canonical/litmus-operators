@@ -582,16 +582,16 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "litmus-libs"
-version = "0.0.13"
+version = "0.0.14"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cosl" },
     { name = "ops", extra = ["tracing"] },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3d/2c/86da161b45613f11567a20bc9b20e885db8a544b52e003741c4489170152/litmus_libs-0.0.13.tar.gz", hash = "sha256:9fe849425c7d2633d7b75f48b5285e6f2aa71914a42b5ca5d7cd2905b8bca87e", size = 81973, upload-time = "2026-03-17T13:10:06.123Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1e/1d/2518e74873fad885360c28a6cdaf33e36fdd978c6d14123ab1c699edb452/litmus_libs-0.0.14.tar.gz", hash = "sha256:a2e544b3e0df2989f253a14df8ba41aeb3cf85514834e98e88fea85adba6e6cb", size = 82238, upload-time = "2026-03-18T13:16:13.728Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/25/90/c3af22222c0d0f69b607ec35c4e45758be02d689d88713deb60a87074213/litmus_libs-0.0.13-py3-none-any.whl", hash = "sha256:020e3c0c06ddd97018b57b315c4e7a4baaa46880635c587592628d824087162b", size = 20773, upload-time = "2026-03-17T13:10:04.717Z" },
+    { url = "https://files.pythonhosted.org/packages/f7/1f/aabf266af5314c4bb7e75f292f684fe58b015287042786fdcf35fef540b0/litmus_libs-0.0.14-py3-none-any.whl", hash = "sha256:e8485db544584eecd5a1717bb4b8a0de6ba485642946c8d6880e9c2845e42b5a", size = 20775, upload-time = "2026-03-18T13:16:12.165Z" },
 ]
 
 [[package]]
