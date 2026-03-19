@@ -164,5 +164,5 @@ def get_login_response(
     if use_ssl:
         cmd.append("-k")
     cmd.extend(["-d", json_payload, url])
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
     return result.returncode, result.stdout
