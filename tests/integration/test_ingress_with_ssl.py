@@ -20,9 +20,11 @@ logger = logging.getLogger(__name__)
 @pytest.fixture(scope="function")
 def token(juju: Juju):
     chaoscenter_ip = get_unit_ip_address(juju, CHAOSCENTER_APP, 0)
+    logger.error(f"=============chaoscenter_ip={chaoscenter_ip}")
     _, out = get_login_response(
         host=chaoscenter_ip, port=8185, subpath="/auth", use_ssl=True
     )
+    logger.error(f"=============out={out}")
     return json.loads(out)["accessToken"]
 
 

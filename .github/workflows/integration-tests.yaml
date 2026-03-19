@@ -303,7 +303,7 @@ jobs:
             echo "Unknown mode: ${{ matrix.mode }}"
             exit 1
           fi
-          uvx tox -e integration -- -k "${{ matrix.suite }}"
+          uvx tox -e integration -- -v -k "${{ matrix.suite }}"
   terraform-deploy-tests:
     name: Run terraform deployment tests
     uses: canonical/observability/.github/workflows/run-tox-environment.yaml@v1
