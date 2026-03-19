@@ -13,6 +13,7 @@ from helpers import (
     AUTH_APP,
     CHAOSCENTER_APP,
     SELF_SIGNED_CERTIFICATES_APP,
+    MONGO_APP,
     get_unit_ip_address,
     get_login_response,
 )
@@ -160,3 +161,9 @@ def test_after_removing_tls_certificates_relation_auth_is_served_without_ssl(
     assert returncode == 0
     response_json = json.loads(output)
     assert "accessToken" in response_json, f"No token found in response: {output}"
+
+
+# cleanup step to remove mongodb since it seems there's an issue with juju model cleanup when mongodb is related to ssc
+# This is a workaround until we can identify and fix the root cause of the cleanup issue.
+def test_cleanup(juju: Juju):
+    juju.remove_application(MONGO_APP)

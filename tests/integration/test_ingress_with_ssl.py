@@ -7,6 +7,7 @@ import subprocess
 import pytest
 from jubilant import Juju
 from helpers import (
+    MONGO_APP,
     deploy_control_plane,
     CHAOSCENTER_APP,
     TRAEFIK_APP,
@@ -81,3 +82,9 @@ def test_auth_is_served_through_traefik_with_ssl(juju: Juju):
     assert returncode == 0
     response_json = json.loads(output)
     assert "accessToken" in response_json, f"No token found in response: {output}"
+
+
+# cleanup step to remove mongodb since it seems there's an issue with juju model cleanup when mongodb is related to ssc
+# This is a workaround until we can identify and fix the root cause of the cleanup issue.
+def test_cleanup(juju: Juju):
+    juju.remove_application(MONGO_APP)
