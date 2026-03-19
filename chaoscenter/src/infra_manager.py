@@ -5,7 +5,7 @@
 import logging
 from pathlib import Path
 
-from lightkube import Client
+from lightkube import Client, ApiError
 from lightkube.codecs import load_all_yaml
 
 from environment_manager import DEFAULT_ENVIRONMENT
@@ -81,13 +81,18 @@ class InfraManager:
             self._apply_manifest(LITMUS_CRD_MANIFEST_PATH.read_text())
         self._apply_manifest(manifest)
 
-    @staticmethod
     def _delete_infra(
+        self,
         infra_id: str,
         project_id: str,
         client: LitmusClient,
     ) -> None:
-        # TODO: investigate if we need to delete existing experiments in the infra before deleting the infra itself
+        manifest = client.get_infrastructure_manifest(infra_id, project_id)
+        if manifest:
+            self._delete_manifest(manifest)
+        # deleting the infra doesn't automatically delete its associated experiments
+        # we'll leave it to the user to delete any existing experiments
+        # that reference the infra in case they want to keep them for historical/debugging purposes
         client.delete_infrastructure(infra_id, project_id)
 
     def _apply_manifest(self, manifest: str) -> None:
@@ -96,3 +101,16 @@ class InfraManager:
             self._k8s_client.apply(
                 obj, force=True, field_manager="litmus-chaoscenter-charm"
             )
+
+    def _delete_manifest(self, manifest: str) -> None:
+        """Delete a k8s manifest from the cluster."""
+        for obj in load_all_yaml(manifest):
+            resource = type(obj)
+            name = obj.metadata.name
+            namespace = obj.metadata.namespace
+            try:
+                self._k8s_client.delete(resource, name=name, namespace=namespace)
+            except ApiError:
+                logger.warning(
+                    f"Failed to delete non-existing object {obj['metadata']['name']}"
+                )

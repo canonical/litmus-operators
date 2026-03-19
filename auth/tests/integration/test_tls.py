@@ -27,8 +27,10 @@ def test_setup(juju: Juju, charm: Path):
     juju.integrate(f"{APP}:tls-certificates", SELF_SIGNED_CERTIFICATES_APP)
 
     juju.wait(
-        lambda status: all_active(status, MONGO_APP, SELF_SIGNED_CERTIFICATES_APP)
-        and all_blocked(status, APP),
+        lambda status: (
+            all_active(status, MONGO_APP, SELF_SIGNED_CERTIFICATES_APP)
+            and all_blocked(status, APP)
+        ),
         error=lambda status: any_error(status, APP),
         timeout=1000,
         delay=10,
