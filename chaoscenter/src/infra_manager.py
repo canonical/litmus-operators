@@ -105,12 +105,13 @@ class InfraManager:
     def _delete_manifest(self, manifest: str) -> None:
         """Delete a k8s manifest from the cluster."""
         for obj in load_all_yaml(manifest):
+            if not obj.metadata or not obj.metadata.name:
+                logger.warning(f"Skipping object with missing metadata or name: {obj}")
+                continue
             resource = type(obj)
             name = obj.metadata.name
             namespace = obj.metadata.namespace
             try:
-                self._k8s_client.delete(resource, name=name, namespace=namespace)
+                self._k8s_client.delete(resource, name=name, namespace=namespace)  # type: ignore[arg-type]
             except ApiError:
-                logger.warning(
-                    f"Failed to delete non-existing object {obj['metadata']['name']}"
-                )
+                logger.warning(f"Failed to delete non-existing object {name}")
