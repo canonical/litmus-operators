@@ -163,7 +163,19 @@ def test_after_removing_tls_certificates_relation_auth_is_served_without_ssl(
     assert "accessToken" in response_json, f"No token found in response: {output}"
 
 
-# cleanup step to remove mongodb since it seems there's an issue with juju model cleanup when mongodb is related to ssc
+# cleanup step to remove mongodb and ssc relation since it seems there's an issue with juju model cleanup when mongodb is related to ssc
 # This is a workaround until we can identify and fix the root cause of the cleanup issue.
 def test_cleanup(juju: Juju):
-    juju.remove_application(MONGO_APP)
+    juju.remove_relation(MONGO_APP, SELF_SIGNED_CERTIFICATES_APP)
+    juju.wait(
+        lambda status: all_active(
+            status,
+            MONGO_APP,
+            CHAOSCENTER_APP,
+            AUTH_APP,
+            BACKEND_APP,
+        ),
+        timeout=1000,
+        delay=10,
+        successes=6,
+    )
