@@ -10,6 +10,7 @@ import pytest
 from litmus_client import (
     LitmusClient,
     LitmusAPIException,
+    ChaosEnvironment,
     ChaosInfrastructure,
 )
 
@@ -19,6 +20,7 @@ AUTH_URL = f"{BASE_URL}/auth/login"
 MOCK_REST_PATH = "/mock/endpoint"
 MOCK_REST_URL = f"{BASE_URL}{MOCK_REST_PATH}"
 GQL_URL = f"{BASE_URL}/api/query"
+TEST_ENV = "test-env"
 
 
 @pytest.fixture
@@ -164,7 +166,9 @@ class TestGraphQLMethods:
         )
 
         # WHEN: Registering infrastructure
-        infra_id = client.register_infrastructure("my-infra", "litmus", "proj-1")
+        infra_id = client.register_infrastructure(
+            "my-infra", "litmus", "proj-1", TEST_ENV
+        )
 
         # THEN: The infraID should be returned and variables verified
         assert infra_id == "47"
@@ -172,6 +176,48 @@ class TestGraphQLMethods:
         assert sent_vars["projectID"] == "proj-1"
         assert sent_vars["request"]["name"] == "my-infra"
         assert sent_vars["request"]["infraNamespace"] == "litmus"
+
+    def test_list_environments_happy_path(self, client, mock_api):
+        # GIVEN: A mock listEnvironments response containing the target
+        client._token = "valid-token"
+        payload = {
+            "data": {
+                "listEnvironments": {
+                    "environments": [
+                        {
+                            "name": TEST_ENV,
+                            "environmentID": TEST_ENV,
+                        }
+                    ]
+                }
+            }
+        }
+        mock_api.post(GQL_URL, json=payload)
+
+        # WHEN: Searching for the environments
+        envs = client.list_environments("proj-1")
+
+        # THEN: A list of ChaosEnvironment objects should be returned
+        assert len(envs) == 1
+        env = envs[0]
+        assert isinstance(env, ChaosEnvironment)
+        assert env.id == TEST_ENV
+        assert env.name == TEST_ENV
+
+    @pytest.mark.parametrize(
+        "payload",
+        [{"data": None}, {"data": {"listEnvironments": {"environments": None}}}],
+    )
+    def test_list_environments_empty(self, client, mock_api, payload):
+        # GIVEN: A mock listEnvironments response
+        client._token = "valid-token"
+        mock_api.post(GQL_URL, json=payload)
+
+        # WHEN: Searching for the environments
+        envs = client.list_environments("proj-1")
+
+        # THEN: A list of ChaosEnvironment objects should be empty
+        assert envs == []
 
     def test_list_infrastructures(self, client, mock_api):
         # GIVEN: A mock listInfras response containing the target
@@ -183,7 +229,7 @@ class TestGraphQLMethods:
                         {
                             "infraID": "i-1",
                             "name": "my-infra",
-                            "environmentID": "test",
+                            "environmentID": TEST_ENV,
                             "isActive": True,
                             "infraNamespace": "litmus",
                         }
@@ -194,7 +240,7 @@ class TestGraphQLMethods:
         mock_api.post(GQL_URL, json=payload)
 
         # WHEN: Searching for the infrastructure
-        infras = client.list_infrastructures("proj-1")
+        infras = client.list_infrastructures("proj-1", TEST_ENV)
 
         # THEN: A list of ChaosInfrastructure objects should be returned
         assert len(infras) == 1
