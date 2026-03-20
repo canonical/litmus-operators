@@ -10,6 +10,9 @@ from jubilant import Juju, all_active
 from pytest_jubilant import pack, get_resources
 from pathlib import Path
 
+# Repo root derived from this file's location (tests/integration/helpers.py)
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+
 AUTH_APP = "auth"
 CHAOSCENTER_APP = "chaoscenter"
 BACKEND_APP = "backend"
@@ -58,7 +61,8 @@ def _charm_and_channel_and_resources(
             get_resources(charm_path.parent),
         )
     # else pack the charm
-    return pack(Path() / role), None, get_resources(Path().parent / role)
+    charm_dir = REPO_ROOT / role
+    return pack(charm_dir), None, get_resources(charm_dir)
 
 
 def deploy_self_monitoring_stack(juju: Juju):
