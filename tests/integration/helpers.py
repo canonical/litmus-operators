@@ -1,14 +1,20 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-import json
 import logging
 import os
-import subprocess
 from typing import Literal
+
+import requests
+import urllib3
 from jubilant import Juju, all_active
 from pytest_jubilant import pack, get_resources
 from pathlib import Path
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# Repo root derived from this file's location (tests/integration/helpers.py)
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 AUTH_APP = "auth"
 CHAOSCENTER_APP = "chaoscenter"
@@ -58,7 +64,8 @@ def _charm_and_channel_and_resources(
             get_resources(charm_path.parent),
         )
     # else pack the charm
-    return pack(Path() / role), None, get_resources(Path().parent / role)
+    charm_dir = REPO_ROOT / role
+    return pack(charm_dir), None, get_resources(charm_dir)
 
 
 def deploy_self_monitoring_stack(juju: Juju):
@@ -154,15 +161,10 @@ def deploy_control_plane(
 
 
 def get_login_response(
-    host: str, port: int, subpath: str, use_ssl: bool = False
+    host: str, port: int, subpath: str, use_ssl: bool = False, timeout: int = 30
 ) -> tuple[int, str]:
     protocol = "https" if use_ssl else "http"
     url = f"{protocol}://{host}:{port}{subpath}/login"
     data = {"username": CHARM_USER, "password": CHARM_USER_PASSWORD}
-    json_payload = json.dumps(data)
-    cmd = ["curl", "-sS", "-X", "POST", "-H", "Content-Type: application/json"]
-    if use_ssl:
-        cmd.append("-k")
-    cmd.extend(["-d", json_payload, url])
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    return result.returncode, result.stdout
+    response = requests.post(url, json=data, verify=False, timeout=timeout)
+    return 0, response.text
