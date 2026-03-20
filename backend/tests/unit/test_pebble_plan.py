@@ -187,15 +187,20 @@ def test_workload_version_in_pebble_env_vars(
     ctx, backend_container, patch_workload_version, workload_version_set
 ):
     patch_workload_version.return_value = "1.0" if workload_version_set else None
-    expected_env_vars = {
+    # These env vars embed the workload version directly
+    version_bearing_env_vars = {
         "WORKFLOW_HELPER_IMAGE_VERSION",
         "VERSION",
         "INFRA_COMPATIBLE_VERSIONS",
-        "SUBSCRIBER_IMAGE",
-        "EVENT_TRACKER_IMAGE",
-        "LITMUS_CHAOS_OPERATOR_IMAGE",
-        "LITMUS_CHAOS_RUNNER_IMAGE",
-        "LITMUS_CHAOS_EXPORTER_IMAGE",
+    }
+    # Execution-plane image refs use canonical GHCR rocks with a fixed :dev tag,
+    # so they are not versioned by workload_version.
+    canonical_image_env_vars = {
+        "SUBSCRIBER_IMAGE": "ghcr.io/canonical/litmusportal-subscriber:dev",
+        "EVENT_TRACKER_IMAGE": "ghcr.io/canonical/litmusportal-event-tracker:dev",
+        "LITMUS_CHAOS_OPERATOR_IMAGE": "ghcr.io/canonical/chaos-operator:dev",
+        "LITMUS_CHAOS_RUNNER_IMAGE": "ghcr.io/canonical/chaos-runner:dev",
+        "LITMUS_CHAOS_EXPORTER_IMAGE": "ghcr.io/canonical/chaos-exporter:dev",
     }
 
     # GIVEN a running container
@@ -208,12 +213,16 @@ def test_workload_version_in_pebble_env_vars(
     actual_env_vars = backend_container_out.plan.to_dict()["services"]["backend"][
         "environment"
     ]
-    # THEN litmus backend server pebble plan env vars has the workload version set (if it's non empty)
-    for key in expected_env_vars:
+    # THEN version-bearing env vars contain the workload version when it is set
+    for key in version_bearing_env_vars:
         if workload_version_set:
             assert "1.0" in actual_env_vars[key]
         else:
             assert "1.0" not in actual_env_vars[key]
+
+    # AND image refs always point to the canonical GHCR rocks regardless of workload version
+    for key, expected_image in canonical_image_env_vars.items():
+        assert actual_env_vars[key] == expected_image
 
 
 @pytest.mark.parametrize("tls", (False, True))
