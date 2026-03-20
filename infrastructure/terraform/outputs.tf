@@ -6,10 +6,9 @@ output "app_name" {
   value       = juju_application.infrastructure.name
 }
 
-# TODO: add outputs for the endpoints provided/required by this application once they are added to the charm
-# output "endpoints" {
-#   value = {
-#     # Provides
-#     litmus-infrastructure = "litmus-infrastructure"
-#   }
-# }
+output "endpoints" {
+  value = {
+    # Provides
+    litmus-infrastructure = "litmus-infrastructure"
+  }
+}
