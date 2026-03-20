@@ -1,7 +1,7 @@
-name: Pull Requests (charms)
+name: Release Charm to Edge and Publish Libraries
 
 on:
-  pull_request:
+  push:
     branches:
       - main
       - track/**
@@ -17,9 +17,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          fetch-depth: 0
       - name: Determine changed files in the auth charm
         id: auth-changed-files
         uses: tj-actions/changed-files@v45
@@ -76,32 +73,39 @@ jobs:
             icon.svg
             .gitignore
             .github/**
-  pull-request-auth:
+  release-auth:
     needs: charms-changed
     if: needs.charms-changed.outputs.auth_changed == 'true'
-    uses: canonical/observability/.github/workflows/charm-pull-request.yaml@v1
+    uses: canonical/observability/.github/workflows/charm-release.yaml@main
     secrets: inherit
     with:
+      default-track: dev
       charm-path: auth
-  pull-request-chaoscenter:
+      git-tag-prefix: auth-
+  release-chaoscenter:
     needs: charms-changed
     if: needs.charms-changed.outputs.chaoscenter_changed == 'true'
-    uses: canonical/observability/.github/workflows/charm-pull-request.yaml@v1
+    uses: canonical/observability/.github/workflows/charm-release.yaml@main
     secrets: inherit
     with:
+      default-track: dev
       charm-path: chaoscenter
-  pull-request-backend:
+      git-tag-prefix: chaoscenter-
+  release-backend:
     needs: charms-changed
     if: needs.charms-changed.outputs.backend_changed == 'true'
-    uses: canonical/observability/.github/workflows/charm-pull-request.yaml@v1
+    uses: canonical/observability/.github/workflows/charm-release.yaml@main
     secrets: inherit
     with:
+      default-track: dev
       charm-path: backend
-  pull-request-infrastructure:
+      git-tag-prefix: backend-
+  release-infrastructure:
     needs: charms-changed
     if: needs.charms-changed.outputs.infrastructure_changed == 'true'
-    uses: canonical/observability/.github/workflows/charm-pull-request.yaml@v1
+    uses: canonical/observability/.github/workflows/charm-release.yaml@main
     secrets: inherit
     with:
+      default-track: dev
       charm-path: infrastructure
-
+      git-tag-prefix: infrastructure-

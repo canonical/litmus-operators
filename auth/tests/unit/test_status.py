@@ -125,6 +125,10 @@ def test_pebble_check_failing_blocked_status(
     event,
 ):
     # GIVEN a database and a litmus-auth relation
+    # AND remotes have sent their data
+    auth_relation = dataclasses.replace(
+        auth_relation, remote_app_data=auth_remote_databag()
+    )
     # AND an authserver container with failing pebble checks
     authserver_container = dataclasses.replace(
         authserver_container,
