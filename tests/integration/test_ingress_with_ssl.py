@@ -2,11 +2,13 @@
 # See LICENSE file for licensing details.
 import json
 import logging
+import secrets
 
 import pytest
 import requests
 import urllib3
 from jubilant import Juju
+from pytest_jubilant import TempModelFactory
 from tenacity import retry, stop_after_attempt, wait_fixed
 from helpers import (
     deploy_control_plane,
@@ -17,6 +19,27 @@ from helpers import (
 )
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+
+@pytest.fixture(scope="module")
+def temp_model_factory(request):
+    """Override default fixture to skip model teardown.
+
+    The default jubilant teardown hangs for TLS-heavy models.
+    The model is left behind and cleaned up externally.
+    """
+    user_model = request.config.getoption("--model")
+    if user_model:
+        prefix = user_model
+        randbits = None
+    else:
+        prefix = (request.module.__name__.rpartition(".")[-1]).replace("_", "-")
+        randbits = secrets.token_hex(4)
+    factory = TempModelFactory(
+        prefix=prefix, randbits=randbits, check_models_unique=not user_model
+    )
+
+    yield factory
 
 logger = logging.getLogger(__name__)
 
