@@ -133,7 +133,7 @@ def deploy_control_plane(
         if with_traefik:
             juju.integrate(f"{TRAEFIK_APP}:certificates", SELF_SIGNED_CERTIFICATES_APP)
         apps_to_wait_for.append(SELF_SIGNED_CERTIFICATES_APP)
-        raise Exception("We're now at the end of with_tls")  # FIXME: Remove this
+        # raise Exception("We're now at the end of with_tls")  # FIXME: Remove this
 
     juju.integrate(f"{AUTH_APP}:database", MONGO_APP)
     juju.integrate(f"{AUTH_APP}:http-api", CHAOSCENTER_APP)
