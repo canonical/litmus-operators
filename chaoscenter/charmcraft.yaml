@@ -54,8 +54,8 @@ config:
         
         The admin can create this secret and provide it to the charm using the juju CLI as follows:
         ```
-        SECRET_ID=$(juju add-secret chaoscenter-creds admin_password=admin123 charm_password=charm123)
-        juju grant-secret chaoscenter-creds chaoscenter
+        SECRET_ID=$(juju add-secret chaoscenter-creds admin-password='Admin123!' charm-password='Charm123!')
+        juju grant-secret chaoscenter-creds litmus-chaoscenter-k8s
         juju config litmus-chaoscenter-k8s user_secrets="$SECRET_ID"
         ```
         
