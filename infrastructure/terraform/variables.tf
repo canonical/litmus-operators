@@ -4,7 +4,7 @@
 variable "app_name" {
   description = "Name of the application in the Juju model."
   type        = string
-  default     = "litmus-auth"
+  default     = "litmus-infrastructure"
 }
 
 variable "channel" {
@@ -25,7 +25,7 @@ variable "model_uuid" {
 }
 
 variable "resources" {
-  description = "Resources to use with the application. Details about available options can be found at https://charmhub.io/litmus-auth-k8s/resources."
+  description = "Resources to use with the application. Details about available options can be found at https://charmhub.io/litmus-infrastructure-k8s/resources."
   type        = map(string)
   default     = {}
 }
