@@ -154,7 +154,7 @@ def deploy_control_plane(
                 status,
                 *apps_to_wait_for,
             ),
-            timeout=30,
+            timeout=600,
             delay=30,
         )
 
