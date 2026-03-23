@@ -9,10 +9,11 @@ output "app_name" {
 output "endpoints" {
   value = {
     # Requires
-    auth-http-api    = "auth-http-api"
-    backend-http-api = "backend-http-api"
-    tls-certificates = "tls-certificates"
-    ingress          = "ingress"
+    auth-http-api         = "auth-http-api"
+    backend-http-api      = "backend-http-api"
+    tls-certificates      = "tls-certificates"
+    ingress               = "ingress"
+    litmus-infrastructure = "litmus-infrastructure"
     # Provides
     metrics-endpoint = "metrics-endpoint"
   }
