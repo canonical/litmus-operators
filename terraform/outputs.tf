@@ -37,3 +37,7 @@ output "chaoscenter_tls_certificates_endpoint" {
   description = "Name of the endpoint to integrate with TLS certificates provider."
   value       = module.chaoscenter.endpoints.tls-certificates
 }
+output "chaoscenter_litmus_infrastructure_endpoint" {
+  description = "Name of the endpoint to integrate with the Litmus infrastructure provider."
+  value       = module.chaoscenter.endpoints.litmus-infrastructure
+}
