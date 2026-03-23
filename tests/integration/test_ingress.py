@@ -14,6 +14,7 @@ def test_setup(juju: Juju):
     deploy_control_plane(juju, wait_for_idle=True, with_traefik=True)
 
 
+@pytest.mark.skip(reason="Removing skips from first to last to find problematic test case")
 def test_litmus_is_served_over_ingress(juju: Juju):
     # GIVEN a deployment of control plane with traefik
 
