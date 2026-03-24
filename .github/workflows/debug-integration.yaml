@@ -114,3 +114,4 @@ jobs:
         uses: mxschmitt/action-tmate@v3
         with:
           timeout-minutes: ${{ fromJSON(env.TMATE_TIMEOUT) }}
+          limit-access-to-actor: false
