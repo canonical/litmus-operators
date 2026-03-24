@@ -117,7 +117,6 @@ def deploy_control_plane(
         juju.deploy("traefik-k8s", channel="latest/edge", app=TRAEFIK_APP, trust=True)
         juju.integrate(TRAEFIK_APP, f"{CHAOSCENTER_APP}:ingress")
         apps_to_wait_for.append(TRAEFIK_APP)
-        # raise Exception("We're now at the end of traefik")  # FIXME: Remove this
 
     if with_tls:
         juju.deploy(SELF_SIGNED_CERTIFICATES_APP, app=SELF_SIGNED_CERTIFICATES_APP)
@@ -133,7 +132,6 @@ def deploy_control_plane(
         if with_traefik:
             juju.integrate(f"{TRAEFIK_APP}:certificates", SELF_SIGNED_CERTIFICATES_APP)
         apps_to_wait_for.append(SELF_SIGNED_CERTIFICATES_APP)
-        # raise Exception("We're now at the end of with_tls")  # FIXME: Remove this
 
     juju.integrate(f"{AUTH_APP}:database", MONGO_APP)
     juju.integrate(f"{AUTH_APP}:http-api", CHAOSCENTER_APP)
@@ -148,8 +146,6 @@ def deploy_control_plane(
     )
     juju.grant_secret("cc-users", app=CHAOSCENTER_APP)
     juju.config(app=CHAOSCENTER_APP, values={"user_secrets": secret_uri})
-
-    raise Exception("We're now before wait_for_idle")  # FIXME: Remove this
 
     if wait_for_idle:
         logger.info("waiting for the control plane to be active/idle...")
