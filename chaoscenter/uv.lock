@@ -205,7 +205,7 @@ wheels = [
 
 [[package]]
 name = "cosl"
-version = "1.6.1"
+version = "1.7.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ops" },
@@ -214,9 +214,9 @@ dependencies = [
     { name = "tenacity" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e5/98/1a1f8aa7965ede9abfeb649b83375baf4e2f523778f90b841281cbe3603a/cosl-1.6.1.tar.gz", hash = "sha256:f96a6a978dfdee4a3b460cc48fa18514663bbc1c3a4f323315e3dbe3e6a2a596", size = 149512, upload-time = "2026-03-09T21:44:46.744Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8b/86/a1756838edef0bb2e82bbb51d1164dda731334dc0494f3c69d006c7f6429/cosl-1.7.0.tar.gz", hash = "sha256:ab6e1f74a9ddcd8f55fe36b7bedb4c0fe983b5b35776094b31a31e48e63808b6", size = 149830, upload-time = "2026-03-23T17:55:25.872Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f0/8f/3ca0f470fbc7b26ed33b5fe5815e38b6a628b8bb4df961924cae38755c46/cosl-1.6.1-py3-none-any.whl", hash = "sha256:12db85a81317c5b056171642098be91c09e78e04875ed1262b99681dea43b533", size = 37800, upload-time = "2026-03-09T21:44:45.373Z" },
+    { url = "https://files.pythonhosted.org/packages/35/3d/30d2a98fa06c72abb79aceb06f8e6a9848e806d25f86f4f327afa9b13a0b/cosl-1.7.0-py3-none-any.whl", hash = "sha256:a3469c228a0c89418a5d0c9c2c72b520b4f9973fab35ac193b1de9adfac8a4fb", size = 37833, upload-time = "2026-03-23T17:55:24.592Z" },
 ]
 
 [[package]]
@@ -974,16 +974,16 @@ wheels = [
 
 [[package]]
 name = "pytest-cov"
-version = "7.0.0"
+version = "7.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "coverage" },
     { name = "pluggy" },
     { name = "pytest" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5e/f7/c933acc76f5208b3b00089573cf6a2bc26dc80a8aece8f52bb7d6b1855ca/pytest_cov-7.0.0.tar.gz", hash = "sha256:33c97eda2e049a0c5298e91f519302a1334c26ac65c1a483d6206fd458361af1", size = 54328, upload-time = "2025-09-09T10:57:02.113Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b1/51/a849f96e117386044471c8ec2bd6cfebacda285da9525c9106aeb28da671/pytest_cov-7.1.0.tar.gz", hash = "sha256:30674f2b5f6351aa09702a9c8c364f6a01c27aae0c1366ae8016160d1efc56b2", size = 55592, upload-time = "2026-03-21T20:11:16.284Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ee/49/1377b49de7d0c1ce41292161ea0f721913fa8722c19fb9c1e3aa0367eecb/pytest_cov-7.0.0-py3-none-any.whl", hash = "sha256:3b8e9558b16cc1479da72058bdecf8073661c7f57f7d3c5f22a1c23507f2d861", size = 22424, upload-time = "2025-09-09T10:57:00.695Z" },
+    { url = "https://files.pythonhosted.org/packages/9d/7a/d968e294073affff457b041c2be9868a40c1c71f4a35fcc1e45e5493067b/pytest_cov-7.1.0-py3-none-any.whl", hash = "sha256:a0461110b7865f9a271aa1b51e516c9a95de9d696734a2f71e3e78f46e1d4678", size = 22876, upload-time = "2026-03-21T20:11:14.438Z" },
 ]
 
 [[package]]
