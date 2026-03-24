@@ -60,7 +60,7 @@ def test_backend_is_served_through_traefik_with_ssl(juju: Juju, token):
     )
 
     response = requests.post(
-        f"https://{traefik_ip}:8185/backend/query",
+        f"https://{traefik_ip}:8185/api/query",
         json={"query": query},
         headers={"Authorization": f"Bearer {token}"},
         verify=False,
