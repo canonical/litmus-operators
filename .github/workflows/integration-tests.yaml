@@ -247,6 +247,10 @@ jobs:
         with:
           name: infrastructure-charms-tests
           path: ./infrastructure
+
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+
       - name: Run integration tests
         run: |
           auth_relative_path="$(find ./auth -maxdepth 1 -name '*.charm' | tail -n1)"
