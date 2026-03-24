@@ -11,6 +11,7 @@ dev = [
     # itests
     "jubilant >=1",
     "pytest-bdd>=8.1.0",
+    "pytest-jubilant ~=1.0",
     "tenacity",
 ]
 

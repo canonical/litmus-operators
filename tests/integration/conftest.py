@@ -3,14 +3,10 @@
 import logging
 from tests.integration.helpers import deploy_control_plane
 from pytest import fixture
-from jubilant import Juju
 
 
 logger = logging.getLogger(__name__)
 
-@fixture(scope="module")
-def juju():
-    juju = jubilant.Juju()
 
 @fixture(scope="module")
 def deployment(juju):
