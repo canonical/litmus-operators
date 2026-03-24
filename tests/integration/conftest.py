@@ -6,7 +6,7 @@ import secrets
 from pathlib import Path
 
 from pytest import fixture
-from pytest_jubilant.main import TempModelFactory
+from pytest_jubilant import TempModelFactory
 from tests.integration.helpers import deploy_control_plane
 
 
