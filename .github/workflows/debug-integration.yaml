@@ -1,6 +1,7 @@
 name: Debug Integration (SSH)
 
 on:
+  pull_request:
   workflow_dispatch:
     inputs:
       charm-path:
@@ -30,8 +31,16 @@ on:
 
 jobs:
   debug:
-    name: Debug (${{ inputs.charm-path }})
+    name: Debug (${{ matrix.charm-path }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        charm-path: ${{ github.event_name == 'pull_request' && fromJSON('["auth","backend","chaoscenter","infrastructure"]') || fromJSON(format('["{0}"]', inputs.charm-path)) }}
+    env:
+      JUJU_CHANNEL: ${{ inputs.juju-channel || '3.6/candidate' }}
+      CHARMCRAFT_CHANNEL: ${{ inputs.charmcraft-channel || '3.x/candidate' }}
+      TMATE_TIMEOUT: ${{ inputs.tmate-timeout || 60 }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -53,7 +62,7 @@ jobs:
           sudo snap install concierge --classic
           cat > concierge.yaml << 'EOF'
           juju:
-            channel: ${{ inputs.juju-channel }}
+            channel: ${{ env.JUJU_CHANNEL }}
             model-defaults:
               test-mode: "true"
               automatically-retry-hooks: "true"
@@ -79,7 +88,7 @@ jobs:
               - python3-venv
             snaps:
               charmcraft:
-                channel: ${{ inputs.charmcraft-channel }}
+                channel: ${{ env.CHARMCRAFT_CHANNEL }}
               jq:
               yq:
               rockcraft:
@@ -90,12 +99,12 @@ jobs:
 
       - name: Pack charm
         run: |
-          cd "${{ inputs.charm-path }}"
+          cd "${{ matrix.charm-path }}"
           charmcraft pack -v
 
       - name: Prepare environment variables
         run: |
-          cd "${{ inputs.charm-path }}"
+          cd "${{ matrix.charm-path }}"
           charm_relative_path="$(find . -maxdepth 1 -name '*.charm' | sort | tail -n1)"
           CHARM_PATH="$(realpath "$charm_relative_path")"
           echo "CHARM_PATH=$CHARM_PATH" >> "$GITHUB_ENV"
@@ -104,5 +113,5 @@ jobs:
       - name: Open SSH session (tmate)
         uses: mxschmitt/action-tmate@v3
         with:
-          timeout-minutes: ${{ inputs.tmate-timeout }}
+          timeout-minutes: ${{ fromJSON(env.TMATE_TIMEOUT) }}
           limit-access-to-actor: true
