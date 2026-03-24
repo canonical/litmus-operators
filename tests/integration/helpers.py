@@ -149,14 +149,16 @@ def deploy_control_plane(
 
     if wait_for_idle:
         logger.info("waiting for the control plane to be active/idle...")
-        juju.wait(
-            lambda status: all_active(
-                status,
-                *apps_to_wait_for,
-            ),
-            timeout=600,
-            delay=30,
-        )
+        # juju.wait(
+        #     lambda status: all_active(
+        #         status,
+        #         *apps_to_wait_for,
+        #     ),
+        #     timeout=600,
+        #     delay=30,
+        # )
+        for app in apps_to_wait_for:
+            sh.juju("wait-for", "application", app)
 
 
 def get_login_response(

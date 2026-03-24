@@ -26,6 +26,7 @@ dev = [
     "jubilant >=1",
     "pytest-bdd>=8.1.0",
     "tenacity",
+    "sh",
     
 #   LINTING
     "pyright",
