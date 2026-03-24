@@ -224,12 +224,21 @@ jobs:
         run: |
           cat >concierge.yaml <<EOL
           juju:
+            channel: 3.6/stable
             agent-version: 3.6.14
+            model-defaults:
+              automatically-retry-hooks: true
+          
+          providers:
+            microk8s:
+              enable: true
+              bootstrap: true
+              channel: 1.32-strict/stable
+              
           EOL
           sudo snap install concierge --classic
-          sudo concierge prepare -p microk8s -c concierge.yaml --extra-snaps=astral-uv,terraform
+          sudo concierge prepare -c concierge.yaml --extra-snaps=astral-uv,terraform
           sudo snap install kubectl --classic
-          juju model-defaults automatically-retry-hooks=true
       - name: Download auth charm artifact
         uses: actions/download-artifact@v4
         with:
