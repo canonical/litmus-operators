@@ -52,7 +52,7 @@ def juju(request, temp_model_factory):
 
         # Dump logs but explicitly skip teardown for SSL models
         if dump_logs := request.config.getoption("--dump-logs"):
-            ssl_factory.dump_all_logs(Path(dump_logs))
+            ssl_factory._dump_all_logs(Path(dump_logs))
     else:
         juju_instance = temp_model_factory.get_juju("")
         if request.config.getoption("--switch"):
