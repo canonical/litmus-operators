@@ -227,9 +227,12 @@ jobs:
             channel: 3.6/stable
             agent-version: 3.6.14
             model-defaults:
+              test-mode: true
               automatically-retry-hooks: true
           
           providers:
+            lxd:
+              enable: true
             microk8s:
               enable: true
               bootstrap: true
@@ -239,17 +242,6 @@ jobs:
                 - dns
                 - rbac
                 - metallb:10.64.140.43-10.64.140.49
-          
-          host:
-            packages:
-              - gnome-keyring
-              - python3-pip
-              - python3-venv
-            snaps:
-              charmcraft:
-              jq:
-              yq:
-              rockcraft:
                 
           EOL
           sudo snap install concierge --classic
