@@ -58,5 +58,5 @@ provides:
     description: |
       Provide the necessary metadata needed to provision a Litmus infrastructure in this Juju model.
 
-      When the relation is removed, the provisioned infrastructure will be deleted, while any existing experiments/probes are retained.
+      When the relation is removed, the provisioned infrastructure will be deleted along with any associated chaos experiments.
     optional: false

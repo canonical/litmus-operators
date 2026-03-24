@@ -108,7 +108,7 @@ requires:
     description: |
       Receives the data required for ChaosCenter to provision Litmus infrastructure in the provider's model.
 
-      When the relation is removed, the provisioned infrastructure will be deleted, while any existing experiments/probes are retained.
+      When the relation is removed, the provisioned infrastructure will be deleted along with any associated chaos experiments.
     optional: true
 
 provides:

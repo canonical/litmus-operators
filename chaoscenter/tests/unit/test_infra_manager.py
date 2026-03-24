@@ -3,7 +3,7 @@
 
 
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, call
 from infra_manager import InfraManager
 
 import pytest
@@ -21,6 +21,12 @@ def mock_apply_k8s_manifest():
 @pytest.fixture
 def mock_delete_k8s_manifest():
     with patch("infra_manager.InfraManager._delete_manifest") as mock:
+        yield mock
+
+
+@pytest.fixture
+def mock_delete_k8s_experiments():
+    with patch("infra_manager.InfraManager._delete_chaos_experiments_from_k8s") as mock:
         yield mock
 
 
@@ -96,7 +102,7 @@ def test_reconcile_reactivates_inactive_infrastructure(
 
 
 def test_reconcile_deletes_removed_infrastructure(
-    mock_litmus_client, mock_delete_k8s_manifest
+    mock_litmus_client, mock_delete_k8s_manifest, mock_delete_k8s_experiments
 ):
     """GIVEN an infra in the backend not in desired state, WHEN reconciling, THEN it is deleted."""
     # GIVEN: Databag is empty, but backend has an infra
@@ -116,3 +122,37 @@ def test_reconcile_deletes_removed_infrastructure(
         "old-uuid", MOCK_LITMUS_PROJECT_ID
     )
     mock_delete_k8s_manifest.assert_any_call("re-apply-this")
+    mock_delete_k8s_experiments.assert_any_call(namespace="old-ns")
+
+
+def test_reconcile_deletes_removed_infrastructure_experiments(
+    mock_litmus_client, mock_delete_k8s_manifest, mock_delete_k8s_experiments
+):
+    """GIVEN an infra in the backend not in desired state, WHEN reconciling, THEN associated chaos experiments are deleted."""
+    # GIVEN: Databag is empty, but backend has an infra
+    infra_data = []
+    mock_litmus_client.list_infrastructures.return_value = [
+        SimpleNamespace(id="old-uuid", name="stale-infra", namespace="old-ns")
+    ]
+    mock_litmus_client.list_experiments.return_value = [
+        SimpleNamespace(id="exp-1", infra_id="old-uuid"),
+        SimpleNamespace(id="exp-2", infra_id="old-uuid"),
+        SimpleNamespace(id="exp-3", infra_id="other-infra"),
+    ]
+
+    manager = InfraManager(infra_data)
+
+    # WHEN
+    manager.reconcile(mock_litmus_client)
+
+    # THEN
+    mock_litmus_client.delete_experiment.assert_any_call(
+        project_id=MOCK_LITMUS_PROJECT_ID, experiment_id="exp-1"
+    )
+    mock_litmus_client.delete_experiment.assert_any_call(
+        project_id=MOCK_LITMUS_PROJECT_ID, experiment_id="exp-2"
+    )
+    assert (
+        call(project_id=MOCK_LITMUS_PROJECT_ID, experiment_id="exp-3")
+        not in mock_litmus_client.delete_experiment.mock_calls
+    )
