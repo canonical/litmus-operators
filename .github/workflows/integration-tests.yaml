@@ -234,7 +234,23 @@ jobs:
               enable: true
               bootstrap: true
               channel: 1.32-strict/stable
-              
+              addons:
+                - hostpath-storage
+                - dns
+                - rbac
+                - metallb:10.64.140.43-10.64.140.49
+          
+          host:
+            packages:
+              - gnome-keyring
+              - python3-pip
+              - python3-venv
+            snaps:
+              charmcraft:
+              jq:
+              yq:
+              rockcraft:
+                
           EOL
           sudo snap install concierge --classic
           sudo concierge prepare -c concierge.yaml --extra-snaps=astral-uv,terraform
