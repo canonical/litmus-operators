@@ -158,8 +158,6 @@ def deploy_control_plane(
             delay=30,
         )
 
-    raise Exception("We're now after wait_for_idle")  # FIXME: Remove this
-
 
 def get_login_response(
     host: str, port: int, subpath: str, use_ssl: bool = False, timeout: int = 30
