@@ -35,22 +35,24 @@ def test_setup(juju: Juju):
     deploy_control_plane(juju, with_tls=True, with_traefik=True, wait_for_idle=True)
 
 
-@pytest.mark.skip(reason="Removing skips from first to last to find problematic test case")
+@pytest.mark.skip(
+    reason="Removing skips from first to last to find problematic test case"
+)
 @retry(stop=stop_after_attempt(30), wait=wait_fixed(10))  # 5 minutes
 def test_frontend_is_served_through_traefik_with_ssl(juju: Juju):
     # GIVEN control plane is deployed and TLS is enabled
 
     # WHEN we call the frontend over https
     traefik_ip = get_unit_ip_address(juju, TRAEFIK_APP, 0)
-    response = requests.get(
-        f"https://{traefik_ip}:8185", verify=False, timeout=30
-    )
+    response = requests.get(f"https://{traefik_ip}:8185", verify=False, timeout=30)
 
     # THEN we receive a response that is served by the frontend
     assert "LitmusChaos" in response.text
 
 
-@pytest.mark.skip(reason="Removing skips from first to last to find problematic test case")
+@pytest.mark.skip(
+    reason="Removing skips from first to last to find problematic test case"
+)
 @retry(stop=stop_after_attempt(30), wait=wait_fixed(10))  # 5 minutes
 def test_backend_is_served_through_traefik_with_ssl(juju: Juju, token):
     # GIVEN control plane is deployed and TLS is enabled
@@ -75,7 +77,9 @@ def test_backend_is_served_through_traefik_with_ssl(juju: Juju, token):
     response.raise_for_status()
 
 
-@pytest.mark.skip(reason="Removing skips from first to last to find problematic test case")
+@pytest.mark.skip(
+    reason="Removing skips from first to last to find problematic test case"
+)
 @retry(stop=stop_after_attempt(30), wait=wait_fixed(10))  # 5 minutes
 def test_auth_is_served_through_traefik_with_ssl(juju: Juju):
     # GIVEN control plane is deployed and TLS is enabled
