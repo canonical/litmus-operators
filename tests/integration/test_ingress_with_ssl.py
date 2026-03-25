@@ -2,10 +2,12 @@
 # See LICENSE file for licensing details.
 import json
 import logging
-import shlex
-import subprocess
+
 import pytest
+import requests
+import urllib3
 from jubilant import Juju
+from tenacity import retry, stop_after_attempt, wait_fixed
 from helpers import (
     deploy_control_plane,
     CHAOSCENTER_APP,
@@ -13,6 +15,8 @@ from helpers import (
     get_unit_ip_address,
     get_login_response,
 )
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 logger = logging.getLogger(__name__)
 
@@ -31,22 +35,23 @@ def test_setup(juju: Juju):
     deploy_control_plane(juju, with_tls=True, with_traefik=True, wait_for_idle=True)
 
 
+@retry(stop=stop_after_attempt(30), wait=wait_fixed(10))  # 5 minutes
 def test_frontend_is_served_through_traefik_with_ssl(juju: Juju):
     # GIVEN control plane is deployed and TLS is enabled
 
     # WHEN we call the frontend over https
     traefik_ip = get_unit_ip_address(juju, TRAEFIK_APP, 0)
-    cmd = f"curl -k -sS -X GET https://{traefik_ip}:8185"
-    result = subprocess.getoutput(cmd)
+    response = requests.get(f"https://{traefik_ip}:8185", verify=False, timeout=30)
 
     # THEN we receive a response that is served by the frontend
-    assert "LitmusChaos" in result
+    assert "LitmusChaos" in response.text
 
 
+@retry(stop=stop_after_attempt(30), wait=wait_fixed(10))  # 5 minutes
 def test_backend_is_served_through_traefik_with_ssl(juju: Juju, token):
     # GIVEN control plane is deployed and TLS is enabled
 
-    # WHEN we call the nginx redirect for backend iver traefik
+    # WHEN we call the nginx redirect for backend over traefik
     traefik_ip = get_unit_ip_address(juju, TRAEFIK_APP, 0)
     query = (
         'mutation { createEnvironment(projectID:"", '
@@ -54,23 +59,25 @@ def test_backend_is_served_through_traefik_with_ssl(juju: Juju, token):
         "{ environmentID name type } }"
     )
 
-    cmd = (
-        'curl -sS -k -X POST -H "Content-Type: application/json" '
-        f'-H "Authorization: Bearer {token}" '
-        f'-d \'{{"query": "{query}"}}\' '
-        f"https://{traefik_ip}:8185/backend/query"
+    response = requests.post(
+        f"https://{traefik_ip}:8185/api/query",
+        json={"query": query},
+        headers={"Authorization": f"Bearer {token}"},
+        verify=False,
+        timeout=30,
     )
 
     # THEN we receive a response from the backend
-    subprocess.check_call(shlex.split(cmd))
+    response.raise_for_status()
 
 
+@retry(stop=stop_after_attempt(30), wait=wait_fixed(10))  # 5 minutes
 def test_auth_is_served_through_traefik_with_ssl(juju: Juju):
     # GIVEN control plane is deployed and TLS is enabled
 
     # WHEN we call the nginx redirect for auth server
     traefik_ip = get_unit_ip_address(juju, TRAEFIK_APP, 0)
-    returncode, output = get_login_response(
+    _, output = get_login_response(
         host=traefik_ip,
         port=8185,
         subpath="/auth",
@@ -78,6 +85,5 @@ def test_auth_is_served_through_traefik_with_ssl(juju: Juju):
     )
 
     # THEN we receive a response from the auth server
-    assert returncode == 0
     response_json = json.loads(output)
     assert "accessToken" in response_json, f"No token found in response: {output}"

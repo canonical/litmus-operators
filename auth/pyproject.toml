@@ -24,6 +24,10 @@ dev = [
 #   INTEGRATION TESTS
     "jubilant",
     "pytest-jubilant>=0.2.1",
+    "requests",
+    "pytest-bdd>=8.1.0",
+    "pytest-jubilant ~=1.0",
+    "tenacity",
 
 #   LINTING
     "pyright",
@@ -50,6 +54,7 @@ branch = true
 
 [tool.coverage.report]
 show_missing = true
+fail_under = 90
 
 [tool.pytest.ini_options]
 minversion = "6.0"
