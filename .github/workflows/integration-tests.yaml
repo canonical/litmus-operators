@@ -220,6 +220,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
       - name: Install dependencies
         run: |
           cat >concierge.yaml <<EOL
@@ -268,9 +270,6 @@ jobs:
         with:
           name: infrastructure-charms-tests
           path: ./infrastructure
-
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
 
       - name: Run integration tests
         run: |
