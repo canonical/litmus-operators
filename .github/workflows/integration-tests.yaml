@@ -214,14 +214,14 @@ jobs:
         # Run the solution-level integration tests in the following deployment modes.
         mode: ${{ fromJson(needs.modes-matrix.outputs.modes) }}
     env:
-      CONCIERGE_JUJU_CHANNEL: 3.6/stable
-      CONCIERGE_MICROK8S_CHANNEL: 1.32-strict/stable
       CONCIERGE_CHARMCRAFT_CHANNEL: 3.x/candidate
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup tmate session
         uses: mxschmitt/action-tmate@v3
+
       - name: Install dependencies
         run: |
           cat >concierge.yaml <<EOL
@@ -231,7 +231,6 @@ jobs:
             model-defaults:
               test-mode: true
               automatically-retry-hooks: true
-          
           providers:
             lxd:
               enable: true
@@ -244,7 +243,6 @@ jobs:
                 - dns
                 - rbac
                 - metallb:10.64.140.43-10.64.140.49
-                
           EOL
           sudo snap install concierge --classic
           sudo concierge prepare -c concierge.yaml --extra-snaps=astral-uv,terraform
@@ -264,13 +262,11 @@ jobs:
         with:
           name: chaoscenter-charms-tests
           path: ./chaoscenter
-
       - name: Download infrastructure charm artifact
         uses: actions/download-artifact@v4
         with:
           name: infrastructure-charms-tests
           path: ./infrastructure
-
       - name: Run integration tests
         run: |
           auth_relative_path="$(find ./auth -maxdepth 1 -name '*.charm' | tail -n1)"
