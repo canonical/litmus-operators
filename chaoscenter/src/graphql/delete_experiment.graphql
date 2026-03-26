@@ -1,0 +1,7 @@
+mutation deleteChaosExperiment($experimentID: String!, $experimentRunID: String, $projectID: ID!) {
+    deleteChaosExperiment(
+        experimentID: $experimentID
+        experimentRunID: $experimentRunID
+        projectID: $projectID
+    )
+}

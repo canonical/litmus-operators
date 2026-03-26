@@ -130,8 +130,11 @@ def test_pebble_check_failing_blocked_status(
     backend_container,
     event,
 ):
-    # GIVEN a database, a litmus-auth, and an http-api relation
+    # GIVEN a database and a litmus-auth relation
     # AND remotes have sent their data
+    database_relation = dataclasses.replace(
+        database_relation, remote_app_data=db_remote_databag()
+    )
     auth_relation = dataclasses.replace(
         auth_relation, remote_app_data=auth_remote_databag()
     )

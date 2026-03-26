@@ -36,6 +36,12 @@ class ChaosInfrastructure:
     active: bool
 
 
+@dataclass
+class ChaosExperiment:
+    id: str
+    infra_id: str
+
+
 class LitmusClient:
     """High-level Litmus client using Litmus auth/graphql APIs."""
 
@@ -348,3 +354,33 @@ class LitmusClient:
         raise LitmusAPIException(
             f"Default project '{self._default_project}' not found for user '{self._username}'"
         )
+
+    def list_experiments(self, project_id: str) -> list[ChaosExperiment]:
+        """List all chaos experiments in a given project.
+
+        Raises LitmusAPIException on failure.
+        """
+        query = self._load_query("list_experiments")
+        variables = {
+            "projectID": project_id,
+            "request": {},
+        }
+
+        data = self._execute_gql(query, variables)
+        return [
+            ChaosExperiment(id=exp["experimentID"], infra_id=exp["infra"]["infraID"])
+            for exp in data.get("listExperiment", {}).get("experiments", [])
+        ]
+
+    def delete_experiment(self, project_id: str, experiment_id: str) -> None:
+        """Delete a chaos experiment in a given project by ID.
+
+        Raises LitmusAPIException on failure.
+        """
+        query = self._load_query("delete_experiment")
+        variables = {
+            "projectID": project_id,
+            "experimentID": experiment_id,
+        }
+
+        self._execute_gql(query, variables)

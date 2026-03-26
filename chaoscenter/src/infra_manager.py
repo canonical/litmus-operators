@@ -5,14 +5,35 @@
 import logging
 from pathlib import Path
 
-from lightkube import Client
+from lightkube import Client, ApiError
 from lightkube.codecs import load_all_yaml
 
 from environment_manager import DEFAULT_ENVIRONMENT
 from litmus_client import LitmusClient
 from litmus_libs.interfaces.litmus_infrastructure import InfrastructureDatabagModel
+from lightkube.generic_resource import create_namespaced_resource
 
 logger = logging.getLogger(__name__)
+
+# Define the Litmus Custom Resources
+ChaosExperiment = create_namespaced_resource(
+    group="litmuschaos.io",
+    version="v1alpha1",
+    kind="ChaosExperiment",
+    plural="chaosexperiments",
+)
+ChaosEngine = create_namespaced_resource(
+    group="litmuschaos.io",
+    version="v1alpha1",
+    kind="ChaosEngine",
+    plural="chaosengines",
+)
+ChaosResult = create_namespaced_resource(
+    group="litmuschaos.io",
+    version="v1alpha1",
+    kind="ChaosResult",
+    plural="chaosresults",
+)
 
 LITMUS_CRD_MANIFEST_PATH = (
     Path(__file__).parent / "k8s_manifests" / "litmus_portal_crds.yaml"
@@ -55,7 +76,12 @@ class InfraManager:
             self._activate_infra(actual_infra[infra_key].id, project_id, litmus_client)
 
         for infra_key in infras_to_delete:
-            self._delete_infra(actual_infra[infra_key].id, project_id, litmus_client)
+            self._delete_infra(
+                actual_infra[infra_key].id,
+                actual_infra[infra_key].namespace,
+                project_id,
+                litmus_client,
+            )
 
     def _create_infra(
         self, infra: InfrastructureDatabagModel, project_id: str, client: LitmusClient
@@ -81,13 +107,26 @@ class InfraManager:
             self._apply_manifest(LITMUS_CRD_MANIFEST_PATH.read_text())
         self._apply_manifest(manifest)
 
-    @staticmethod
     def _delete_infra(
+        self,
         infra_id: str,
+        infra_namespace: str,
         project_id: str,
         client: LitmusClient,
     ) -> None:
-        # TODO: investigate if we need to delete existing experiments in the infra before deleting the infra itself
+
+        # 1. delete the execution plane components
+        manifest = client.get_infrastructure_manifest(infra_id, project_id)
+        if manifest:
+            self._delete_manifest(manifest)
+
+        # 2. delete chaos K8s resources in the infra namespace
+        self._delete_chaos_experiments_from_k8s(namespace=infra_namespace)
+
+        # 3. delete chaos experiments from the database
+        self._delete_chaos_experiments_from_db(infra_id, project_id, client)
+
+        # 4. delete the infrastructure from Chaoscenter
         client.delete_infrastructure(infra_id, project_id)
 
     def _apply_manifest(self, manifest: str) -> None:
@@ -96,3 +135,39 @@ class InfraManager:
             self._k8s_client.apply(
                 obj, force=True, field_manager="litmus-chaoscenter-charm"
             )
+
+    def _delete_manifest(self, manifest: str) -> None:
+        """Delete a k8s manifest from the cluster."""
+        for obj in load_all_yaml(manifest):
+            if not obj.metadata or not obj.metadata.name:
+                logger.warning(f"Skipping object with missing metadata or name: {obj}")
+                continue
+            resource = type(obj)
+            name = obj.metadata.name
+            namespace = obj.metadata.namespace
+            try:
+                self._k8s_client.delete(resource, name=name, namespace=namespace)  # type: ignore[arg-type]
+            except ApiError:
+                logger.warning(f"Failed to delete non-existing object {name}")
+
+    def _delete_chaos_experiments_from_k8s(self, namespace):
+        """Deletes all ChaosExperiments, ChaosEngines, and ChaosResults in a namespace."""
+        for resource in [ChaosExperiment, ChaosEngine, ChaosResult]:
+            try:
+                self._k8s_client.deletecollection(resource, namespace=namespace)
+            except ApiError:
+                logger.warning(
+                    f"Failed to delete chaos resources in namespace {namespace}"
+                )
+
+    def _delete_chaos_experiments_from_db(
+        self, infra_id: str, project_id: str, client: LitmusClient
+    ):
+        """Deletes all chaos experiments in the database associated with an infrastructure."""
+        existing_experiments = [
+            experiment
+            for experiment in client.list_experiments(project_id)
+            if experiment.infra_id == infra_id
+        ]
+        for experiment in existing_experiments:
+            client.delete_experiment(project_id=project_id, experiment_id=experiment.id)
