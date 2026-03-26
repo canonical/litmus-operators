@@ -118,14 +118,13 @@ class LitmusBackend:
             # are there other versions we should set along with the current workload version?
             "INFRA_COMPATIBLE_VERSIONS": json.dumps([workload_version]),
             "VERSION": workload_version,
-            # TODO: use the rocks https://github.com/canonical/litmus-operators/issues/15
-            "SUBSCRIBER_IMAGE": f"litmuschaos/litmusportal-subscriber:{workload_version}",
-            "EVENT_TRACKER_IMAGE": f"litmuschaos/litmusportal-event-tracker:{workload_version}",
+            "SUBSCRIBER_IMAGE": "ghcr.io/canonical/litmusportal-subscriber:dev",
+            "EVENT_TRACKER_IMAGE": "ghcr.io/canonical/litmusportal-event-tracker:dev",
             "ARGO_WORKFLOW_CONTROLLER_IMAGE": "litmuschaos/workflow-controller:v3.3.1",
             "ARGO_WORKFLOW_EXECUTOR_IMAGE": "litmuschaos/argoexec:v3.3.1",
-            "LITMUS_CHAOS_OPERATOR_IMAGE": f"litmuschaos/chaos-operator:{workload_version}",
-            "LITMUS_CHAOS_RUNNER_IMAGE": f"litmuschaos/chaos-runner:{workload_version}",
-            "LITMUS_CHAOS_EXPORTER_IMAGE": f"litmuschaos/chaos-exporter:{workload_version}",
+            "LITMUS_CHAOS_OPERATOR_IMAGE": "ghcr.io/canonical/chaos-operator:dev",
+            "LITMUS_CHAOS_RUNNER_IMAGE": "ghcr.io/canonical/chaos-runner:dev",
+            "LITMUS_CHAOS_EXPORTER_IMAGE": "ghcr.io/canonical/chaos-exporter:dev",
         }
 
         if db_config := self._db_config:
