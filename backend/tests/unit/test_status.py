@@ -141,7 +141,7 @@ def test_pebble_check_failing_blocked_status(
     http_api_relation = dataclasses.replace(
         http_api_relation, remote_app_data=http_api_remote_databag()
     )
-    # AND an backend container with failing pebble checks
+    # AND a backend container with failing pebble checks
     backend_container = dataclasses.replace(
         backend_container,
         layers={
