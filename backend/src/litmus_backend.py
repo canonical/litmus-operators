@@ -56,6 +56,8 @@ class LitmusBackend:
             self._reconcile_workload_config()
 
     def _reconcile_workload_config(self):
+        self._patch_manifest_templates()
+        self._patch_argo_crds()
         self._container.add_layer(self.layer_name, self._pebble_layer, combine=True)
         # replan only if the available env var config is sufficient for the workload to run
         if self._db_config and self._workload_version:
@@ -65,6 +67,125 @@ class LitmusBackend:
                 "cannot start/restart pebble service: missing database config or workload version.",
             )
             self._container.stop(self.service_name)
+
+    # Argo Workflows 3.4+ removed --container-runtime-executor as a CLI flag
+    # and dropped the containerRuntimeExecutor field from the workflow-controller
+    # ConfigMap.  The upstream litmuschaos-server still emits both in the
+    # Deployment manifests it generates, causing the workflow-controller pod to
+    # crash with "unknown field" errors.  We patch the templates in-place before
+    # the server starts so neither artefact is written into provisioned infra.
+    _MANIFEST_TEMPLATES = (
+        "/manifests/namespace/1b_argo_deployment.yaml",
+        "/manifests/cluster/1c_argo_deployment.yaml",
+    )
+
+    # Argo 3.4.0 introduced WorkflowArtifactGCTask for artifact garbage collection.
+    # The upstream litmuschaos-server ships a 3.3-era 1a_argo_crds.yaml that does
+    # not include this CRD.  When the workflow-controller starts it tries to watch
+    # workflowartifactgctasks resources; because the CRD is absent the informer
+    # returns 404 repeatedly, WaitForCacheSync never returns, and the controller's
+    # work queue never starts — no workflow is ever processed.
+    _ARGO_CRDS_PATH = "/manifests/cluster/1a_argo_crds.yaml"
+    _WORKFLOW_ARTIFACT_GC_TASK_CRD = """\
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: workflowartifactgctasks.argoproj.io
+spec:
+  group: argoproj.io
+  names:
+    kind: WorkflowArtifactGCTask
+    listKind: WorkflowArtifactGCTaskList
+    plural: workflowartifactgctasks
+    shortNames:
+    - wfat
+    singular: workflowartifactgctask
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            type: object
+            x-kubernetes-map-type: atomic
+            x-kubernetes-preserve-unknown-fields: true
+          status:
+            type: object
+            x-kubernetes-map-type: atomic
+            x-kubernetes-preserve-unknown-fields: true
+        required:
+        - metadata
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+"""
+
+    def _patch_manifest_templates(self):
+        """Strip Argo 3.3 artefacts from Deployment manifest templates."""
+        for path in self._MANIFEST_TEMPLATES:
+            try:
+                content = self._container.pull(path).read()
+            except Exception:
+                logger.debug("Manifest template not present (yet): %s", path)
+                continue
+            patched = self._patch_argo_manifest(content)
+            if patched != content:
+                self._container.push(path, patched)
+                logger.info("Patched manifest template for Argo 3.4+ compatibility: %s", path)
+
+    def _patch_argo_crds(self):
+        """Add WorkflowArtifactGCTask CRD to the Argo CRDs manifest if absent.
+
+        Argo 3.4.0 introduced this CRD but the Litmus 3.3-era manifests shipped
+        with litmuschaos-server do not include it.  The workflow-controller will
+        not process any workflows until the CRD exists in the cluster.
+        """
+        try:
+            content = self._container.pull(self._ARGO_CRDS_PATH).read()
+        except Exception:
+            logger.debug("Argo CRDs manifest not present (yet): %s", self._ARGO_CRDS_PATH)
+            return
+        if "workflowartifactgctasks.argoproj.io" in content:
+            return
+        patched = content.rstrip("\n") + "\n" + self._WORKFLOW_ARTIFACT_GC_TASK_CRD
+        self._container.push(self._ARGO_CRDS_PATH, patched)
+        logger.info("Added WorkflowArtifactGCTask CRD to %s for Argo 3.4+ compatibility", self._ARGO_CRDS_PATH)
+
+    @staticmethod
+    def _patch_argo_manifest(content: str) -> str:
+        """Remove Argo 3.3-only artefacts from a manifest template string.
+
+        Strips:
+        - The ``containerRuntimeExecutor`` ConfigMap key (unknown field in 3.4+)
+        - The ``- --container-runtime-executor`` / value arg pair from Deployment args
+        """
+        lines = content.splitlines(keepends=True)
+        result = []
+        skip_next = False
+        for line in lines:
+            if skip_next:
+                skip_next = False
+                continue
+            # ConfigMap key removed in Argo 3.4+
+            if line.lstrip().startswith("containerRuntimeExecutor:"):
+                continue
+            # CLI flag removed in Argo 3.4+ (flag + following value line)
+            if "- --container-runtime-executor" in line:
+                skip_next = True
+                continue
+            result.append(line)
+        return "".join(result)
 
     @property
     def _pebble_layer(self) -> Layer:
@@ -113,19 +234,19 @@ class LitmusBackend:
             "INFRA_DEPLOYMENTS": '["app=chaos-exporter", "name=chaos-operator", "app=workflow-controller", "app=event-tracker"]',
             "DEFAULT_HUB_BRANCH_NAME": "master",  # wokeignore:rule=master
             "ALLOWED_ORIGINS": ".*",
-            "CONTAINER_RUNTIME_EXECUTOR": "k8sapi",
+            # k8sapi executor was removed in Argo 3.4.0; emissary is the only executor in 3.4+
+            "CONTAINER_RUNTIME_EXECUTOR": "emissary",
             "WORKFLOW_HELPER_IMAGE_VERSION": workload_version,
             # are there other versions we should set along with the current workload version?
             "INFRA_COMPATIBLE_VERSIONS": json.dumps([workload_version]),
             "VERSION": workload_version,
-            # TODO: use the rocks https://github.com/canonical/litmus-operators/issues/15
-            "SUBSCRIBER_IMAGE": f"litmuschaos/litmusportal-subscriber:{workload_version}",
-            "EVENT_TRACKER_IMAGE": f"litmuschaos/litmusportal-event-tracker:{workload_version}",
-            "ARGO_WORKFLOW_CONTROLLER_IMAGE": "litmuschaos/workflow-controller:v3.3.1",
-            "ARGO_WORKFLOW_EXECUTOR_IMAGE": "litmuschaos/argoexec:v3.3.1",
-            "LITMUS_CHAOS_OPERATOR_IMAGE": f"litmuschaos/chaos-operator:{workload_version}",
-            "LITMUS_CHAOS_RUNNER_IMAGE": f"litmuschaos/chaos-runner:{workload_version}",
-            "LITMUS_CHAOS_EXPORTER_IMAGE": f"litmuschaos/chaos-exporter:{workload_version}",
+            "SUBSCRIBER_IMAGE": "ghcr.io/canonical/litmusportal-subscriber:dev",
+            "EVENT_TRACKER_IMAGE": "ghcr.io/canonical/litmusportal-event-tracker:dev",
+            "ARGO_WORKFLOW_CONTROLLER_IMAGE": "charmedkubeflow/workflow-controller:3.4.17-627976f",
+            "ARGO_WORKFLOW_EXECUTOR_IMAGE": "charmedkubeflow/argoexec:3.4.17-ae093c9",
+            "LITMUS_CHAOS_OPERATOR_IMAGE": "ghcr.io/canonical/chaos-operator:dev",
+            "LITMUS_CHAOS_RUNNER_IMAGE": "ghcr.io/canonical/chaos-runner:dev",
+            "LITMUS_CHAOS_EXPORTER_IMAGE": "ghcr.io/canonical/chaos-exporter:dev",
         }
 
         if db_config := self._db_config:

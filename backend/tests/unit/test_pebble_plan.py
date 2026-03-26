@@ -10,6 +10,7 @@ from conftest import (
     http_api_remote_databag,
     patch_cert_and_key_ctx,
 )
+from litmus_backend import LitmusBackend
 
 
 def test_pebble_plan_minimal(ctx, backend_container):
@@ -241,3 +242,182 @@ def test_pebble_checks_plan(
     assert backend_container_out.plan.checks["backend-up"].tcp == {
         "port": 8081 if tls else 8080
     }
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Manifest template patching tests
+# ──────────────────────────────────────────────────────────────────────────────
+
+_MANIFEST_WITH_ARGO33_ARTEFACTS = """\
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: workflow-controller-configmap
+  namespace: #{INFRA_NAMESPACE}
+data:
+  containerRuntimeExecutor: #{ARGO_CONTAINER_RUNTIME_EXECUTOR}
+  executor: |
+    imagePullPolicy: IfNotPresent
+  instanceID: #{INFRA_ID}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workflow-controller
+spec:
+  template:
+    spec:
+      containers:
+        - args:
+            - --configmap
+            - workflow-controller-configmap
+            - --executor-image
+            - charmedkubeflow/argoexec:3.4.17-ae093c9
+            - --namespaced
+            - --container-runtime-executor
+            - emissary
+          command:
+            - workflow-controller
+          image: charmedkubeflow/workflow-controller:3.4.17-627976f
+"""
+
+_MANIFEST_CLEAN = """\
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: workflow-controller-configmap
+  namespace: #{INFRA_NAMESPACE}
+data:
+  executor: |
+    imagePullPolicy: IfNotPresent
+  instanceID: #{INFRA_ID}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workflow-controller
+spec:
+  template:
+    spec:
+      containers:
+        - args:
+            - --configmap
+            - workflow-controller-configmap
+            - --executor-image
+            - charmedkubeflow/argoexec:3.4.17-ae093c9
+            - --namespaced
+          command:
+            - workflow-controller
+          image: charmedkubeflow/workflow-controller:3.4.17-627976f
+"""
+
+
+def test_patch_argo_manifest_strips_configmap_key_and_cli_flag():
+    # GIVEN a manifest template with both Argo 3.3 artefacts
+    # WHEN the patching method is called
+    result = LitmusBackend._patch_argo_manifest(_MANIFEST_WITH_ARGO33_ARTEFACTS)
+    # THEN the containerRuntimeExecutor ConfigMap key is removed
+    assert "containerRuntimeExecutor" not in result
+    # AND the --container-runtime-executor CLI flag and its value are removed
+    assert "--container-runtime-executor" not in result
+    assert "- emissary\n" not in result
+    # AND the rest of the ConfigMap and Deployment are preserved intact
+    assert "executor: |" in result
+    assert "instanceID:" in result
+    assert "--executor-image" in result
+    assert "workflow-controller-configmap" in result
+    assert "--namespaced" in result
+
+
+def test_patch_argo_manifest_is_idempotent():
+    # GIVEN a manifest that already has the Argo 3.3 artefacts removed
+    # WHEN the patching method is called again
+    result = LitmusBackend._patch_argo_manifest(_MANIFEST_CLEAN)
+    # THEN the content is unchanged
+    assert result == _MANIFEST_CLEAN
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Argo CRDs patching tests
+# ──────────────────────────────────────────────────────────────────────────────
+
+_ARGO_CRDS_WITHOUT_ARTIFACT_GC = """\
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: workflows.argoproj.io
+spec:
+  group: argoproj.io
+  names:
+    kind: Workflow
+    plural: workflows
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+"""
+
+_ARGO_CRDS_WITH_ARTIFACT_GC = (
+    _ARGO_CRDS_WITHOUT_ARTIFACT_GC.rstrip("\n")
+    + "\n"
+    + LitmusBackend._WORKFLOW_ARTIFACT_GC_TASK_CRD
+)
+
+
+def test_patch_argo_crds_adds_missing_crd(ctx, backend_container):
+    import os
+    import tempfile
+    from ops.testing import Mount
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        cluster_dir = os.path.join(tmpdir, "cluster")
+        os.makedirs(cluster_dir)
+        crd_path = os.path.join(cluster_dir, "1a_argo_crds.yaml")
+        with open(crd_path, "w") as f:
+            f.write(_ARGO_CRDS_WITHOUT_ARTIFACT_GC)
+
+        # GIVEN a container whose argo CRDs manifest does not have the artifact GC CRD
+        backend_container.mounts["manifests"] = Mount(
+            location="/manifests", source=tmpdir
+        )
+        state = State(containers=[backend_container])
+
+        # WHEN a pebble ready event is fired
+        ctx.run(ctx.on.pebble_ready(backend_container), state=state)
+
+        # THEN the CRD is appended to the manifest
+        with open(crd_path) as f:
+            result = f.read()
+        assert "workflowartifactgctasks.argoproj.io" in result
+        assert "WorkflowArtifactGCTask" in result
+
+
+def test_patch_argo_crds_is_idempotent(ctx, backend_container):
+    import os
+    import tempfile
+    from ops.testing import Mount
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        cluster_dir = os.path.join(tmpdir, "cluster")
+        os.makedirs(cluster_dir)
+        crd_path = os.path.join(cluster_dir, "1a_argo_crds.yaml")
+        with open(crd_path, "w") as f:
+            f.write(_ARGO_CRDS_WITH_ARTIFACT_GC)
+
+        # GIVEN a container whose argo CRDs manifest already has the artifact GC CRD
+        backend_container.mounts["manifests"] = Mount(
+            location="/manifests", source=tmpdir
+        )
+        state = State(containers=[backend_container])
+
+        # WHEN a pebble ready event is fired
+        ctx.run(ctx.on.pebble_ready(backend_container), state=state)
+
+        # THEN the CRD appears exactly once
+        with open(crd_path) as f:
+            result = f.read()
+        assert result.count("workflowartifactgctasks.argoproj.io") == 1
