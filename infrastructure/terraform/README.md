@@ -17,7 +17,7 @@ rather serve as a building block for higher level modules.
   by defining potential integration endpoints (charm integrations), but also by exposing
   the application name.
 - **versions.tf** - Defines the Terraform provider version.
-- 
+
 ## Using litmus-infrastructure-k8s base module in higher level modules
 
 If you want to use `litmus-infrastructure-k8s` base module as part of your Terraform module, import it

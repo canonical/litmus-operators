@@ -9,11 +9,7 @@ Litmus ChaosCenter charm to deploy the execution plane of LitmusChaos, an open s
 
 ## Usage
 
-Assuming you have access to a bootstrapped Juju controller on Kubernetes, you can:
-
-```bash
-$ juju deploy litmus-infrastructure-k8s
-```
+Assuming you have access to a bootstrapped Juju controller on Kubernetes, you can use the Terraform module to deploy the infrastructure charm in your model under test. See the [Terraform README](./terraform/README.md) for the instructions.
 
 
 ## Contributing

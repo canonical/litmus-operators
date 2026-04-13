@@ -1,6 +1,13 @@
 # litmus-libs
 ![PyPI](https://img.shields.io/pypi/v/litmus-libs)
 
+Shared Python package used by all four Litmus charms. It provides:
+
+- **Relation interfaces** — typed providers/requirers for the custom `litmus-auth`, `litmus-auth-http-api`, `litmus-backend-http-api`, and `litmus-infrastructure` Juju relations, plus self-monitoring bindings.
+- **Typed data models** — Pydantic/dataclass wrappers for MongoDB credentials (`DatabaseConfig`) and TLS cert data (`TLSConfigData`), replacing raw dict passing.
+- **StatusManager** — centralises `collect-status` logic (blocked on missing relations, waiting on missing config, blocked on failing Pebble checks).
+- **TlsReconciler** — writes TLS cert/key/CA files into a workload container's filesystem and cleans them up when TLS is removed.
+- **Utils** — small helpers like resolving the Kubernetes service FQDN for a Juju app.
 
 # How to release
  
