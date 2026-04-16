@@ -10,6 +10,7 @@ from conftest import (
     http_api_remote_databag,
     patch_cert_and_key_ctx,
 )
+from litmus_backend import LitmusBackend
 
 
 def test_pebble_plan_minimal(ctx, backend_container):
@@ -214,6 +215,64 @@ def test_workload_version_in_pebble_env_vars(
             assert "1.0" in actual_env_vars[key]
         else:
             assert "1.0" not in actual_env_vars[key]
+
+
+@pytest.mark.parametrize(
+    "workload_version, expected_tag",
+    [
+        # typical 3-part version: strip patch, append ubuntu suffix
+        ("3.26.0", "3.26-24.04_edge"),
+        ("3.7.1",  "3.7-24.04_edge"),
+        # 2-part version: use as-is with suffix
+        ("3.26",   "3.26-24.04_edge"),
+        # 1-part version: major only
+        ("3",      "3-24.04_edge"),
+        # empty string: fall back to major-only default
+        ("",       "3-24.04_edge"),
+    ],
+)
+def test_docker_hub_tag(workload_version, expected_tag):
+    # GIVEN a workload version string
+    # WHEN converted to a Docker Hub Ubuntu rock tag
+    tag = LitmusBackend._docker_hub_tag(workload_version)
+    # THEN the tag matches the expected format
+    assert tag == expected_tag
+
+
+@pytest.mark.parametrize(
+    "workload_version, expected_tag",
+    [
+        ("3.26.0", "3.26-24.04_edge"),
+        ("3.7.1",  "3.7-24.04_edge"),
+    ],
+)
+def test_execution_plane_image_tags_in_pebble_plan(
+    ctx, backend_container, patch_workload_version, workload_version, expected_tag
+):
+    patch_workload_version.return_value = workload_version
+    execution_plane_images = {
+        "SUBSCRIBER_IMAGE":          f"ubuntu/litmuschaos-subscriber:{expected_tag}",
+        "EVENT_TRACKER_IMAGE":       f"ubuntu/litmuschaos-event-tracker:{expected_tag}",
+        "LITMUS_CHAOS_OPERATOR_IMAGE": f"ubuntu/litmuschaos-operator:{expected_tag}",
+        "LITMUS_CHAOS_RUNNER_IMAGE": f"ubuntu/litmuschaos-runner:{expected_tag}",
+        "LITMUS_CHAOS_EXPORTER_IMAGE": f"ubuntu/litmuschaos-exporter:{expected_tag}",
+    }
+
+    # GIVEN a running container
+    state = State(containers=[backend_container])
+
+    # WHEN any event is fired
+    state_out = ctx.run(ctx.on.update_status(), state=state)
+
+    actual_env_vars = state_out.get_container(backend_container.name).plan.to_dict()[
+        "services"
+    ]["backend"]["environment"]
+
+    # THEN each execution-plane image uses the correct ubuntu/ Docker Hub tag
+    for key, expected_image in execution_plane_images.items():
+        assert actual_env_vars[key] == expected_image, (
+            f"{key}: expected {expected_image!r}, got {actual_env_vars[key]!r}"
+        )
 
 
 @pytest.mark.parametrize("tls", (False, True))
