@@ -105,8 +105,22 @@ class LitmusBackend:
             },
         }
 
+    @staticmethod
+    def _docker_hub_tag(workload_version: str) -> str:
+        """Convert a Litmus workload version to a Docker Hub Ubuntu rock tag.
+
+        E.g. '3.26.0' -> '3.26-24.04_edge', '' -> '3-24.04_edge'.
+        """
+        if not workload_version:
+            return "3-24.04_edge"
+        parts = workload_version.split(".")
+        if len(parts) >= 2:
+            return f"{parts[0]}.{parts[1]}-24.04_edge"
+        return f"{parts[0]}-24.04_edge"
+
     def _environment_vars(self, tls_enabled: bool) -> dict:
         workload_version = self._workload_version or ""
+        image_tag = self._docker_hub_tag(workload_version)
         env = {
             "REST_PORT": self.http_port,
             "GRPC_PORT": self.grpc_port,
@@ -118,14 +132,13 @@ class LitmusBackend:
             # are there other versions we should set along with the current workload version?
             "INFRA_COMPATIBLE_VERSIONS": json.dumps([workload_version]),
             "VERSION": workload_version,
-            # TODO: use the rocks https://github.com/canonical/litmus-operators/issues/15
-            "SUBSCRIBER_IMAGE": f"litmuschaos/litmusportal-subscriber:{workload_version}",
-            "EVENT_TRACKER_IMAGE": f"litmuschaos/litmusportal-event-tracker:{workload_version}",
+            "SUBSCRIBER_IMAGE": f"ubuntu/litmuschaos-subscriber:{image_tag}",
+            "EVENT_TRACKER_IMAGE": f"ubuntu/litmuschaos-event-tracker:{image_tag}",
             "ARGO_WORKFLOW_CONTROLLER_IMAGE": "litmuschaos/workflow-controller:v3.3.1",
             "ARGO_WORKFLOW_EXECUTOR_IMAGE": "litmuschaos/argoexec:v3.3.1",
-            "LITMUS_CHAOS_OPERATOR_IMAGE": f"litmuschaos/chaos-operator:{workload_version}",
-            "LITMUS_CHAOS_RUNNER_IMAGE": f"litmuschaos/chaos-runner:{workload_version}",
-            "LITMUS_CHAOS_EXPORTER_IMAGE": f"litmuschaos/chaos-exporter:{workload_version}",
+            "LITMUS_CHAOS_OPERATOR_IMAGE": f"ubuntu/litmuschaos-operator:{image_tag}",
+            "LITMUS_CHAOS_RUNNER_IMAGE": f"ubuntu/litmuschaos-runner:{image_tag}",
+            "LITMUS_CHAOS_EXPORTER_IMAGE": f"ubuntu/litmuschaos-exporter:{image_tag}",
         }
 
         if db_config := self._db_config:
