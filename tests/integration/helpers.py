@@ -54,15 +54,20 @@ def _charm_and_channel_and_resources(
         charm = f"litmus-{role}-k8s"
         logger.info(f"Using published {charm} charm from {channel_from_env}")
         return charm, channel_from_env, None
-    # else deploy from a charm packed locally
+    # deploy from a charm path specified explicitly for this role
     elif path_from_env := os.getenv(charm_path_key):
         charm_path = Path(path_from_env).absolute()
-        logger.info("Using local {role} charm: %s", charm_path)
+        logger.info("Using local %s charm: %s", role, charm_path)
         return (
             charm_path,
             None,
             get_resources(charm_path.parent),
         )
+    # deploy from the generic CHARM_PATH (set by CI for the charm under test)
+    elif (generic_path := os.getenv("CHARM_PATH")) and role in Path(generic_path).name:
+        charm_path = Path(generic_path).absolute()
+        logger.info("Using CHARM_PATH for %s: %s", role, charm_path)
+        return charm_path, None, get_resources(charm_path.parent)
     # else pack the charm
     charm_dir = REPO_ROOT / role
     return pack(charm_dir), None, get_resources(charm_dir)
