@@ -9,8 +9,28 @@ assumes:
   - juju >= 3.6.0
 
 description: |
-  Litmus Backend Server is a component of the LitmusChaos solution, an open source platform used for chaos testing.
-  It is responsible for serving APIs for the ChaosCenter.
+  Litmus Backend K8s is a Juju charm that deploys and manages the backend API server of
+  LitmusChaos, an open-source chaos engineering platform for Kubernetes. It is an
+  optional complement to the Canonical Observability Stack (COS):
+  https://documentation.ubuntu.com/observability
+
+  LitmusChaos enables teams to validate the resilience of their systems by running
+  controlled chaos experiments (such as pod failures, network delays, or resource
+  stress) and observing how the system recovers.
+
+  The backend server exposes a GraphQL API consumed by the litmus-chaoscenter-k8s
+  charm. It manages chaos workflows, experiments, and execution-plane infrastructure.
+  It must share a MongoDB instance with the litmus-auth-k8s charm.
+
+  Key features:
+
+  - GraphQL API for managing chaos workflows, experiments, and their results.
+  - Communicates with execution-plane infrastructure registered via the
+    litmus-infrastructure-k8s charm, which can be deployed in any Juju model.
+  - MongoDB backend for persistent storage of workflows, experiments, and results.
+  - TLS support for securing communications.
+  - Distributed tracing for charm traces via Tempo.
+  - Log forwarding to Loki for application logs.
 
 summary: |
   Litmus Backend Server is a component of the LitmusChaos solution, an open source platform used for chaos testing.

@@ -9,8 +9,28 @@ assumes:
   - juju >= 3.6.0
 
 description: |
-  Litmus Infrastructure is a workloadless beacon charm that, when integrated with Litmus ChaosCenter, 
-  signals the control plane to provision the execution-plane infrastructure required to run chaos experiments in the Juju model where the charm is deployed.
+  Litmus Infrastructure K8s is a workloadless Juju charm that registers a Juju model
+  as an execution plane for LitmusChaos, an open-source chaos engineering platform for
+  Kubernetes. It is an optional complement to the Canonical Observability Stack (COS):
+  https://documentation.ubuntu.com/observability
+
+  LitmusChaos enables teams to validate the resilience of their systems by running
+  controlled chaos experiments (such as pod failures, network delays, or resource
+  stress) and observing how the system recovers.
+
+  This charm carries no workload of its own. When integrated with a
+  litmus-backend-k8s charm (typically via a cross-model relation), it signals the
+  LitmusChaos control plane to provision the execution-plane agents needed to run chaos
+  experiments in the model where this charm is deployed. Removing the relation
+  decommissions the infrastructure and deletes all associated experiments.
+
+  Key features:
+
+  - Workloadless beacon: no containers to manage, minimal resource footprint.
+  - Enables cross-model chaos: deploy the control plane in one model, run experiments
+    in any other model by deploying this charm there.
+  - Automatic provisioning and decommissioning of execution-plane infrastructure.
+  - TLS CA certificate transfer for secure communication with the control plane.
 
 summary: |
   Workloadless beacon charm that signals Litmus ChaosCenter to provision the execution-plane infrastructure in the Juju model where it is deployed.

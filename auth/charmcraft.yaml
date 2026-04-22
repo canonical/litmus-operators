@@ -9,8 +9,28 @@ assumes:
   - juju >= 3.6.0
 
 description: |
-  Litmus Authentication Server is a component of the LitmusChaos solution, an open source platform used for chaos testing.
-  It is responsible for authenticating and authorising requests received by the ChaosCenter, and for managing users and their associated projects.
+  Litmus Auth K8s is a Juju charm that deploys and manages the authentication and
+  authorization server of LitmusChaos, an open-source chaos engineering platform for
+  Kubernetes. It is an optional complement to the Canonical Observability Stack (COS):
+  https://documentation.ubuntu.com/observability
+
+  LitmusChaos enables teams to validate the resilience of their systems by running
+  controlled chaos experiments (such as pod failures, network delays, or resource
+  stress) and observing how the system recovers.
+
+  The auth server handles all user authentication and authorization for the LitmusChaos
+  control plane. It manages users and their associated projects, and authorizes
+  incoming requests on behalf of the litmus-chaoscenter-k8s and litmus-backend-k8s
+  charms. It must share a MongoDB instance with the litmus-backend-k8s charm.
+
+  Key features:
+
+  - User management (create, update, deactivate) and project-level access control.
+  - gRPC and HTTP APIs consumed by the other Litmus control-plane charms.
+  - MongoDB backend for persistent storage of users and projects.
+  - TLS support for securing communications.
+  - Distributed tracing for charm traces via Tempo.
+  - Log forwarding to Loki for application logs.
 
 summary: |
   Litmus Authentication Server is a component of the LitmusChaos solution, an open source platform used for chaos testing.
