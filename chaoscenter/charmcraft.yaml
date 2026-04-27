@@ -9,8 +9,29 @@ assumes:
   - juju >= 3.6.0
 
 description: |
-  Litmus ChaosCenter is a component of the LitmusChaos solution, an open source platform used for chaos testing.
-  It is responsible for serving the user interface for the Litmus solution, allowing to schedule experiments.
+  Litmus ChaosCenter K8s is a Juju charm that deploys and manages the web UI portal of
+  LitmusChaos, an open-source chaos engineering platform for Kubernetes. It is an
+  optional complement to the Canonical Observability Stack (COS):
+  https://documentation.ubuntu.com/observability
+
+  LitmusChaos enables teams to validate the resilience of their systems by running
+  controlled chaos experiments (such as pod failures, network delays, or resource
+  stress) and observing how the system recovers.
+
+  The ChaosCenter is the control-plane frontend: it provides a web interface for
+  creating, scheduling, and monitoring chaos experiments and workflows. It must be
+  deployed alongside the litmus-auth-k8s, litmus-backend-k8s, and mongodb-k8s charms.
+
+  Key features:
+
+  - Web-based UI for designing, scheduling, and monitoring chaos experiments and
+    workflows.
+  - Delegates authentication and authorization to the litmus-auth-k8s charm.
+  - Delegates API operations to the litmus-backend-k8s charm.
+  - Ingress support via Traefik for external access.
+  - TLS support for securing communications.
+  - Distributed tracing for both charm and workload via Tempo.
+  - Log forwarding to Loki for application logs.
 
 summary: |
   Litmus ChaosCenter is a component of the LitmusChaos solution, an open source platform used for chaos testing.
