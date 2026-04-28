@@ -7,7 +7,7 @@ on:
 jobs:
     tiobe-scan:
         name: TiCs
-        uses: canonical/observability/.github/workflows/charm-tiobe-scan.yaml@v1
+        uses: canonical/observability/.github/workflows/charm-tiobe-scan.yaml@v2
         with:
             tiobe-project-name: litmus-operators
             coverage-folder: coverage
