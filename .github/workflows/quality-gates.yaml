@@ -11,25 +11,25 @@ on:
 jobs:
   quality-gates-auth:
     name: Run quality gates
-    uses: canonical/observability/.github/workflows/charm-quality-gates.yaml@v1
+    uses: canonical/observability/.github/workflows/charm-quality-gates.yaml@v2
     secrets: inherit
     with:
       charm-path: auth
   quality-gates-chaoscenter:
     name: Run quality gates
-    uses: canonical/observability/.github/workflows/charm-quality-gates.yaml@v1
+    uses: canonical/observability/.github/workflows/charm-quality-gates.yaml@v2
     secrets: inherit
     with:
       charm-path: chaoscenter
   quality-gates-backend:
     name: Run quality gates
-    uses: canonical/observability/.github/workflows/charm-quality-gates.yaml@v1
+    uses: canonical/observability/.github/workflows/charm-quality-gates.yaml@v2
     secrets: inherit
     with:
       charm-path: backend
   quality-gates-infrastructure:
     name: Run quality gates
-    uses: canonical/observability/.github/workflows/charm-quality-gates.yaml@v1
+    uses: canonical/observability/.github/workflows/charm-quality-gates.yaml@v2
     secrets: inherit
     with:
       charm-path: infrastructure
