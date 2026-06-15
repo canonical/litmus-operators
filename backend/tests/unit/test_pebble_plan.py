@@ -221,14 +221,14 @@ def test_workload_version_in_pebble_env_vars(
     "workload_version, expected_tag",
     [
         # typical 3-part version: strip patch, append ubuntu suffix
-        ("3.26.0", "3.26-24.04_edge"),
-        ("3.7.1",  "3.7-24.04_edge"),
+        ("3.26.0", "3.26-26.04_edge"),
+        ("3.7.1",  "3.7-26.04_edge"),
         # 2-part version: use as-is with suffix
-        ("3.26",   "3.26-24.04_edge"),
+        ("3.26",   "3.26-26.04_edge"),
         # 1-part version: major only
-        ("3",      "3-24.04_edge"),
+        ("3",      "3-26.04_edge"),
         # empty string: fall back to major-only default
-        ("",       "3-24.04_edge"),
+        ("",       "3-26.04_edge"),
     ],
 )
 def test_docker_hub_tag(workload_version, expected_tag):
@@ -242,8 +242,8 @@ def test_docker_hub_tag(workload_version, expected_tag):
 @pytest.mark.parametrize(
     "workload_version, expected_tag",
     [
-        ("3.26.0", "3.26-24.04_edge"),
-        ("3.7.1",  "3.7-24.04_edge"),
+        ("3.26.0", "3.26-26.04_edge"),
+        ("3.7.1",  "3.7-26.04_edge"),
     ],
 )
 def test_execution_plane_image_tags_in_pebble_plan(

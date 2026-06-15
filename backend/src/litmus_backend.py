@@ -109,14 +109,14 @@ class LitmusBackend:
     def _docker_hub_tag(workload_version: str) -> str:
         """Convert a Litmus workload version to a Docker Hub Ubuntu rock tag.
 
-        E.g. '3.26.0' -> '3.26-24.04_edge', '' -> '3-24.04_edge'.
+        E.g. '3.29.0' -> '3.29-26.04_edge', '' -> '3-26.04_edge'.
         """
         if not workload_version:
-            return "3-24.04_edge"
+            return "3-26.04_edge"
         parts = workload_version.split(".")
         if len(parts) >= 2:
-            return f"{parts[0]}.{parts[1]}-24.04_edge"
-        return f"{parts[0]}-24.04_edge"
+            return f"{parts[0]}.{parts[1]}-26.04_edge"
+        return f"{parts[0]}-26.04_edge"
 
     def _environment_vars(self, tls_enabled: bool) -> dict:
         workload_version = self._workload_version or ""

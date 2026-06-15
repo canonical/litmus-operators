@@ -49,11 +49,11 @@ resources:
   litmus-chaoscenter-image:
     type: oci-image
     description: OCI image for Litmus frontend server 
-    upstream-source: ubuntu/litmuschaos-frontend:3.26-24.04_edge
+    upstream-source: ubuntu/litmuschaos-frontend:3.29-26.04_edge
   nginx-prometheus-exporter-image:
     type: oci-image
     description: OCI image for nginx-prometheus-exporter
-    upstream-source: ubuntu/nginx-prometheus-exporter:1.4-24.04_stable
+    upstream-source: ubuntu/nginx-prometheus-exporter:1.5-26.04
 
 storage:
   certs:
@@ -146,7 +146,7 @@ links:
   issues: https://github.com/canonical/litmus-operators/issues
 
 platforms:
-  ubuntu@24.04:amd64:
+  ubuntu@26.04:amd64:
 
 parts:
   charm:
