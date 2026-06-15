@@ -10,6 +10,7 @@ dependencies = [
     "ops",
     "cryptography>=45.0.7",
     "coordinated-workers",
+    "charmlibs-nginx-k8s",
     # for juju topology
     "cosl",
     # for litmus client

@@ -7,9 +7,11 @@
 from dataclasses import dataclass
 import logging
 from typing import Any
-from coordinated_workers.nginx import CA_CERT_PATH
+from charmlibs.nginx_k8s import Nginx
 from pathlib import Path
 import requests
+
+CA_CERT_PATH = Nginx.CA_CERT_PATH
 
 logger = logging.getLogger(__name__)
 

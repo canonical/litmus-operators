@@ -1,6 +1,5 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
-from unittest.mock import PropertyMock, patch
 
 from ops.testing import State
 import pytest
@@ -56,20 +55,18 @@ def test_nginx_pebble_ready_plan(
     nginx_container_out = state_out.get_container(nginx_container.name)
     nginx_container_plan = nginx_container_out.plan
     # THEN litmus chaoscenter server pebble plan is generated with the correct command
-    assert (
-        nginx_container_plan.services["chaoscenter"].command == "nginx -g 'daemon off;'"
-    )
+    assert nginx_container_plan.services["nginx"].command == "nginx -g 'daemon off;'"
     # AND the correct on-check-failure
-    assert nginx_container_plan.services["chaoscenter"].on_check_failure == {
-        "chaoscenter-up": "restart"
+    assert nginx_container_plan.services["nginx"].on_check_failure == {
+        "nginx-up": "restart"
     }
 
     # AND the plan has the correct pebble checks
-    assert nginx_container_plan.checks["chaoscenter-up"].http == {
+    assert nginx_container_plan.checks["nginx-up"].http == {
         "url": f"http{'s' if tls else ''}://{unit_fqdn}:8185/health"
     }
     # AND the pebble service is running
-    assert nginx_container_out.services.get("chaoscenter").is_running()
+    assert nginx_container_out.services.get("nginx").is_running()
 
     # AND the charm status is active
     assert state_out.unit_status.name == "active"
@@ -96,9 +93,8 @@ def test_nginx_exporter_pebble_ready_plan(
     expected_cmd_args = {
         "nginx-prometheus-exporter",
         "--web.listen-address=:9113",
-        f"--nginx.scrape-uri=http{'s' if tls else ''}://127.0.0.1:{'443' if tls else '8185'}/status",
+        "--nginx.scrape-uri=https://127.0.0.1:8185/status",
         "--no-nginx.ssl-verify",
-        "--web.config.file=/etc/exporter/web-config.yaml",
     }
 
     # GIVEN relations with auth and backend endpoints, and valid user credentials configured
@@ -109,10 +105,7 @@ def test_nginx_exporter_pebble_ready_plan(
         secrets=[user_secret],
     )
 
-    with patch(
-        "coordinated_workers.nginx.NginxPrometheusExporter.are_certificates_on_disk",
-        new_callable=PropertyMock(return_value=tls),
-    ):
+    with patch_cert_and_key_ctx(tls):
         # WHEN a workload pebble ready event is fired
         state_out = ctx.run(
             ctx.on.pebble_ready(nginx_prometheus_exporter_container), state=state

@@ -470,6 +470,7 @@ name = "litmus-chaoscenter-k8s"
 version = "0.1"
 source = { virtual = "." }
 dependencies = [
+    { name = "charmlibs-nginx-k8s" },
     { name = "coordinated-workers" },
     { name = "cosl" },
     { name = "cryptography" },
@@ -497,6 +498,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "charmlibs-nginx-k8s" },
     { name = "coordinated-workers" },
     { name = "cosl" },
     { name = "coverage", extras = ["toml"], marker = "extra == 'dev'" },
