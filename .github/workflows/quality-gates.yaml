@@ -1,0 +1,41 @@
+name: Quality Gates
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+  # Run the quality checks periodically
+  # FIXME: adjust the frequency as needed once we have actual gates in place
+  # schedule:
+  #   - cron: "0 0 * * Tue"
+
+jobs:
+  quality-gates-auth:
+    name: Run quality gates
+    uses: canonical/observability/.github/workflows/charm-quality-gates.yaml@v2
+    secrets: inherit
+    with:
+      charm-path: auth
+  quality-gates-chaoscenter:
+    name: Run quality gates
+    uses: canonical/observability/.github/workflows/charm-quality-gates.yaml@v2
+    secrets: inherit
+    with:
+      charm-path: chaoscenter
+  quality-gates-backend:
+    name: Run quality gates
+    uses: canonical/observability/.github/workflows/charm-quality-gates.yaml@v2
+    secrets: inherit
+    with:
+      charm-path: backend
+  quality-gates-infrastructure:
+    name: Run quality gates
+    uses: canonical/observability/.github/workflows/charm-quality-gates.yaml@v2
+    secrets: inherit
+    with:
+      charm-path: infrastructure
+  terraform-tests:
+    name: Run terraform tests
+    uses: ./.github/workflows/_terraform-tests-auto.yaml
+    with:
+      charm-channel: dev/edge
+    secrets: inherit

@@ -1,0 +1,174 @@
+# Copyright 2025 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+import logging
+import os
+from typing import Literal
+
+import requests
+import urllib3
+from jubilant import Juju, all_active
+from pytest_jubilant import pack, get_resources
+from pathlib import Path
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# Repo root derived from this file's location (tests/integration/helpers.py)
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+
+AUTH_APP = "auth"
+CHAOSCENTER_APP = "chaoscenter"
+BACKEND_APP = "backend"
+INFRA_APP = "infrastructure"
+COMPONENTS = (AUTH_APP, CHAOSCENTER_APP, BACKEND_APP)
+MONGO_APP = "mongodb"
+SELF_SIGNED_CERTIFICATES_APP = "self-signed-certificates"
+TRAEFIK_APP = "traefik"
+LOKI_APP = "loki"
+PROMETHEUS_APP = "prometheus"
+TEMPO_APP = "tempo"
+TEMPO_WORKER_APP = "tempo-worker-all"
+S3_APP = "swfs"
+CHARM_USER = "charm"
+CHARM_USER_PASSWORD = "Charm123!"
+
+logger = logging.getLogger(__name__)
+
+
+def get_unit_ip_address(juju: Juju, app_name: str, unit_no: int):
+    """Return a juju unit's IP address."""
+    return juju.status().apps[app_name].units[f"{app_name}/{unit_no}"].address
+
+
+def _charm_and_channel_and_resources(
+    role: Literal["auth", "backend", "chaoscenter", "infrastructure"],
+    charm_path_key: str,
+    charm_channel_key: str,
+):
+    """Litmus charms used for integration testing.
+
+    Build once per session and reuse it in all integration tests.
+    """
+    # deploy charm from charmhub
+    if channel_from_env := os.getenv(charm_channel_key):
+        charm = f"litmus-{role}-k8s"
+        logger.info(f"Using published {charm} charm from {channel_from_env}")
+        return charm, channel_from_env, None
+    # deploy from a charm path specified explicitly for this role
+    elif path_from_env := os.getenv(charm_path_key):
+        charm_path = Path(path_from_env).absolute()
+        logger.info("Using local %s charm: %s", role, charm_path)
+        return (
+            charm_path,
+            None,
+            get_resources(charm_path.parent),
+        )
+    # deploy from the generic CHARM_PATH (set by CI for the charm under test)
+    elif (generic_path := os.getenv("CHARM_PATH")) and role in Path(generic_path).name:
+        charm_path = Path(generic_path).absolute()
+        logger.info("Using CHARM_PATH for %s: %s", role, charm_path)
+        return charm_path, None, get_resources(charm_path.parent)
+    # else pack the charm
+    charm_dir = REPO_ROOT / role
+    return pack(charm_dir), None, get_resources(charm_dir)
+
+
+def deploy_self_monitoring_stack(juju: Juju):
+    logger.info("deploying tempo monolithic")
+    juju.deploy("tempo-coordinator-k8s", TEMPO_APP, channel="2/edge", trust=True)
+    juju.deploy("tempo-worker-k8s", TEMPO_WORKER_APP, channel="2/edge", trust=True)
+    juju.deploy("seaweedfs-k8s", S3_APP, channel="edge")
+    juju.integrate(TEMPO_APP, TEMPO_WORKER_APP)
+    juju.integrate(TEMPO_APP, S3_APP)
+
+    logger.info("deploying loki")
+    juju.deploy("loki-k8s", LOKI_APP, channel="2/edge", trust=True)
+
+    logger.info("deploying prometheus")
+    juju.deploy("prometheus-k8s", PROMETHEUS_APP, channel="2/edge", trust=True)
+
+
+def deploy_control_plane(
+    juju: Juju,
+    with_tls: bool = False,
+    with_traefik: bool = False,
+    wait_for_idle: bool = True,
+):
+    for component in (AUTH_APP, BACKEND_APP, CHAOSCENTER_APP):
+        charm_url, channel, resources = _charm_and_channel_and_resources(
+            component,
+            f"{component.upper()}_CHARM_PATH",
+            f"{component.upper()}_CHARM_CHANNEL",
+        )
+
+        juju.deploy(
+            charm_url,
+            app=component,
+            channel=channel,
+            trust=True,
+            resources=resources,
+        )
+
+    # deploy mongodb
+    juju.deploy("mongodb-k8s", app=MONGO_APP, trust=True)
+    apps_to_wait_for = [
+        MONGO_APP,
+        CHAOSCENTER_APP,
+        AUTH_APP,
+        BACKEND_APP,
+    ]
+
+    if with_traefik:
+        juju.deploy("traefik-k8s", channel="latest/edge", app=TRAEFIK_APP, trust=True)
+        juju.integrate(TRAEFIK_APP, f"{CHAOSCENTER_APP}:ingress")
+        apps_to_wait_for.append(TRAEFIK_APP)
+
+    if with_tls:
+        juju.deploy(SELF_SIGNED_CERTIFICATES_APP, app=SELF_SIGNED_CERTIFICATES_APP)
+        juju.integrate(f"{AUTH_APP}:tls-certificates", SELF_SIGNED_CERTIFICATES_APP)
+        juju.integrate(f"{BACKEND_APP}:tls-certificates", SELF_SIGNED_CERTIFICATES_APP)
+        juju.integrate(
+            f"{CHAOSCENTER_APP}:tls-certificates", SELF_SIGNED_CERTIFICATES_APP
+        )
+        # Upstream Litmus (https://github.com/litmuschaos/litmus/issues/3136) does not support TLS connections to MongoDB.
+        # Since charmed mongodb-k8s uses `preferTLS`, it accepts both TLS and non-TLS connections.
+        # We'll still relate mongo to ssc in our integration tests to detect any changes in charmed mongodb-k8s behavior.
+        juju.integrate(f"{MONGO_APP}:certificates", SELF_SIGNED_CERTIFICATES_APP)
+        if with_traefik:
+            juju.integrate(f"{TRAEFIK_APP}:certificates", SELF_SIGNED_CERTIFICATES_APP)
+        apps_to_wait_for.append(SELF_SIGNED_CERTIFICATES_APP)
+
+    juju.integrate(f"{AUTH_APP}:database", MONGO_APP)
+    juju.integrate(f"{AUTH_APP}:http-api", CHAOSCENTER_APP)
+    juju.integrate(f"{BACKEND_APP}:http-api", CHAOSCENTER_APP)
+    juju.integrate(f"{BACKEND_APP}:database", MONGO_APP)
+    juju.integrate(f"{AUTH_APP}:litmus-auth", f"{BACKEND_APP}:litmus-auth")
+
+    # user mgmt
+    secret_uri = juju.add_secret(
+        "cc-users",
+        content={"admin-password": "Litmus123!", "charm-password": CHARM_USER_PASSWORD},
+    )
+    juju.grant_secret("cc-users", app=CHAOSCENTER_APP)
+    juju.config(app=CHAOSCENTER_APP, values={"user_secrets": secret_uri})
+
+    if wait_for_idle:
+        logger.info("waiting for the control plane to be active/idle...")
+        juju.wait(
+            lambda status: all_active(
+                status,
+                *apps_to_wait_for,
+            ),
+            timeout=600,
+            delay=30,
+        )
+
+
+def get_login_response(
+    host: str, port: int, subpath: str, use_ssl: bool = False, timeout: int = 30
+) -> tuple[int, str]:
+    protocol = "https" if use_ssl else "http"
+    url = f"{protocol}://{host}:{port}{subpath}/login"
+    data = {"username": CHARM_USER, "password": CHARM_USER_PASSWORD}
+    response = requests.post(url, json=data, verify=False, timeout=timeout)
+    return 0, response.text

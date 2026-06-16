@@ -1,0 +1,8 @@
+query listEnvironments($projectID: ID!, $request: ListEnvironmentRequest!) {
+    listEnvironments(request: $request, projectID: $projectID) {
+        environments {
+            environmentID
+            name
+        }
+    }
+}

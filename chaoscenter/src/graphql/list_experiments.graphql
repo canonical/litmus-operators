@@ -1,0 +1,10 @@
+query listExperiment($projectID: ID!, $request: ListExperimentRequest!) {
+    listExperiment(request: $request, projectID: $projectID) {
+        experiments {
+            experimentID
+            infra {
+                infraID
+            }
+        }
+    }
+}

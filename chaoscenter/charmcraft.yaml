@@ -1,0 +1,169 @@
+# Copyright 2025 Canonical Ltd.
+# See LICENSE file for licensing details.
+name: litmus-chaoscenter-k8s
+type: charm
+title: Litmus ChaosCenter
+
+assumes:
+  - k8s-api
+  - juju >= 3.6.0
+
+description: |
+  Litmus ChaosCenter K8s is a Juju charm that deploys and manages the web UI portal of
+  LitmusChaos, an open-source chaos engineering platform for Kubernetes. It is an
+  optional complement to the Canonical Observability Stack (COS):
+  https://documentation.ubuntu.com/observability
+
+  LitmusChaos enables teams to validate the resilience of their systems by running
+  controlled chaos experiments (such as pod failures, network delays, or resource
+  stress) and observing how the system recovers.
+
+  The ChaosCenter is the control-plane frontend: it provides a web interface for
+  creating, scheduling, and monitoring chaos experiments and workflows. It must be
+  deployed alongside the litmus-auth-k8s, litmus-backend-k8s, and mongodb-k8s charms.
+
+  Key features:
+
+  - Web-based UI for designing, scheduling, and monitoring chaos experiments and
+    workflows.
+  - Delegates authentication and authorization to the litmus-auth-k8s charm.
+  - Delegates API operations to the litmus-backend-k8s charm.
+  - Ingress support via Traefik for external access.
+  - TLS support for securing communications.
+  - Distributed tracing for both charm and workload via Tempo.
+  - Log forwarding to Loki for application logs.
+
+summary: |
+  Litmus ChaosCenter is a component of the LitmusChaos solution, an open source platform used for chaos testing.
+
+containers:
+  chaoscenter:
+    resource: litmus-chaoscenter-image
+    mounts:
+      - storage: certs
+        location: /etc/tls
+  nginx-prometheus-exporter:
+    resource: nginx-prometheus-exporter-image
+
+resources:
+  litmus-chaoscenter-image:
+    type: oci-image
+    description: OCI image for Litmus frontend server 
+    upstream-source: ubuntu/litmuschaos-frontend:3.26-24.04_edge
+  nginx-prometheus-exporter-image:
+    type: oci-image
+    description: OCI image for nginx-prometheus-exporter
+    upstream-source: ubuntu/nginx-prometheus-exporter:1.4-24.04_stable
+
+storage:
+  certs:
+    type: filesystem
+    minimum-size: 1M
+
+config:
+  options:
+    user_secrets:
+      description: |
+        Secret ID for a user secret containing the passwords for the two users of the ChaosCenter application:
+        - admin: a user with administrator privileges, that the human operator can use to log in to the ChaosCenter 
+          application and perform any action, including creating other users and managing resources
+        - charm: a 'bot' account that the charm will use to manage resources in the ChaosCenter application
+        
+        The secret must contain the following fields:
+        - admin_password:str
+        - charm_password:str
+        
+        The admin can create this secret and provide it to the charm using the juju CLI as follows:
+        ```
+        SECRET_ID=$(juju add-secret chaoscenter-creds admin-password='Admin123!' charm-password='Charm123!')
+        juju grant-secret chaoscenter-creds litmus-chaoscenter-k8s
+        juju config litmus-chaoscenter-k8s user_secrets="$SECRET_ID"
+        ```
+        
+        If this config is unset, the charm will set blocked status.
+      type: string
+
+requires:
+  auth-http-api:
+    optional: false
+    interface: litmus_auth_http_api
+    limit: 1
+    description: |
+      Receive the litmus auth HTTP API.
+  backend-http-api:
+    optional: false
+    interface: litmus_backend_http_api
+    limit: 1
+    description: |
+      Receive the litmus backend HTTP API.
+  tls-certificates:
+    optional: true
+    interface: tls-certificates
+    limit: 1
+    description: |
+      Receive TLS certificates.
+  ingress:
+    interface: traefik_route
+    limit: 1
+  charm-tracing:
+    optional: true
+    interface: tracing
+    description: |
+      Request a tracing endpoint through which this application will send its charm traces to a 
+      tracing backend.
+    limit: 1
+  logging:
+    optional: true
+    interface: loki_push_api
+    description: |
+      Request a loki-push-api endpoint to push workload container application logs to.
+  workload-tracing:
+    optional: true
+    interface: tracing
+    description: |
+      Request a tracing endpoint through which this application will send its workload traces to a 
+      tracing backend.
+    limit: 1
+  litmus-infrastructure:
+    interface: litmus-infrastructure
+    description: |
+      Receives the data required for ChaosCenter to provision Litmus infrastructure in the provider's model.
+
+      When the relation is removed, the provisioned infrastructure will be deleted along with any associated chaos experiments.
+    optional: true
+
+provides:
+  metrics-endpoint:
+    optional: true
+    interface: prometheus_scrape
+    description: |
+      Endpoint to allow prometheus metrics to be scraped.
+
+links:
+  documentation: https://discourse.charmhub.io/t/18788
+  website: https://charmhub.io/litmus-chaoscenter-k8s
+  source: https://github.com/canonical/litmus-operators/tree/main/chaoscenter
+  issues: https://github.com/canonical/litmus-operators/issues
+
+platforms:
+  ubuntu@24.04:amd64:
+
+parts:
+  charm:
+    source: .
+    plugin: uv
+    build-packages:
+      - git # handy for git+ dependencies during development
+      # Required by the tls_certificates_interface
+      - cargo
+      - libffi-dev
+      - libssl-dev
+      - pkg-config
+      - rustc
+    build-snaps: [astral-uv]
+    # FIXME: override-build with "git describe --always > $CRAFT_PART_INSTALL/version" causes
+    # charm pack to fail "fatal: not a git repository (or any of the parent directories): .git"
+
+    # override-build: |
+    #   craftctl default
+    #   git describe --always > $CRAFT_PART_INSTALL/version

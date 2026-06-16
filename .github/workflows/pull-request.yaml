@@ -1,0 +1,28 @@
+name: Pull Requests
+
+on:
+  pull_request:
+
+permissions:
+  # Required for all workflows
+  security-events: write
+  # Only required for workflows in private repositories
+  actions: read
+  contents: read
+
+jobs:
+  pull-request:
+    strategy:
+      fail-fast: true
+      matrix:
+        charm-path:
+          - auth
+          - backend
+          - chaoscenter
+          - infrastructure
+    uses: canonical/observability/.github/workflows/charm-pull-request.yaml@v2
+    secrets: inherit
+    with:
+      charm-path: ${{ matrix.charm-path }}
+      enable-integration: ${{ matrix.charm-path == 'auth' }}
+      juju-channel: 3.6/candidate
