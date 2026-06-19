@@ -544,7 +544,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 27
+LIBPATCH = 29
 
 PYDEPS = ["cosl"]
 
@@ -1411,7 +1411,6 @@ class ConsumerBase(Object):
         return endpoints
 
 
-
 class LokiPushApiConsumer(ConsumerBase):
     """Loki Consumer class."""
 
@@ -1704,7 +1703,7 @@ class LogProxyConsumer(ConsumerBase):
         self._promtails_ports = self._generate_promtails_ports(logs_scheme)
 
         # architecture used for promtail binary
-        arch = platform.processor()
+        arch = platform.machine()
         if arch in ["x86_64", "amd64"]:
             self._arch = "amd64"
         elif arch in ["aarch64", "arm64", "armv8b", "armv8l"]:
@@ -2298,6 +2297,7 @@ class _PebbleLogClient:
                         "juju_model_uuid": topology._model_uuid,
                         "juju_application": topology._application,
                         "juju_unit": topology._unit,
+                        "job": f"juju_{topology.identifier}",
                     },
                 }
             )
