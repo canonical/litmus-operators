@@ -33,12 +33,24 @@ def get_app_hostname(app_name: str, model_name: str) -> str:
 
 
 def get_litmus_version(container: Container) -> Optional[str]:
-    """Get the running litmus version."""
+    """Get the running litmus version.
+
+    Reads /VERSION if present; falls back to the version field in
+    /.rock/metadata.yaml, which is always present in rock-based images.
+    """
     if not container.can_connect():
         return None
 
     version_file_path = "/VERSION"
-    if not container.exists(version_file_path):
-        logger.warning("Version file not found at %s", version_file_path)
-        return None
-    return container.pull(version_file_path, encoding="utf-8").read().strip()
+    if container.exists(version_file_path):
+        return container.pull(version_file_path, encoding="utf-8").read().strip()
+
+    rock_metadata_path = "/.rock/metadata.yaml"
+    if container.exists(rock_metadata_path):
+        content = container.pull(rock_metadata_path, encoding="utf-8").read()
+        for line in content.splitlines():
+            if line.startswith("version:"):
+                return line.split(":", 1)[1].strip()
+
+    logger.warning("Version not found at %s or %s", version_file_path, rock_metadata_path)
+    return None
