@@ -7,9 +7,13 @@ import pytest
 
 from urllib.parse import urlparse
 
-from coordinated_workers.nginx import CERT_PATH, KEY_PATH, NGINX_CONFIG
 import nginx_config
+from charmlibs.nginx_k8s import Nginx
 from conftest import patch_cert_and_key_ctx
+
+CERT_PATH = Nginx.CERT_PATH
+KEY_PATH = Nginx.KEY_PATH
+NGINX_CONFIG = Nginx.NGINX_CONFIG
 
 
 @pytest.fixture(autouse=True)

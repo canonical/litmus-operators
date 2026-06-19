@@ -3,13 +3,14 @@
 [project]
 name = "litmus-chaoscenter-k8s"
 version = "0.1"  # this is in fact irrelevant
-requires-python = ">=3.12, <4"
+requires-python = "~=3.14.0"
 
 dependencies = [
     "litmus-libs",
     "ops",
     "cryptography>=45.0.7",
     "coordinated-workers",
+    "charmlibs-nginx-k8s",
     # for juju topology
     "cosl",
     # for litmus client
@@ -43,7 +44,7 @@ dev = [
 
 [tool.pyright]
 extraPaths = ["lib"]
-pythonVersion = "3.12"
+pythonVersion = "3.14"
 pythonPlatform = "All"
 
 [build]

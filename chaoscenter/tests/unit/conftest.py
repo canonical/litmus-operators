@@ -9,9 +9,11 @@ from ops.testing import Container, Context, Secret
 import pytest
 from scenario import Relation
 from certificates_helpers import mock_cert_and_key
-from coordinated_workers.nginx import CA_CERT_PATH
+from charmlibs.nginx_k8s import Nginx
 from charm import LitmusChaoscenterCharm
 from ops.testing import Exec
+
+CA_CERT_PATH = Nginx.CA_CERT_PATH
 
 MOCK_LITMUS_PROJECT_ID = "default_project_id"
 
@@ -35,7 +37,10 @@ def nginx_container():
     return Container(
         "chaoscenter",
         can_connect=True,
-        execs=[Exec(["update-ca-certificates", "--fresh"], return_code=0)],
+        execs=[
+            Exec(["update-ca-certificates", "--fresh"], return_code=0),
+            Exec(["nginx", "-s", "reload"], return_code=0),
+        ],
     )
 
 
@@ -78,7 +83,7 @@ def patch_write_to_ca_path():
             return pathlib_write_text(path, content, *args, **kwargs)
 
     with patch(
-        "coordinated_workers.nginx.Path.write_text",
+        "charmlibs.nginx_k8s._nginx.Path.write_text",
         new=selective_write_to_ca_path,
     ):
         yield

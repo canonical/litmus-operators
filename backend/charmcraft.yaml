@@ -46,7 +46,7 @@ resources:
   litmus-backend-image:
     type: oci-image
     description: OCI image for Litmus Backend server 
-    upstream-source: ubuntu/litmuschaos-server:3-24.04_edge
+    upstream-source: ubuntu/litmuschaos-server:3.29-26.04_edge
 
 storage:
   certs:
@@ -103,7 +103,7 @@ provides:
       Send this component's HTTP API to the frontend component.
 
 platforms:
-  ubuntu@24.04:amd64:
+  ubuntu@26.04:amd64:
 
 parts:
   charm:

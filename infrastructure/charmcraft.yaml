@@ -43,7 +43,7 @@ links:
   issues: https://github.com/canonical/litmus-operators/issues
 
 platforms:
-  ubuntu@24.04:amd64:
+  ubuntu@26.04:amd64:
 
 parts:
   charm:

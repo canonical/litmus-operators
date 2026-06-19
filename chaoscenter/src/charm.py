@@ -10,12 +10,11 @@ from typing import Optional, Dict, cast, Any
 
 import cosl
 import cosl.reconciler
-from coordinated_workers.models import TLSConfig
-from coordinated_workers.nginx import (
+from charmlibs.nginx_k8s import (
     Nginx,
     NginxPrometheusExporter,
-    NginxMappingOverrides,
     NginxTracingConfig,
+    TLSConfig,
 )
 from ops import (
     BlockedStatus,
@@ -51,11 +50,6 @@ AUTH_HTTP_API_ENDPOINT = "auth-http-api"
 BACKEND_HTTP_API_ENDPOINT = "backend-http-api"
 TLS_CERTIFICATES_ENDPOINT = "tls-certificates"
 NGINX_EXPORTER_PORT = 9113
-
-NGINX_OVERRIDES: NginxMappingOverrides = {
-    "nginx_port": http_server_port,
-    "nginx_exporter_port": NGINX_EXPORTER_PORT,
-}
 
 
 class LitmusChaoscenterCharm(CharmBase):
@@ -103,9 +97,7 @@ class LitmusChaoscenterCharm(CharmBase):
         )
 
         self.nginx = Nginx(
-            self,
-            options=None,
-            container_name=container_name,
+            self._container,
             liveness_check_endpoint_getter=self._nginx_liveness_endpoint,
         )
 
@@ -118,8 +110,9 @@ class LitmusChaoscenterCharm(CharmBase):
         )
 
         self.nginx_exporter = NginxPrometheusExporter(
-            self,
-            options=NGINX_OVERRIDES,
+            self.unit.get_container("nginx-prometheus-exporter"),
+            nginx_port=http_server_port,
+            nginx_prometheus_exporter_port=NGINX_EXPORTER_PORT,
         )
 
         self.framework.observe(

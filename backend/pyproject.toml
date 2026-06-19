@@ -3,7 +3,7 @@
 [project]
 name = "litmus-backend-k8s"
 version = "0.1"  # this is in fact irrelevant
-requires-python = ">=3.12, <4"
+requires-python = "~=3.14.0"
 
 dependencies = [
     "ops",
@@ -38,7 +38,7 @@ dev = [
 
 [tool.pyright]
 extraPaths = ["lib"]
-pythonVersion = "3.12"
+pythonVersion = "3.14"
 pythonPlatform = "All"
 
 [build]

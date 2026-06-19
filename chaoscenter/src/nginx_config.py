@@ -7,17 +7,18 @@
 import logging
 from typing import Dict, List, Optional, Set
 
-from coordinated_workers.nginx import (
-    CERT_PATH,
-    KEY_PATH,
+from charmlibs.nginx_k8s import (
+    Nginx,
     NginxConfig,
     NginxLocationConfig,
     NginxMapConfig,
     NginxTracingConfig,
     NginxUpstream,
 )
-
 from urllib.parse import urlparse, ParseResult
+
+CERT_PATH = Nginx.CERT_PATH
+KEY_PATH = Nginx.KEY_PATH
 
 
 logger = logging.getLogger(__name__)
@@ -25,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 http_server_port = 8185
 container_name = "chaoscenter"
-liveness_check_name = "chaoscenter-up"
+liveness_check_name = Nginx._liveness_check_name
 all_pebble_checks = [liveness_check_name]
 upgrade_to_websocket_map_config = NginxMapConfig(
     source_variable="$http_upgrade",
