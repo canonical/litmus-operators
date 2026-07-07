@@ -11,7 +11,7 @@ dev = [
     # itests
     "jubilant >=1",
     "pytest-bdd>=8.1.0",
-    "pytest-jubilant ~=1.0",
+    "pytest-jubilant ~=2.0",
     "tenacity",
 ]
 
@@ -38,7 +38,7 @@ branch = true
 [tool.pytest.ini_options]
 minversion = "6.0"
 log_cli_level = "INFO"
-markers = ["setup", "teardown"]
+markers = ["juju_setup", "juju_teardown"]
 
 
 # This pyright configuration is only about the `libs` folder.

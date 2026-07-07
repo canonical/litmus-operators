@@ -3,12 +3,14 @@
 
 import logging
 import os
+import shlex
+import subprocess
 from typing import Literal
 
 import requests
 import urllib3
+import yaml
 from jubilant import Juju, all_active
-from pytest_jubilant import pack, get_resources
 from pathlib import Path
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -33,6 +35,57 @@ CHARM_USER = "charm"
 CHARM_USER_PASSWORD = "Charm123!"
 
 logger = logging.getLogger(__name__)
+
+
+def pack(root: Path | str = "./") -> Path:
+    """Pack a local charm and return the resulting `.charm` file path.
+
+    Replicates the removed `pytest_jubilant.pack` helper.  Raises if the charm
+    builds for multiple platforms since we don't know which one to pick.
+    """
+    cmd = f"charmcraft pack -p {root}"
+    proc = subprocess.run(
+        shlex.split(cmd),
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    # charmcraft writes "Packed <name>.charm" lines to stderr, one per platform.
+    packed = [
+        line.split()[1]
+        for line in proc.stderr.strip().splitlines()
+        if line.startswith("Packed")
+    ]
+    if not packed:
+        raise ValueError(
+            f"could not find a packed charm; charmcraft stdout={proc.stdout!r} stderr={proc.stderr!r}"
+        )
+    if len(packed) > 1:
+        raise ValueError(
+            "charm builds for multiple platforms; please pack it manually and set *_CHARM_PATH"
+        )
+    return Path(packed[0]).resolve()
+
+
+def get_resources(root: Path | str = "./") -> dict[str, str] | None:
+    """Return resources declared in the charm's metadata as {name: upstream-source}.
+
+    Replicates the removed `pytest_jubilant.get_resources` helper.
+    """
+    for meta_name in ("metadata.yaml", "charmcraft.yaml"):
+        meta_yaml = Path(root) / meta_name
+        if not meta_yaml.exists():
+            continue
+        meta = yaml.safe_load(meta_yaml.read_text())
+        meta_resources = meta.get("resources") or {}
+        if not meta_resources:
+            return None
+        return {
+            resource: data["upstream-source"]
+            for resource, data in meta_resources.items()
+        }
+    logger.error("no metadata.yaml/charmcraft.yaml found at %s", root)
+    return None
 
 
 def get_unit_ip_address(juju: Juju, app_name: str, unit_no: int):

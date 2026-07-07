@@ -25,7 +25,7 @@ def token(juju: Juju):
     return json.loads(out)["accessToken"]
 
 
-@pytest.mark.setup
+@pytest.mark.juju_setup
 def test_setup(juju: Juju):
     deploy_control_plane(juju, wait_for_idle=True)
 
@@ -58,7 +58,7 @@ def test_backend_server_create_environment(juju: Juju, token):
     subprocess.check_call(shlex.split(cmd))
 
 
-@pytest.mark.teardown
+@pytest.mark.juju_teardown
 def test_teardown(juju: Juju):
     juju.remove_relation(AUTH_APP, MONGO_APP)
     juju.remove_relation(BACKEND_APP, MONGO_APP)

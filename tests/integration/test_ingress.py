@@ -9,7 +9,7 @@ from helpers import (
 from jubilant import Juju, all_active, any_error
 
 
-@pytest.mark.setup
+@pytest.mark.juju_setup
 def test_setup(juju: Juju):
     deploy_control_plane(juju, wait_for_idle=True, with_traefik=True)
 

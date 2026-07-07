@@ -143,13 +143,12 @@ def test_pebble_check_failing_blocked_status(
                         "auth-up": {
                             "threshold": 3,
                             "startup": "enabled",
-                            "level": None,
                         }
                     },
                 }
             )
         },
-        check_infos={CheckInfo("auth-up", status=CheckStatus.DOWN, level=None)},
+        check_infos={CheckInfo("auth-up", status=CheckStatus.DOWN)},
     )
     state = State(
         containers=[authserver_container],
