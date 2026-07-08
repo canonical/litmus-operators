@@ -38,7 +38,7 @@ def project_id(juju: Juju, token):
     return json.loads(out)["data"]["projects"][0]["projectID"]
 
 
-@pytest.mark.setup
+@pytest.mark.juju_setup
 def test_setup_control_plane(juju: Juju):
     deploy_control_plane(juju, wait_for_idle=True)
 

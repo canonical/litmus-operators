@@ -27,7 +27,7 @@ def token(juju: Juju):
     return json.loads(out)["accessToken"]
 
 
-@pytest.mark.setup
+@pytest.mark.juju_setup
 def test_setup(juju: Juju):
     deploy_control_plane(juju, wait_for_idle=True)
 
@@ -82,7 +82,7 @@ def test_auth_is_served_through_nginx(juju: Juju):
     assert "accessToken" in response_json, f"No token found in response: {output}"
 
 
-@pytest.mark.teardown
+@pytest.mark.juju_teardown
 def test_teardown(juju: Juju):
     juju.remove_relation(AUTH_APP, MONGO_APP)
     juju.remove_relation(BACKEND_APP, MONGO_APP)

@@ -1,12 +1,9 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 import logging
-import os
-import secrets
-from pathlib import Path
 
 from pytest import fixture
-from pytest_jubilant import TempModelFactory
+from pytest_jubilant import JujuFactory
 from tests.integration.helpers import deploy_control_plane
 
 
@@ -14,50 +11,28 @@ logger = logging.getLogger(__name__)
 
 
 @fixture(scope="module")
-def juju(request, temp_model_factory):
-    """Juju fixture providing a separate model for SSL tests with teardown disabled.
+def juju(request, juju_factory: JujuFactory):
+    """Juju fixture providing a per-module temporary model.
 
-    Test modules whose filename ends with '_ssl' get their own model via a dedicated
-    TempModelFactory.  The model is **not** torn down after the test session so it can
-    be inspected or reused.  All other modules fall through to the default
-    ``temp_model_factory`` provided by pytest-jubilant.
+    For test modules whose filename ends with ``_ssl``, teardown is skipped so the
+    resulting model can be inspected or reused after the run.  All other modules
+    fall through to the default per-module teardown provided by pytest-jubilant.
     """
     module_name = request.module.__name__
     is_ssl = module_name.endswith("_ssl")
 
+    juju_instance = juju_factory.get_juju("")
+
+    if request.config.getoption("--juju-switch"):
+        assert juju_instance.model
+        juju_instance.cli("switch", juju_instance.model, include_model=False)
+
+    yield juju_instance
+
     if is_ssl:
-        user_model = request.config.getoption("--model")
-        if user_model:
-            prefix = f"{user_model}-ssl"
-            randbits = None
-        else:
-            prefix = module_name.rpartition(".")[-1].replace("_", "-")
-            randbits = (
-                "testing"
-                if os.getenv("PYTESTING_PYTEST_JUBILANT")
-                else secrets.token_hex(4)
-            )
-
-        ssl_factory = TempModelFactory(
-            prefix=prefix,
-            randbits=randbits,
-            check_models_unique=not user_model,
-        )
-        juju_instance = ssl_factory.get_juju("")
-
-        if request.config.getoption("--switch"):
-            juju_instance.cli("switch", juju_instance.model, include_model=False)
-
-        yield juju_instance
-
-        # Dump logs but explicitly skip teardown for SSL models
-        if dump_logs := request.config.getoption("--dump-logs"):
-            ssl_factory._dump_all_logs(Path(dump_logs))
-    else:
-        juju_instance = temp_model_factory.get_juju("")
-        if request.config.getoption("--switch"):
-            juju_instance.cli("switch", juju_instance.model, include_model=False)
-        yield juju_instance
+        # Prevent pytest-jubilant's module-scoped juju_factory teardown from
+        # destroying the SSL model so it remains available for inspection.
+        juju_factory._models.pop(juju_instance.model, None)  # type: ignore[attr-defined]
 
 
 @fixture(scope="module")

@@ -112,6 +112,7 @@ class LitmusChaoscenterCharm(CharmBase):
         self.nginx_exporter = NginxPrometheusExporter(
             self.unit.get_container("nginx-prometheus-exporter"),
             nginx_port=http_server_port,
+            nginx_tls_port=http_server_port,
             nginx_prometheus_exporter_port=NGINX_EXPORTER_PORT,
         )
 
@@ -163,7 +164,10 @@ class LitmusChaoscenterCharm(CharmBase):
             ),
             tls_config=self._tls_config,
         )
-        self.nginx_exporter.reconcile()
+        self.nginx_exporter.reconcile(
+            tls_config=self._tls_config,
+            nginx_serves_tls=self._tls_config is not None,
+        )
 
         self._chaoscenter.reconcile()
 
