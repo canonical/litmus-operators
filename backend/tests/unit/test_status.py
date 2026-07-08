@@ -152,13 +152,12 @@ def test_pebble_check_failing_blocked_status(
                         "backend-up": {
                             "threshold": 3,
                             "startup": "enabled",
-                            "level": None,
                         }
                     },
                 }
             )
         },
-        check_infos={CheckInfo("backend-up", status=CheckStatus.DOWN, level=None)},
+        check_infos={CheckInfo("backend-up", status=CheckStatus.DOWN)},
     )
     state = State(
         containers=[backend_container],

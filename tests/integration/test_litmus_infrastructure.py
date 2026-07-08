@@ -40,12 +40,12 @@ def project_id(juju: Juju, token):
     return json.loads(out)["data"]["projects"][0]["projectID"]
 
 
-@pytest.mark.setup
+@pytest.mark.juju_setup
 def test_setup_control_plane(juju: Juju):
     deploy_control_plane(juju, wait_for_idle=True)
 
 
-@pytest.mark.setup
+@pytest.mark.juju_setup
 def test_setup_infrastructure(juju: Juju):
     charm_url, channel, resources = _charm_and_channel_and_resources(
         INFRA_APP,
@@ -68,7 +68,7 @@ def test_setup_infrastructure(juju: Juju):
     )
 
 
-@pytest.mark.setup
+@pytest.mark.juju_setup
 def test_integrate_litmus_infrastructure(juju: Juju):
     juju.integrate(INFRA_APP, CHAOSCENTER_APP)
     juju.wait(

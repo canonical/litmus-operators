@@ -93,8 +93,9 @@ def test_nginx_exporter_pebble_ready_plan(
     expected_cmd_args = {
         "nginx-prometheus-exporter",
         "--web.listen-address=:9113",
-        "--nginx.scrape-uri=https://127.0.0.1:8185/status",
+        f"--nginx.scrape-uri={'https' if tls else 'http'}://127.0.0.1:8185/status",
         "--no-nginx.ssl-verify",
+        "--web.config.file=/etc/exporter/web-config.yaml",
     }
 
     # GIVEN relations with auth and backend endpoints, and valid user credentials configured

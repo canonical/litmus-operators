@@ -24,5 +24,11 @@ jobs:
     secrets: inherit
     with:
       charm-path: ${{ matrix.charm-path }}
+      # Run the shared integration suite only in the auth matrix to keep PR CI
+      # cheap. The suite still exercises every charm because
+      # tests/integration/helpers._charm_and_channel_and_resources falls back to
+      # packing each unrelated charm from local repo source at test time, so
+      # regressions in backend/chaoscenter/infrastructure will surface here too
+      # (reported under the `pull-request (auth)` job).
       enable-integration: ${{ matrix.charm-path == 'auth' }}
       juju-channel: 3.6/candidate
