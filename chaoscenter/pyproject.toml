@@ -8,7 +8,7 @@ requires-python = "~=3.14.0"
 dependencies = [
     "litmus-libs",
     "ops",
-    "cryptography>=45.0.7",
+    "cryptography>=50.0.0",
     "coordinated-workers",
     "charmlibs-nginx-k8s",
     # for juju topology
