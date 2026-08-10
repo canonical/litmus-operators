@@ -24,7 +24,7 @@ def _generate_chaoscenter_traffic(juju: Juju):
     subprocess.getoutput(cmd)
 
 
-@pytest.mark.setup
+@pytest.mark.juju_setup
 def test_setup(juju: Juju):
     deploy_control_plane(juju, wait_for_idle=False)
     deploy_self_monitoring_stack(juju)

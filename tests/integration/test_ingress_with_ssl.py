@@ -30,7 +30,7 @@ def token(juju: Juju):
     return json.loads(out)["accessToken"]
 
 
-@pytest.mark.setup
+@pytest.mark.juju_setup
 def test_setup(juju: Juju):
     deploy_control_plane(juju, with_tls=True, with_traefik=True, wait_for_idle=True)
 

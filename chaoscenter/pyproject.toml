@@ -32,10 +32,9 @@ dev = [
 
 #   INTEGRATION TESTS
     "jubilant",
-    "pytest-jubilant>=0.2.1",
+    "pytest-jubilant ~=2.0",
     "requests",
     "pytest-bdd>=8.1.0",
-    "pytest-jubilant ~=1.0",
 
 #   LINTING
     "pyright",
@@ -64,7 +63,7 @@ fail_under = 90
 [tool.pytest.ini_options]
 minversion = "6.0"
 log_cli_level = "INFO"
-markers = ["setup", "teardown"]
+markers = ["juju_setup", "juju_teardown"]
 
 # Linting tools configuration
 [lint]
